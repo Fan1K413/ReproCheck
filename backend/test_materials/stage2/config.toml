@@ -1,0 +1,9 @@
+# 合成测试材料
+[train]
+epochs = 10
+batch_size = 64
+lr = 0.001
+
+[model]
+name = "resnet18"
+num_classes = 10

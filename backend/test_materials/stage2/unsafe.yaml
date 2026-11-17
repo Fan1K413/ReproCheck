@@ -1,0 +1,2 @@
+# 合成测试材料：恶意 YAML（safe_load 必须拒绝）
+!!python/object/apply:os.system ["echo HACKED"]

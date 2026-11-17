@@ -1,0 +1,13 @@
+# 合成测试材料
+train:
+  epochs: 10
+  batch_size: 64
+  optimizer:
+    name: adam
+    lr: 0.001
+    weight_decay: 0.0001
+  scheduler: cosine
+dataset: cifar10
+seed: 42
+model: resnet18
+num_classes: 10

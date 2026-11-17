@@ -1,0 +1,1 @@
+研究实验使用 Batch Size 为 64，Learning Rate 为 0.001，训练轮数为 100 epochs，优化器为 AdamW。

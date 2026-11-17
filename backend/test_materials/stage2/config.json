@@ -1,0 +1,9 @@
+{
+  "train": {
+    "lr": 0.001,
+    "batch_size": 64,
+    "epochs": 10
+  },
+  "model": "resnet18",
+  "seed": 42
+}

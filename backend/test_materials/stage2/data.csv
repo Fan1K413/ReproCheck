@@ -1,0 +1,6 @@
+id,learning_rate,batch_size,accuracy,split
+1,0.001,64,0.92,train
+1,0.001,64,0.92,train
+3,,64,0.88,val
+4,0.002,32,0.90,test
+5,0.002,32,,test

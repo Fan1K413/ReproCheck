@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# 环境与密钥（永远不要提交）
+.env
+.env.local
+*.db
+*.sqlite
+*.sqlite3
+*.bak
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# logs / coverage
+*.log
+.coverage
+htmlcov/
+.pytest_cache/
+.playwright-cli/
