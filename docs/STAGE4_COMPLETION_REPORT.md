@@ -28,14 +28,14 @@
 | 修复审核闭环 | `RemediationProposal/Review`：留痕、改研究条件警告、原文保留 | ✅ 完整实现 |
 | 14 章复现报告 | `report.py`：HTML 导出，每章带 sources/origin 区分 | ✅ 完整实现（PDF 不可用明确 501） |
 | 12 张新表 + 幂等迁移 | `models/stage4.py` + Inspector 迁移 | ✅ 完整实现 |
-| 前端复现工作台 | 7 页面（总览/规划DAG/环境/控制台/结果比较/诊断/报告） | 🔄 子代理续做中 |
+| 前端复现工作台 | 7 页面（总览/规划DAG/环境/控制台/结果比较/诊断/报告） | ✅ 完成（tsc 0 错误 / build 1666 模块 / 浏览器实测） |
 | 21 条新增 API | `/api/v1/reproductions/*` 全部注册 | ✅ 完整实现 |
 
 ## 2. 真实测试结果
 
 - 后端：**76 passed**（前序 52 回归 + 第四阶段 24：test_stage4 20 + test_stage4_api 4）；
 - API 冒烟：40 条路径（21 条 reproduction）在线；无 Key 规划/诊断返回 503 且零落库；质量评估空项目 overall=0.05（真实聚合）；运行创建返回 `blocked_no_sandbox`；报告 14 章 HTML 生成成功；
-- 前端：tsc/build 由子代理验证（以最终报告为准）。
+- 前端：tsc 0 错误、build 成功（1666 模块）、chromium 实测总览页渲染正常（详见 TEST_REPORT_STAGE4.md）。
 
 ## 3. 逐条回答最终验收标准
 

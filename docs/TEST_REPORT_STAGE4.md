@@ -61,9 +61,13 @@ warnings：FastAPI on_event 弃用（2）、fitz 弃用（1），不影响功能
 | POST /reproductions/runs | status=blocked_no_sandbox，execution_enabled=false |
 | POST /reproductions/reports | 14 章 HTML 生成成功；PDF 不可用如实标注 |
 
-## 5. 前端
+## 5. 前端（已复核）
 
-（前端子代理完成后补：tsc/build 结果。）
+- `npx tsc --noEmit`：exit 0，0 错误；
+- `npm run build`：成功，1666 模块，dist js 407KB / css 21.6KB；
+- 7 个页面全部写入并通过路由可达性检查（总览/规划DAG/环境/控制台/结果比较/AI诊断/报告中心）；
+- 安全抽查：无密钥明文、无 Math.random/mockData 假数据、无假进度；执行禁用提示与"AI 诊断不可用"提示均存在；
+- 浏览器（chromium）实测复现总览页：三组侧栏菜单（导航/材料解析/复现验证）布局正常，统计卡显示真实 0 值，蓝色提示条明确"无安全沙箱时禁用执行、不伪造进度"，无文字重叠/布局溢出；控制台仅 favicon 404 与 ReactRouter v7 warning（无害）。
 
 ## 6. 真实 API 调用与代码执行
 
