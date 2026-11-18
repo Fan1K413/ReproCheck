@@ -11,6 +11,7 @@ from app.api.v1 import (
     overview,
     parse_tasks,
     projects,
+    reproductions,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -25,3 +26,5 @@ api_router.include_router(materials.router)
 api_router.include_router(parse_tasks.router)
 api_router.include_router(facts.router)
 api_router.include_router(overview.router)
+# ---- 第四阶段（追加） ----
+api_router.include_router(reproductions.router)

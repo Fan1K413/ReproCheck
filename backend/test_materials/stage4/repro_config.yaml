@@ -1,0 +1,7 @@
+# 合成训练配置（非真实论文）
+learning_rate: 0.001
+batch_size: 64
+epochs: 100
+seed: 42
+dataset: synthetic-imageNet-subset
+optimizer: AdamW

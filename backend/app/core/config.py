@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     # 单次请求体上限：1MB，防止超大材料滥用
     max_request_bytes: int = 1024 * 1024
 
+    # 第四阶段：安全隔离执行（默认关闭；无安全容器时绝不执行用户代码）
+    enable_code_execution: bool = False
+    execution_backend: str = "none"   # none / rootless_docker / gvisor（当前环境仅 none）
+    execution_timeout_seconds: int = 300
+    execution_max_cpu_seconds: int = 120
+    execution_max_memory_mb: int = 2048
+    execution_max_pids: int = 128
+    execution_allow_network: bool = False
+
     @field_validator("llm_base_url")
     @classmethod
     def _strip_slash(cls, v: str) -> str:

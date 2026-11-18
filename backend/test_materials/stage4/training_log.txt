@@ -1,0 +1,4 @@
+Epoch 1/100 - loss: 1.245 - accuracy=0.612 - f1_score=0.588
+Epoch 50/100 - loss: 0.412 - accuracy=0.884 - f1_score=0.871
+Epoch 100/100 - loss: 0.308 - accuracy=0.918 - f1_score=0.905
+Final: accuracy=0.918, f1_score=0.905

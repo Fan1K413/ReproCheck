@@ -31,6 +31,7 @@ async def init_db() -> None:
     # 确保第二阶段模型已注册到 metadata
     import app.models  # noqa: F401
     import app.models.stage2  # noqa: F401
+    import app.models.stage4  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

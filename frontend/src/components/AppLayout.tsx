@@ -6,10 +6,15 @@ import {
   Files,
   FlaskConical,
   FolderKanban,
+  GitCompare,
   LayoutDashboard,
   ListChecks,
   Menu,
+  Network,
   ScanSearch,
+  Server,
+  Sparkles,
+  Terminal,
   X,
 } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
@@ -36,6 +41,13 @@ function getPageTitle(pathname: string): string {
   if (/\/projects\/[^/]+\/tasks/.test(pathname)) return '解析任务'
   if (/\/projects\/[^/]+\/facts/.test(pathname)) return '科研事实'
   if (/\/projects\/[^/]+\/overview/.test(pathname)) return '解析概览'
+  if (/\/projects\/[^/]+\/reproduction\/environment/.test(pathname)) return '复现环境'
+  if (/\/projects\/[^/]+\/reproduction\/comparison/.test(pathname)) return '结果对照'
+  if (/\/projects\/[^/]+\/reproduction\/diagnostics/.test(pathname)) return 'AI 诊断'
+  if (/\/projects\/[^/]+\/reproduction\/reports/.test(pathname)) return '报告中心'
+  if (/\/projects\/[^/]+\/reproduction/.test(pathname)) return '复现总览'
+  if (/^\/reproductions\/plans\/[^/]+/.test(pathname)) return '复现规划 DAG'
+  if (/^\/reproductions\/runs\/[^/]+/.test(pathname)) return '执行控制台'
   const match = NAV_ITEMS.find(
     (item) => item.to === pathname || (item.to !== '/' && pathname.startsWith(item.to)),
   )
@@ -54,13 +66,46 @@ function stage2NavItems(lastProjectId: string | null): NavItem[] {
   ]
 }
 
+/** 侧栏「复现验证」分组；规划/控制台优先直达最近访问的具体对象。 */
+function stage4NavItems(
+  lastProjectId: string | null,
+  lastPlanId: string | null,
+  lastRunId: string | null,
+): NavItem[] {
+  const project = (suffix: string) =>
+    lastProjectId ? `/projects/${lastProjectId}/reproduction${suffix}` : '/projects'
+  const overview = project('')
+  return [
+    { to: overview, label: '总览', icon: LayoutDashboard, title: '复现总览' },
+    {
+      to: lastPlanId ? `/reproductions/plans/${lastPlanId}` : overview,
+      label: '规划',
+      icon: Network,
+      title: lastPlanId ? '复现规划 DAG' : '请先从总览选择一个规划',
+    },
+    { to: project('/environment'), label: '环境', icon: Server, title: '复现环境' },
+    {
+      to: lastRunId ? `/reproductions/runs/${lastRunId}` : overview,
+      label: '控制台',
+      icon: Terminal,
+      title: lastRunId ? '执行控制台' : '请先从总览或规划选择一个运行',
+    },
+    { to: project('/comparison'), label: '结果对照', icon: GitCompare, title: '结果对照' },
+    { to: project('/diagnostics'), label: 'AI 诊断', icon: Sparkles, title: 'AI 诊断' },
+    { to: project('/reports'), label: '报告中心', icon: Files, title: '报告中心' },
+  ]
+}
+
 export default function AppLayout() {
   const sidebarOpen = useUIStore((state) => state.sidebarOpen)
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen)
   const lastProjectId = useUIStore((state) => state.lastProjectId)
+  const lastPlanId = useUIStore((state) => state.lastPlanId)
+  const lastRunId = useUIStore((state) => state.lastRunId)
   const location = useLocation()
   const pageTitle = getPageTitle(location.pathname)
   const stage2Items = stage2NavItems(lastProjectId)
+  const stage4Items = stage4NavItems(lastProjectId, lastPlanId, lastRunId)
   const today = new Intl.DateTimeFormat('zh-CN', {
     year: 'numeric',
     month: 'long',
@@ -154,6 +199,46 @@ export default function AppLayout() {
                   <NavLink
                     to={item.to}
                     title={lastProjectId ? item.title : '请先在「项目」中选择一个项目'}
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) =>
+                      `relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
+                        isActive
+                          ? 'bg-white/10 text-white'
+                          : 'text-white/65 hover:bg-white/[0.06] hover:text-white'
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {isActive && (
+                          <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-accent-soft" />
+                        )}
+                        <Icon size={18} strokeWidth={1.8} className="shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                </li>
+              )
+            })}
+          </ul>
+
+          <p className="px-3 pb-2 pt-6 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
+            复现验证
+          </p>
+          {!lastProjectId && (
+            <p className="px-3 pb-2 text-[11px] leading-snug text-white/45">
+              请先在「项目」中选择一个项目
+            </p>
+          )}
+          <ul className="space-y-1">
+            {stage4Items.map((item) => {
+              const Icon = item.icon
+              return (
+                <li key={item.label}>
+                  <NavLink
+                    to={item.to}
+                    title={item.title}
                     onClick={() => setSidebarOpen(false)}
                     className={({ isActive }) =>
                       `relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${

@@ -1,0 +1,9 @@
+{
+  "metrics": {
+    "accuracy": 0.918,
+    "f1": 0.905,
+    "auc": 0.962
+  },
+  "dataset": "synthetic-imageNet-subset",
+  "seed": 42
+}

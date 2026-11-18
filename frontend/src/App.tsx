@@ -10,6 +10,13 @@ import MaterialDetailPage from './pages/MaterialDetailPage'
 import ParseTasksPage from './pages/ParseTasksPage'
 import FactsPage from './pages/FactsPage'
 import OverviewPage from './pages/OverviewPage'
+import ReproductionOverviewPage from './pages/reproduction/ReproductionOverviewPage'
+import ReproductionPlanPage from './pages/reproduction/ReproductionPlanPage'
+import ReproductionEnvironmentPage from './pages/reproduction/ReproductionEnvironmentPage'
+import ReproductionConsolePage from './pages/reproduction/ReproductionConsolePage'
+import ReproductionComparisonPage from './pages/reproduction/ReproductionComparisonPage'
+import ReproductionDiagnosticsPage from './pages/reproduction/ReproductionDiagnosticsPage'
+import ReproductionReportsPage from './pages/reproduction/ReproductionReportsPage'
 
 export default function App() {
   return (
@@ -25,6 +32,16 @@ export default function App() {
         <Route path="projects/:projectId/tasks" element={<ParseTasksPage />} />
         <Route path="projects/:projectId/facts" element={<FactsPage />} />
         <Route path="projects/:projectId/overview" element={<OverviewPage />} />
+
+        {/* 第四阶段：科研复现工作台 */}
+        <Route path="projects/:pid/reproduction" element={<ReproductionOverviewPage />} />
+        <Route path="reproductions/plans/:planId" element={<ReproductionPlanPage />} />
+        <Route path="reproductions/runs/:runId" element={<ReproductionConsolePage />} />
+        <Route path="projects/:pid/reproduction/environment" element={<ReproductionEnvironmentPage />} />
+        <Route path="projects/:pid/reproduction/comparison" element={<ReproductionComparisonPage />} />
+        <Route path="projects/:pid/reproduction/diagnostics" element={<ReproductionDiagnosticsPage />} />
+        <Route path="projects/:pid/reproduction/reports" element={<ReproductionReportsPage />} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
