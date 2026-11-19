@@ -24,6 +24,9 @@ router = APIRouter(tags=["chart-verification"])
 _CODE_MATERIAL_TYPES = {"python", "notebook", "zip"}
 # 结果类材料：从中提取真实指标数值
 _RESULT_MATERIAL_TYPES = {"csv", "json", "xlsx", "text", "readme"}
+# 论文主张（表格数值/图注）只从"论文类文本"提取；代码与结构化结果文件只作对照证词，
+# 不得把代码里的数组或 CSV 数值误当成论文声明（独立验收 P2-1）。
+_NON_CLAIM_MATERIAL_TYPES = {"python", "notebook", "zip", "csv", "json", "xlsx"}
 
 
 def _parse_locator(raw: str | None, chunk: SourceChunk) -> dict:
@@ -55,6 +58,15 @@ async def run_chart_verification(
     user: User = Depends(get_current_user),
 ) -> dict:
     """对该项目的真实材料执行图表反向验证，返回纯程序化证据与结论。"""
+    materials = (await db.execute(
+        select(Material).where(Material.project_id == project_id)
+        .order_by(Material.created_at, Material.id)
+    )).scalars().all()
+    # 仅论文类材料的 chunk 作为"论文表格主张"来源；代码/结构化结果只作对照证词。
+    claim_material_ids = {
+        m.id for m in materials if m.material_type not in _NON_CLAIM_MATERIAL_TYPES
+    }
+
     # 以 Material.project_id 反查，避免历史 chunk 的 project_id 为空造成越界读取
     chunk_rows = (await db.execute(
         select(SourceChunk)
@@ -68,14 +80,11 @@ async def run_chart_verification(
     by_material: dict[str, list[str]] = {}
     for chunk in chunk_rows:
         text = chunk.original_text or ""
+        by_material.setdefault(chunk.material_id, []).append(text)
+        if chunk.material_id not in claim_material_ids:
+            continue
         chunks.append(text)
         locators.append(_parse_locator(chunk.source_locator_json, chunk))
-        by_material.setdefault(chunk.material_id, []).append(text)
-
-    materials = (await db.execute(
-        select(Material).where(Material.project_id == project_id)
-        .order_by(Material.created_at, Material.id)
-    )).scalars().all()
 
     code_texts: dict[str, str] = {}
     material_texts: dict[str, str] = {}

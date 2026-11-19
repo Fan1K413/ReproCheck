@@ -7,6 +7,8 @@ import {
   Cpu,
   Hash,
   ListChecks,
+  Pause,
+  Play,
   RefreshCw,
   X,
 } from 'lucide-react'
@@ -17,12 +19,12 @@ import { DataTable, type Column } from '../components/DataTable'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
 import { LoadingState } from '../components/LoadingState'
-import { StatusBadge } from '../components/StatusBadge'
+import { StatusBadge, type Tone } from '../components/StatusBadge'
 import { formatCount, formatDateTime, formatDuration } from '../features/format'
 import { isActiveTaskStatus, taskStatusLabel, taskStatusTone } from '../features/stage2Meta'
 import { useTrackProject } from '../hooks/useTrackProject'
 import { ApiError, api } from '../services/api'
-import type { ParseTaskView } from '../types/api'
+import type { ParseTaskView, TaskStatus } from '../types/api'
 
 const POLL_MS = 1500
 
@@ -40,6 +42,14 @@ export default function ParseTasksPage() {
   const queryClient = useQueryClient()
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [actionNotice, setActionNotice] = useState<string | null>(null)
+
+  /** 后端 pause 会把 status 写成 paused；本地状态联合尚未收录该值，按字符串兼容展示。 */
+  const isPaused = (status: TaskStatus) => (status as string) === 'paused'
+  const statusLabel = (status: TaskStatus) =>
+    isPaused(status) ? '已暂停' : taskStatusLabel[status] ?? status
+  const statusTone = (status: TaskStatus): Tone =>
+    isPaused(status) ? 'warning' : taskStatusTone(status)
 
   const tasksQuery = useQuery({
     queryKey: ['parse-tasks', projectId],
@@ -99,6 +109,24 @@ export default function ParseTasksPage() {
     },
   })
 
+  const pauseMutation = useMutation({
+    mutationFn: (taskId: string) => api.pauseTask(taskId),
+    onSuccess: async (task) => {
+      setActionError(null)
+      setActionNotice(`任务 ${task.task_id.slice(0, 8)} 已暂停`)
+      await invalidateRelated()
+    },
+  })
+
+  const resumeMutation = useMutation({
+    mutationFn: (taskId: string) => api.resumeTask(taskId),
+    onSuccess: async (task) => {
+      setActionError(null)
+      setActionNotice(`任务 ${task.task_id.slice(0, 8)} 已恢复，等待重新执行`)
+      await invalidateRelated()
+    },
+  })
+
   const materialNames = new Map(
     (materialsQuery.data?.items ?? []).map((material) => [material.material_id, material.filename]),
   )
@@ -143,11 +171,42 @@ export default function ParseTasksPage() {
             disabled={cancelMutation.isPending}
             onClick={() => {
               setActionError(null)
+              setActionNotice(null)
               cancelMutation.mutate(task.task_id)
             }}
           >
             <Ban size={13} />
             取消
+          </button>
+        )}
+        {isActiveTaskStatus(task.status) && (
+          <button
+            type="button"
+            className={`${actionClass} hover:text-warning`}
+            disabled={pauseMutation.isPending || resumeMutation.isPending}
+            onClick={() => {
+              setActionError(null)
+              setActionNotice(null)
+              pauseMutation.mutate(task.task_id)
+            }}
+          >
+            {pauseMutation.isPending ? <RefreshCw size={13} className="animate-spin" /> : <Pause size={13} />}
+            暂停
+          </button>
+        )}
+        {isPaused(task.status) && (
+          <button
+            type="button"
+            className={`${actionClass} hover:text-accent-dark`}
+            disabled={pauseMutation.isPending || resumeMutation.isPending}
+            onClick={() => {
+              setActionError(null)
+              setActionNotice(null)
+              resumeMutation.mutate(task.task_id)
+            }}
+          >
+            {resumeMutation.isPending ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} />}
+            继续
           </button>
         )}
       </div>
@@ -205,7 +264,7 @@ export default function ParseTasksPage() {
       key: 'status',
       header: '状态',
       render: (task) => (
-        <StatusBadge tone={taskStatusTone(task.status)}>{taskStatusLabel[task.status] ?? task.status}</StatusBadge>
+        <StatusBadge tone={statusTone(task.status)}>{statusLabel(task.status)}</StatusBadge>
       ),
     },
     {
@@ -281,6 +340,11 @@ export default function ParseTasksPage() {
         </nav>
       </div>
 
+      {actionNotice && (
+        <p className="rounded-md bg-success-wash px-3 py-2 text-xs text-success" role="status">
+          {actionNotice}
+        </p>
+      )}
       {actionError && (
         <p className="rounded-md bg-danger-wash px-3 py-2 text-xs text-danger" role="alert">
           操作失败：{actionError}
@@ -294,6 +358,16 @@ export default function ParseTasksPage() {
       {cancelMutation.isError && (
         <p className="rounded-md bg-danger-wash px-3 py-2 text-xs text-danger" role="alert">
           取消失败：{errorMessage(cancelMutation.error, '请重试')}
+        </p>
+      )}
+      {pauseMutation.isError && (
+        <p className="rounded-md bg-danger-wash px-3 py-2 text-xs text-danger" role="alert">
+          暂停失败：{errorMessage(pauseMutation.error, '请重试')}
+        </p>
+      )}
+      {resumeMutation.isError && (
+        <p className="rounded-md bg-danger-wash px-3 py-2 text-xs text-danger" role="alert">
+          恢复失败：{errorMessage(resumeMutation.error, '请重试')}
         </p>
       )}
 
@@ -326,8 +400,8 @@ export default function ParseTasksPage() {
           ) : selectedTask ? (
             <div className="p-5">
               <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge tone={taskStatusTone(selectedTask.status)}>
-                  {taskStatusLabel[selectedTask.status] ?? selectedTask.status}
+                <StatusBadge tone={statusTone(selectedTask.status)}>
+                  {statusLabel(selectedTask.status)}
                 </StatusBadge>
                 <span className="mono text-xs text-ink-subtle">阶段：{selectedTask.stage || '—'}</span>
               </div>
@@ -414,8 +488,8 @@ export default function ParseTasksPage() {
                       </button>
                       <p className="mt-1 break-all text-sm text-ink">{materialName(task)}</p>
                     </div>
-                    <StatusBadge tone={taskStatusTone(task.status)}>
-                      {taskStatusLabel[task.status] ?? task.status}
+                    <StatusBadge tone={statusTone(task.status)}>
+                      {statusLabel(task.status)}
                     </StatusBadge>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">

@@ -34,6 +34,7 @@ from app.api.v1 import (
     roles,
     rules,
     verification_layers,
+    verdict,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -74,3 +75,5 @@ api_router.include_router(benchmark_metrics.router)
 api_router.include_router(chart_verification.router, dependencies=_iso)
 # ---- 第六阶段：验证引擎分层（静态分析/数值重算，纯计算）----
 api_router.include_router(verification_layers.router)
+# ---- 第九阶段 U1：统一可信结论层 ----
+api_router.include_router(verdict.router, dependencies=_iso)

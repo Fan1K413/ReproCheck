@@ -12,6 +12,8 @@ import ParseTasksPage from './pages/ParseTasksPage'
 import FactsPage from './pages/FactsPage'
 import EvidenceGraphPage from './pages/EvidenceGraphPage'
 import OverviewPage from './pages/OverviewPage'
+import ProjectVerificationPage from './pages/ProjectVerificationPage'
+import HandoffPage from './pages/HandoffPage'
 import LoginPage from './pages/auth/LoginPage'
 import ReproductionOverviewPage from './pages/reproduction/ReproductionOverviewPage'
 import ReproductionPlanPage from './pages/reproduction/ReproductionPlanPage'
@@ -50,6 +52,10 @@ export default function App() {
           <Route path="projects/:projectId/facts" element={<FactsPage />} />
           <Route path="projects/:projectId/evidence-graph" element={<EvidenceGraphPage />} />
           <Route path="projects/:projectId/overview" element={<OverviewPage />} />
+
+          {/* 第九阶段：能力驾驶舱 */}
+          <Route path="projects/:projectId/verification" element={<ProjectVerificationPage />} />
+          <Route path="projects/:projectId/handoff" element={<HandoffPage />} />
 
           {/* 第四阶段：科研复现工作台 */}
           <Route path="projects/:pid/reproduction" element={<ReproductionOverviewPage />} />

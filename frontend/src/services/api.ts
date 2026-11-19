@@ -2,6 +2,7 @@ import type {
   ApiResponse,
   AuditResult,
   CancelTaskResult,
+  ChartVerificationResult,
   CreateProjectRequest,
   DemoAuditRequest,
   DeleteMaterialResult,
@@ -10,6 +11,7 @@ import type {
   FactsData,
   FactsSummary,
   EvidenceGraph,
+  HandoffValidationResult,
   HealthData,
   LlmStatusData,
   LlmTestData,
@@ -19,10 +21,13 @@ import type {
   ParseTaskView,
   ParseTasksData,
   PatchFactBody,
+  ProductionCheckResult,
   Project,
   ProjectsData,
+  RecoverStaleResult,
   StartParseResult,
   UploadMaterialResult,
+  VerdictSummary,
 } from '../types/api'
 
 /**
@@ -96,6 +101,25 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return payload.data
+}
+
+/** 二进制端点失败时尽量读取后端统一错误信封；否则退回 HTTP 状态描述。 */
+async function binaryDownloadError(response: Response, fallback: string): Promise<ApiError> {
+  try {
+    const payload = (await response.json()) as ApiResponse<unknown>
+    const error = payload?.error
+    if (error?.code || error?.message) {
+      return new ApiError(
+        error?.code ?? 'DOWNLOAD_FAILED',
+        error?.message ?? fallback,
+        error?.details ?? null,
+        payload?.request_id ?? 'frontend',
+      )
+    }
+  } catch {
+    // 非 JSON 错误响应（网关纯文本等）使用默认错误码。
+  }
+  return new ApiError('DOWNLOAD_FAILED', `${fallback}（HTTP ${response.status}）。`, null, 'frontend')
 }
 
 export const api = {
@@ -237,4 +261,85 @@ export const api = {
     request<ParseOverview>(
       `/projects/${encodeURIComponent(projectId)}/parse-overview`,
     ),
+
+  /* ---------------- 第九阶段：能力驾驶舱 ---------------- */
+
+  /** U1 只读聚合：五态结论、ACM 三维与证据定位完整率。 */
+  getVerdictSummary: (projectId: string) =>
+    request<VerdictSummary>(
+      `/projects/${encodeURIComponent(projectId)}/verdict-summary`,
+    ),
+
+  /** 交接包导出：POST 返回二进制 ZIP，复用 downloadMaterial 的 Bearer + Blob 下载模式。 */
+  exportHandoff: async (projectId: string): Promise<void> => {
+    let response: Response
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('rc_token') : null
+    try {
+      response = await fetch(
+        `${V1}/projects/${encodeURIComponent(projectId)}/handoff/export`,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/zip',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        },
+      )
+    } catch {
+      throw new ApiError('NETWORK_ERROR', '无法连接到服务，交接包导出未开始。', null, 'frontend')
+    }
+    if (!response.ok) throw await binaryDownloadError(response, '交接包导出失败')
+
+    const blob = await response.blob()
+    const disposition = response.headers.get('Content-Disposition') ?? ''
+    const match = /filename\*?=(?:UTF-8'')?([^;]+)/i.exec(disposition)
+    const filename = match
+      ? decodeURIComponent(match[1].trim().replace(/^"|"$/g, ''))
+      : `handoff-${projectId}.zip`
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = filename
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  },
+
+  /** 上传 ZIP 校验：multipart 由 request 自动跳过 Content-Type，Bearer 仍由 request 注入。 */
+  validateHandoff: (projectId: string, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return request<HandoffValidationResult>(
+      `/projects/${encodeURIComponent(projectId)}/handoff/validate`,
+      { method: 'POST', body: formData },
+    )
+  },
+
+  /** 图表反向验证：从项目真实材料提取图注/表格/绘图调用并逐条核对。 */
+  runChartVerification: (projectId: string) =>
+    request<ChartVerificationResult>(
+      `/projects/${encodeURIComponent(projectId)}/chart-verification`,
+      { method: 'POST' },
+    ),
+
+  pauseTask: (taskId: string) =>
+    request<ParseTaskView>(`/parse-tasks/${encodeURIComponent(taskId)}/pause`, {
+      method: 'POST',
+    }),
+
+  resumeTask: (taskId: string) =>
+    request<ParseTaskView>(`/parse-tasks/${encodeURIComponent(taskId)}/resume`, {
+      method: 'POST',
+    }),
+
+  /** 管理员批量恢复心跳过期任务；非管理员由 project_id 限定范围。 */
+  recoverStale: (projectId: string) =>
+    request<RecoverStaleResult>('/parse-tasks/recover-stale', {
+      method: 'POST',
+      body: JSON.stringify({ project_id: projectId }),
+    }),
+
+  getProductionCheck: () =>
+    request<ProductionCheckResult>('/diagnosis/production-check'),
 }

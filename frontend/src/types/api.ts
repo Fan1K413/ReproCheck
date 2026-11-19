@@ -483,3 +483,99 @@ export type ParseOverview = {
   }
   by_type: Record<string, number>
 }
+
+/* ================= 第九阶段：能力驾驶舱（真实后端只读聚合 / 确定性验证） ================= */
+
+/**
+ * GET /projects/{id}/verdict-summary
+ * 后端为增量聚合，字段可能扩展；这里保留索引签名，页面按实际收到的键渲染。
+ */
+export type VerdictSummary = {
+  verdicts?: Record<string, number>
+  verdict_labels?: Record<string, string>
+  dimensions?: Record<string, {
+    status?: string
+    label?: string
+    subtype?: string
+    evidence_count?: number
+    basis?: string
+    [key: string]: unknown
+  }>
+  evidence_locator?: {
+    total?: number
+    with_location?: number
+    ratio?: number | null
+    [key: string]: unknown
+  } | null
+  scope_note?: string
+  framework_note?: string
+  counts?: Record<string, number>
+  notes?: string[]
+  [key: string]: unknown
+}
+
+/** POST /projects/{id}/chart-verification 后端逐条核对结果。 */
+export type ChartVerification = {
+  claim_id?: string | null
+  metric_name?: string | null
+  paper_values?: number[]
+  result_values?: number[]
+  diff?: number | null
+  diff_details?: Array<Record<string, unknown>>
+  method?: string
+  evidence_missing?: string[]
+  note?: string
+  verdict?: string
+  [key: string]: unknown
+}
+
+export type ChartVerificationResult = {
+  captions: Array<Record<string, unknown>>
+  table_claims: Array<Record<string, unknown>>
+  plot_logic: Array<Record<string, unknown>>
+  result_files: Array<Record<string, unknown>>
+  verifications: ChartVerification[]
+  summary: {
+    total_claims?: number
+    supported?: number
+    conflicting?: number
+    insufficient_data?: number
+    [key: string]: unknown
+  }
+  limitations: string[]
+  [key: string]: unknown
+}
+
+/** POST /projects/{id}/handoff/validate：仅校验，不写库。 */
+export type HandoffManifest = {
+  bundle_version?: string
+  generated_at?: string
+  project_id?: string
+  files?: Record<string, { sha256?: string; size_bytes?: number; [key: string]: unknown }>
+  counts?: Record<string, number>
+  [key: string]: unknown
+}
+
+export type HandoffValidationResult = {
+  valid: boolean
+  import_mode: string
+  manifest: HandoffManifest | null
+  target_project_id?: string
+  files: string[]
+  note?: string
+  [key: string]: unknown
+}
+
+/** GET /diagnosis/production-check */
+export type ProductionCheckResult = {
+  passed: boolean
+  issues: string[]
+  note: string
+  [key: string]: unknown
+}
+
+/** POST /parse-tasks/recover-stale */
+export type RecoverStaleResult = {
+  recovered: number
+  [key: string]: unknown
+}

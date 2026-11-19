@@ -75,6 +75,8 @@ function getPageTitle(pathname: string): string {
   if (/\/projects\/[^/]+\/evidence-graph/.test(pathname)) return '科研结论证据图谱'
   if (/\/projects\/[^/]+\/facts/.test(pathname)) return '科研事实'
   if (/\/projects\/[^/]+\/overview/.test(pathname)) return '解析概览'
+  if (/\/projects\/[^/]+\/verification/.test(pathname)) return '项目验证'
+  if (/\/projects\/[^/]+\/handoff/.test(pathname)) return '交接包'
   if (/\/projects\/[^/]+\/team/.test(pathname)) return '项目团队'
   if (/\/projects\/[^/]+\/reproduction\/environment/.test(pathname)) return '复现环境'
   if (/\/projects\/[^/]+\/reproduction\/comparison/.test(pathname)) return '结果对照'
@@ -101,6 +103,26 @@ function stage2NavItems(lastProjectId: string | null): NavItem[] {
     { to: to('facts'), label: '科研事实', icon: ClipboardList, title: '科研事实' },
     { to: to('evidence-graph'), label: '证据图谱', icon: Network, title: '科研结论证据图谱' },
     { to: to('overview'), label: '解析概览', icon: ChartNoAxesCombined, title: '解析概览' },
+  ]
+}
+
+/** 侧栏「能力驾驶舱」分组；无最近项目时退化为项目列表，沿用现有模式。 */
+function stage9NavItems(lastProjectId: string | null): NavItem[] {
+  const to = (suffix: string) =>
+    lastProjectId ? `/projects/${lastProjectId}/${suffix}` : '/projects'
+  return [
+    {
+      to: to('verification'),
+      label: '项目验证',
+      icon: ShieldCheck,
+      title: lastProjectId ? '项目验证' : '请先在「项目」中选择一个项目',
+    },
+    {
+      to: to('handoff'),
+      label: '交接包',
+      icon: Files,
+      title: lastProjectId ? '交接包' : '请先在「项目」中选择一个项目',
+    },
   ]
 }
 
@@ -192,6 +214,7 @@ export default function AppLayout() {
   }, [location.pathname])
   const stage2Items = stage2NavItems(lastProjectId)
   const stage4Items = stage4NavItems(lastProjectId, lastPlanId, lastRunId)
+  const stage9Items = stage9NavItems(lastProjectId)
   const teamItem: NavItem = {
     to: lastProjectId ? `/projects/${lastProjectId}/team` : '/projects',
     label: '项目团队',
@@ -262,6 +285,12 @@ export default function AppLayout() {
           <NavGroup
             label="复现验证"
             items={stage4Items}
+            hint={lastProjectId ? undefined : '请先在「项目」中选择一个项目'}
+            onNavigate={() => setSidebarOpen(false)}
+          />
+          <NavGroup
+            label="能力驾驶舱"
+            items={stage9Items}
             hint={lastProjectId ? undefined : '请先在「项目」中选择一个项目'}
             onNavigate={() => setSidebarOpen(false)}
           />

@@ -436,3 +436,87 @@ export type ClassifyLogRequest = {
   error_code?: string
   environment_missing?: string
 }
+
+/* ================= 第九阶段：独立验证引擎 / 基准指标计算 ================= */
+
+/** GET /verification/layers 的分层职责；第 3 层 executed_by_default=false。 */
+export type VerificationLayer = {
+  layer: number
+  name: string
+  method: string
+  basis: string
+  boundary: string
+  executed_by_default: boolean
+  default_confidence?: number
+  note: string
+  [key: string]: unknown
+}
+
+export type VerificationLayersData = {
+  layers: VerificationLayer[]
+  total: number
+  note: string
+  [key: string]: unknown
+}
+
+/** POST /verification/static-analysis（AST 解析，不执行代码）。 */
+export type StaticAnalysisResult = {
+  files_analyzed: number
+  valid_files: number
+  syntax_errors: Array<{ file: string; error: string }>
+  combined: {
+    imports: string[]
+    model_classes: string[]
+    train_test_split_calls: Array<Record<string, unknown>>
+    random_seed_settings: Array<Record<string, unknown>>
+    optimizer_and_lr: Array<Record<string, unknown>>
+    function_defs: string[]
+    [key: string]: unknown
+  }
+  warnings: string[]
+  finding_count: number
+  method: string
+  [key: string]: unknown
+}
+
+/** POST /verification/recompute：重算值与报告值按容差对比。 */
+export type RecomputeResult = {
+  reported: number | null
+  recomputed: number | null
+  abs_diff: number | null
+  verdict: string
+  method: string
+  note: string
+  tolerance: number
+  supported?: boolean
+  metric?: string
+  notes?: string[]
+  [key: string]: unknown
+}
+
+/** POST /benchmark/metrics/compute 的输入记录（由页面 JSON 输入解析后提交）。 */
+export type BenchmarkTruthInput = {
+  item_id: string
+  category: string
+  evidence_locator?: string
+  [key: string]: unknown
+}
+
+export type BenchmarkPredictionInput = BenchmarkTruthInput & {
+  confidence?: number
+}
+
+export type BenchmarkMetricsResult = {
+  precision: number
+  recall: number
+  f1: number
+  false_positive_rate: number
+  false_negative_rate: number
+  evidence_location_accuracy: number | null
+  /** 后端当前返回 category_accuracy；设计文档称 classification_accuracy，两者兼容展示。 */
+  category_accuracy?: number
+  classification_accuracy?: number
+  counts: Record<string, number>
+  formula_notes: string[]
+  [key: string]: unknown
+}

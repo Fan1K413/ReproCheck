@@ -388,7 +388,21 @@ def _coerce_values(raw_values: Any) -> list[float]:
 def verify_figure(claim: dict, plot_calls: list, result_values: list) -> dict:
     """对比论文表格数值与结果文件数值；缺一方数据时明确标记证据不足。"""
     paper_values = _coerce_values((claim or {}).get("values"))
-    results = _coerce_values(result_values)
+    # 误报防护：结果文件数值必须先按指标名匹配 claim；否则不同指标（如学习率与准确率）
+    # 的数值会被当成同一实验结果比较，产生虚假的 supported/conflicting。
+    metric = str((claim or {}).get("metric_name") or "").strip().lower()
+    dict_results = [item for item in (result_values or []) if isinstance(item, dict)]
+    scalar_results = [item for item in (result_values or []) if not isinstance(item, dict)]
+    metric_matches = [
+        item for item in dict_results
+        if metric and str(item.get("metric") or "").strip().lower() == metric
+    ]
+    chosen = metric_matches if metric_matches else (dict_results if dict_results else scalar_results)
+    results = _coerce_values(chosen)
+    result_sources = [
+        str(item.get("source") or item.get("file_name") or "")
+        for item in chosen if isinstance(item, dict)
+    ]
     evidence_missing: list[str] = []
     if not plot_calls:
         evidence_missing.append("未发现绘图调用证据")
@@ -405,13 +419,20 @@ def verify_figure(claim: dict, plot_calls: list, result_values: list) -> dict:
         "diff": None,
         "diff_details": [],
         "method": "paper_table_vs_result_file_numeric_comparison",
+        "result_sources": [s for s in result_sources if s],
         "evidence_missing": evidence_missing,
         "note": "",
     }
+    if result_sources and not metric_matches and metric:
+        base["evidence_missing"].append(
+            f"结果文件中未找到指标 {metric} 的同名数值，以下比对使用其他指标数值，仅供人工参考"
+        )
 
-    if not results or not paper_values:
+    if not results or not paper_values or (metric and not metric_matches):
         base["verdict"] = "insufficient_data"
         base["note"] = (
+            "缺少原始数据（未找到同指标数值），未完成精确复核；仅记录论文文本声明与已有的绘图调用证据。"
+            if metric and not metric_matches else
             "缺少原始数据，未完成精确复核；仅记录论文文本声明与已有的绘图调用证据。"
         )
         return base

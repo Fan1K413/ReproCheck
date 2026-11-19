@@ -1,6 +1,9 @@
 import { ApiError } from './api'
 import type { ApiResponse } from '../types/api'
 import type {
+  BenchmarkMetricsResult,
+  BenchmarkPredictionInput,
+  BenchmarkTruthInput,
   CancelRunResult,
   ComparisonView,
   ConfirmTaskResult,
@@ -11,12 +14,16 @@ import type {
   CreateReportResult,
   CreateRunRequest,
   CreateTaskRequest,
+  DeterministicDiagnosis,
   DiagnosticView,
   EnvironmentView,
+  FailureCategory,
+  LogEntry,
   MetricView,
   PlanDetail,
   PlanView,
   QualityView,
+  RecomputeResult,
   ReproList,
   ReproRunView,
   ReproTaskView,
@@ -24,10 +31,9 @@ import type {
   ReviewRemediationRequest,
   ReviewRemediationResult,
   ArtifactEntry,
-  LogEntry,
-  FailureCategory,
-  DeterministicDiagnosis,
   ClassifyLogRequest,
+  StaticAnalysisResult,
+  VerificationLayersData,
 } from '../types/reproduction'
 
 /**
@@ -258,5 +264,36 @@ export const reproductionApi = {
     request<DeterministicDiagnosis>('/diagnosis/classify', {
       method: 'POST',
       body: JSON.stringify(body),
+    }),
+
+  /* ---------------- 第九阶段：独立验证引擎 / 基准指标 ---------------- */
+
+  getVerificationLayers: () =>
+    request<VerificationLayersData>('/verification/layers'),
+
+  /** 多文件源码 AST 静态分析；只解析，不执行任何上传代码。 */
+  runStaticAnalysis: (sources: Record<string, string>) =>
+    request<StaticAnalysisResult>('/verification/static-analysis', {
+      method: 'POST',
+      body: JSON.stringify({ sources }),
+    }),
+
+  runRecompute: (
+    metric: string,
+    counts: Record<string, unknown>,
+    reportedValue: number | null,
+  ) =>
+    request<RecomputeResult>('/verification/recompute', {
+      method: 'POST',
+      body: JSON.stringify({ metric, counts, reported_value: reportedValue }),
+    }),
+
+  computeBenchmarkMetrics: (
+    truths: BenchmarkTruthInput[],
+    predictions: BenchmarkPredictionInput[],
+  ) =>
+    request<BenchmarkMetricsResult>('/benchmark/metrics/compute', {
+      method: 'POST',
+      body: JSON.stringify({ truths, predictions }),
     }),
 }
