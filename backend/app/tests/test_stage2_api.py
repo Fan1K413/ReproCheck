@@ -153,8 +153,9 @@ def _init_with_llm(self, db, llm):
 
 
 @pytest.mark.asyncio
-async def test_no_key_parse_fails_explicitly(client, monkeypatch):
-    """无 Key 时解析接口明确失败，不产生假事实。"""
+async def test_no_key_parse_but_parse_runs(client, monkeypatch):
+    """无 Key 时确定性解析仍可执行（chunks 落库），但 AI 抽取跳过，
+    任务标为 partially_completed 而非失败——避免用户上传后什么都看不到。"""
     monkeypatch.setattr(settings, "llm_api_key", "")
     r = await client.post("/api/v1/projects", json={"name": "无Key", "domain": "", "paper_title": "", "description": ""})
     project_id = r.json()["data"]["id"]
@@ -164,9 +165,20 @@ async def test_no_key_parse_fails_explicitly(client, monkeypatch):
         files={"file": ("a.txt", b"batch_size: 32", "text/plain")},
     )
     material_id = r.json()["data"]["material_id"]
+    # 任务创建和 run() 都不应抛 503
     r = await client.post(f"/api/v1/materials/{material_id}/parse")
-    assert r.status_code == 503
-    assert r.json()["error"]["code"] == "LLM_KEY_NOT_CONFIGURED"
+    assert r.status_code == 200
+    task = r.json()["data"]
+    # 关键：状态是部分完成，不是失败
+    assert task["status"] == "partially_completed"
+    assert task["stage"] == "partially_completed"
+    # 跳过原因被记录
+    result = task.get("result") or {}
+    assert result.get("llm_skipped") is True
+    assert result.get("reason") == "LLM_NOT_CONFIGURED"
+    # 确定性解析确实跑了（有 chunk）
+    assert result.get("parse_only_chunks", 0) > 0
+    # 没有假事实
     r = await client.get(f"/api/v1/facts?project_id={project_id}")
     assert r.json()["data"]["total"] == 0
 

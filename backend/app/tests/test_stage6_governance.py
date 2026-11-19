@@ -1,6 +1,8 @@
 """第六阶段 E 组测试：数据分级 / AI 授权门 / 本人数据导出 / 保留策略 / 项目级联删除。"""
 from __future__ import annotations
 
+import json
+
 import pytest
 
 
@@ -36,10 +38,16 @@ async def test_ai_consent_gate_blocks_then_allows(client, monkeypatch):
     mid = (await client.post("/api/v1/materials/upload", data={"project_id": pid},
                              files={"file": ("p.txt", b"learning rate 0.001", "text/plain")},
                              headers=_auth(a["token"]))).json()["data"]["material_id"]
-    # 未授权 → 明确 403，不静默调用模型
+    # 未授权 → 确定性解析仍执行，但 AI 抽取跳过，任务标 partially_completed
+    # （治理门阻断不再在 API 层抛 403，而是在 run() 的抽取阶段优雅降级）
     r = await client.post(f"/api/v1/materials/{mid}/parse", headers=_auth(a["token"]))
-    assert r.status_code == 403
-    assert r.json()["error"]["code"] == "AI_CONSENT_REQUIRED"
+    assert r.status_code == 200
+    task = r.json()["data"]
+    assert task["status"] == "partially_completed"
+    # 跳过原因记录为治理门阻断
+    result = task.get("result") or {}
+    assert result.get("llm_skipped") is True
+    assert result.get("reason") in ("AI_CONSENT_REQUIRED", "CONSENT_REQUIRED")
     # 授予授权
     r = await client.post("/api/v1/governance/ai-consent", json={"allow_external_llm": True, "project_id": pid}, headers=_auth(a["token"]))
     assert r.status_code == 200 and r.json()["data"]["allow_external_llm"] is True

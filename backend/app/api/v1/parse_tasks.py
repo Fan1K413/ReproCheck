@@ -23,6 +23,13 @@ router = APIRouter(tags=["parse-tasks"])
 
 
 def _view(t: ParseTask, material_name: str = "") -> dict:
+    import json as _json
+    result_data = None
+    if t.result_json:
+        try:
+            result_data = _json.loads(t.result_json)
+        except Exception:  # noqa: BLE001
+            result_data = None
     return {
         "task_id": t.id, "material_id": t.material_id,
         "material_name": material_name, "project_id": t.project_id,
@@ -39,6 +46,7 @@ def _view(t: ParseTask, material_name: str = "") -> dict:
         "model_calls": t.model_calls, "total_tokens": t.total_tokens,
         "prompt_tokens": t.prompt_tokens, "completion_tokens": t.completion_tokens,
         "duration_ms": t.duration_ms, "facts_count": t.facts_count,
+        "result": result_data,
         "created_at": t.created_at.isoformat() if t.created_at else "",
     }
 

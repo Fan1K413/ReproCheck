@@ -125,15 +125,10 @@ class TaskService:
             await self.db.commit()
             return cached
 
-        if not settings.is_llm_configured:
-            # 明确失败，不伪造结果；解析仍可单独进行但抽取无法完成
-            raise AppError("LLM_KEY_NOT_CONFIGURED", "尚未配置 API Key，无法执行 AI 事实抽取。")
-
-        # 治理门：开启 require_ai_consent 时，调用外部模型前必须有有效授权
-        from app.models import Project
-        from app.services.governance_service import ensure_ai_consent
-        proj = (await self.db.execute(select(Project).where(Project.id == material.project_id))).scalar_one_or_none()
-        await ensure_ai_consent(self.db, material.project_id, proj.org_id if proj else None)
+        # LLM Key 不再硬阻塞任务创建：确定性解析（PDF/Python AST/配置/CSV）
+        # 始终可以执行；AI 事实抽取在 run() 的 extracting 阶段按 Key 是否存在
+        # 独立决定，无 Key 时标记为 partially_completed 并保留证据原文。
+        # 治理门 require_ai_consent 同样延迟到 run() 的抽取前检查。
 
         task = ParseTask(
             id=f"task-{uuid.uuid4().hex[:16]}",
@@ -250,50 +245,106 @@ class TaskService:
                 await self.db.commit()
                 return task
 
-            # ---- AI 抽取 ----
+            # ---- AI 抽取（无 LLM Key 时优雅降级，保留确定性解析结果）----
             current_stage = "extracting"
-            task.status = "extracting"
-            task.stage = "extracting"
-            task.stage_message = STAGE_LABELS["extracting"]
-            self.db.add(task)
-            await self.db.commit()
-            await self._check_controls(task)
+            llm_available = settings.is_llm_configured
+            llm_skip_reason = None  # 记录跳过原因（用于治理门阻断）
+            if llm_available:
+                # 治理门：开启 require_ai_consent 时，调用外部模型前必须有有效授权
+                from app.models import Project
+                from app.services.governance_service import ensure_ai_consent
+                proj = (await self.db.execute(
+                    select(Project).where(Project.id == material.project_id)
+                )).scalar_one_or_none()
+                try:
+                    await ensure_ai_consent(self.db, material.project_id,
+                                           proj.org_id if proj else None)
+                except AppError as exc:
+                    llm_available = False
+                    llm_skip_reason = exc.code
 
-            if task.cancel_requested:
-                task.status = "failed"
-                task.stage = "failed"
-                task.error_code = "CANCELLED"
-                task.failure_category = "cancelled"
+            if llm_available:
+                task.status = "extracting"
+                task.stage = "extracting"
+                task.stage_message = STAGE_LABELS["extracting"]
+                self.db.add(task)
                 await self.db.commit()
-                return task
+                await self._check_controls(task)
 
-            ex: ExtractionResult = await self.extraction.extract(
-                material=material, parse_result=parse_result,
-                project_id=material.project_id, task_id=task.id,
-            )
-            # 确定性事实由程序补充（不额外调用模型）
-            await self.extraction.add_program_facts(
-                material=material, parse_result=parse_result,
-                project_id=material.project_id,
-            )
-            await self._touch(task)
+                if task.cancel_requested:
+                    task.status = "failed"
+                    task.stage = "failed"
+                    task.error_code = "CANCELLED"
+                    task.failure_category = "cancelled"
+                    await self.db.commit()
+                    return task
 
-            task.status = "completed"
-            task.stage = "completed"
-            task.stage_message = "解析与抽取完成"
-            task.failure_category = ""
-            task.model = ex.model or settings.llm_model
-            task.prompt_version = ex.prompt_version
-            task.model_calls = ex.calls
-            task.prompt_tokens = ex.prompt_tokens
-            task.completion_tokens = ex.completion_tokens
-            task.total_tokens = ex.total_tokens
-            task.facts_count = ex.facts_created
-            task.result_json = json.dumps({
-                "evidence_created": ex.evidence_created,
-                "evidence_rejected": ex.evidence_rejected,
-                "by_assertion": ex.by_assertion,
-            }, ensure_ascii=False)
+                try:
+                    ex: ExtractionResult = await self.extraction.extract(
+                        material=material, parse_result=parse_result,
+                        project_id=material.project_id, task_id=task.id,
+                    )
+                    task.model = ex.model or settings.llm_model
+                    task.prompt_version = ex.prompt_version
+                    task.model_calls = ex.calls
+                    task.prompt_tokens = ex.prompt_tokens
+                    task.completion_tokens = ex.completion_tokens
+                    task.total_tokens = ex.total_tokens
+                    task.facts_count = ex.facts_created
+                    task.result_json = json.dumps({
+                        "evidence_created": ex.evidence_created,
+                        "evidence_rejected": ex.evidence_rejected,
+                        "by_assertion": ex.by_assertion,
+                    }, ensure_ascii=False)
+                except AppError as exc:
+                    # LLM_KEY_NOT_CONFIGURED / CONSENT_REQUIRED / AIRun 失败
+                    # → 不把整个任务判为失败，降级为部分完成
+                    logger.info("llm_extraction_skipped task=%s code=%s", task.id, exc.code)
+                    task.status = "partially_completed"
+                    task.stage = "partially_completed"
+                    task.stage_message = f"解析完成，AI 抽取跳过：{exc.message}"
+                    task.failure_category = ""
+                    task.error_code = exc.code
+                    task.error_message = exc.message[:500]
+                    task.facts_count = 0
+                    task.result_json = json.dumps({
+                        "llm_skipped": True, "reason": exc.code,
+                        "parse_only_chunks": len(parse_result.chunks),
+                    }, ensure_ascii=False)
+                    self.db.add(task)
+                    await self.db.commit()
+                    return task
+            else:
+                # 无 LLM Key 或治理门拒绝：跳过抽取，直接标记部分完成
+                reason = llm_skip_reason or "LLM_NOT_CONFIGURED"
+                task.status = "partially_completed"
+                task.stage = "partially_completed"
+                task.stage_message = "解析完成，AI 抽取跳过（未配置 API Key 或未授权）"
+                task.failure_category = ""
+                task.error_code = reason
+                task.facts_count = 0
+                task.result_json = json.dumps({
+                    "llm_skipped": True, "reason": reason,
+                    "parse_only_chunks": len(parse_result.chunks),
+                }, ensure_ascii=False)
+                self.db.add(task)
+                await self.db.commit()
+
+            # 无论是否执行了 LLM 抽取，确定性程序事实始终补充（不依赖模型）
+            try:
+                await self.extraction.add_program_facts(
+                    material=material, parse_result=parse_result,
+                    project_id=material.project_id,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("program_facts_failed material=%s err=%s", material.id, str(exc)[:200])
+
+            if task.status != "partially_completed":
+                task.status = "completed"
+                task.stage = "completed"
+                task.stage_message = "解析与抽取完成"
+                task.failure_category = ""
+                await self._touch(task)
         except AppError as exc:
             if exc.code in ("TASK_PAUSED", "TASK_TIMEOUT"):
                 # 暂停/超时是控制流，不按普通失败覆盖任务状态
