@@ -47,6 +47,20 @@ async def get_current_user(user: User | None = Depends(get_optional_user)) -> Us
     return user
 
 
+async def require_write_user(
+    request: Request,
+    user: User | None = Depends(get_optional_user),
+) -> User:
+    """写操作专用依赖：无条件要求已认证用户，不因开发开关放行匿名。
+
+    与 require_admin 的区别：require_admin 为兼容旧测试在 allow_unauth_test_endpoints=True
+    时静默放行；本依赖杜绝匿名执行 pause/resume/cancel/retry 等状态变更。
+    """
+    if user is None:
+        raise AppError("UNAUTHORIZED", "该操作需要登录。", status_code=401)
+    return user
+
+
 async def require_admin(
     request: Request,
     db: AsyncSession = Depends(get_db),

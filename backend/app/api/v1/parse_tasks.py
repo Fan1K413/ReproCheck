@@ -2,10 +2,16 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_optional_user, require_admin, resolve_project_access
+from app.api.deps import (
+    get_optional_user,
+    require_admin,
+    require_write_user,
+    resolve_project_access,
+)
 from app.core.errors import AppError, ok
 from app.db import get_db
 from app.models import Material
@@ -60,15 +66,24 @@ async def _task_for_request(
     return task
 
 
+class RecoverStaleBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    project_id: str | None = None
+
+
 # 注意：静态路径必须在 /parse-tasks/{task_id} 动态路由之前注册
 @router.post("/parse-tasks/recover-stale", dependencies=[Depends(require_admin)])
 async def recover_stale_tasks(
     request: Request,
+    payload: RecoverStaleBody | None = None,
     db: AsyncSession = Depends(get_db),
-    user: User | None = Depends(get_optional_user),
+    user: User = Depends(require_write_user),
 ):
-    """管理员批量恢复心跳过期任务；非平台管理员必须指定可访问的项目。"""
-    project_id = request.query_params.get("project_id")
+    """管理员批量恢复心跳过期任务；非平台管理员必须指定可访问的项目。
+
+    project_id 同时支持 query 与 JSON body（body 优先），避免 POST 端点只能靠 URL 传参。
+    """
+    project_id = (payload.project_id if payload else None) or request.query_params.get("project_id")
     if user is not None and not user.is_platform_admin:
         if not project_id:
             raise AppError("FORBIDDEN", "非平台管理员需通过 project_id 限定恢复范围。")
@@ -122,7 +137,7 @@ async def retry_task(
     task_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User | None = Depends(get_optional_user),
+    user: User = Depends(require_write_user),
 ):
     await _task_for_request(request, db, task_id, user)
     service = TaskService(db)
@@ -136,7 +151,7 @@ async def pause_task(
     task_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User | None = Depends(get_optional_user),
+    user: User = Depends(require_write_user),
 ):
     await _task_for_request(request, db, task_id, user)
     service = TaskService(db)
@@ -150,7 +165,7 @@ async def resume_task(
     task_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User | None = Depends(get_optional_user),
+    user: User = Depends(require_write_user),
 ):
     await _task_for_request(request, db, task_id, user)
     service = TaskService(db)
@@ -164,7 +179,7 @@ async def cancel_task(
     task_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: User | None = Depends(get_optional_user),
+    user: User = Depends(require_write_user),
 ):
     await _task_for_request(request, db, task_id, user)
     service = TaskService(db)

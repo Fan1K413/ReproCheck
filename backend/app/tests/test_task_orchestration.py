@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.core.errors import AppError
 from app.models import ExtractedFact, Material, Project
 from app.models.stage2 import ParseTask
+from app.models.stage6 import ProjectMember
 from app.services.task_service import ACTIVE_STATUSES, TaskService
 
 
@@ -203,8 +204,20 @@ async def test_run_detects_timeout_before_parsing(session_fixture, monkeypatch):
 @pytest.mark.asyncio
 async def test_api_pause_resume_exposes_orchestration_fields(client, session_fixture):
     task = await _seed_task(session_fixture, prefix="api-flow", status="running")
+    # 写操作端点强制登录：注册用户并设为项目 owner（安全收紧后的合法访问）。
+    reg = await client.post("/api/v1/auth/register", json={
+        "email": "flow-owner@example.com", "password": "password123", "display_name": "流程负责人"})
+    assert reg.status_code == 200, reg.text
+    uid = reg.json()["data"]["user"]["id"]
+    headers = {"Authorization": f"Bearer {reg.json()['data']['token']}"}
+    proj = (await session_fixture.execute(
+        select(Project).where(Project.id == task.project_id))).scalar_one()
+    proj.owner_user_id = uid
+    session_fixture.add(ProjectMember(
+        id="pm-flow", project_id=task.project_id, user_id=uid, role_key="owner"))
+    await session_fixture.commit()
 
-    paused = await client.post(f"/api/v1/parse-tasks/{task.id}/pause")
+    paused = await client.post(f"/api/v1/parse-tasks/{task.id}/pause", headers=headers)
     assert paused.status_code == 200, paused.text
     data = paused.json()["data"]
     assert data["status"] == "paused"
@@ -213,7 +226,7 @@ async def test_api_pause_resume_exposes_orchestration_fields(client, session_fix
     assert data["timeout_seconds"] == 600
     assert data["failure_category"] == ""
 
-    resumed = await client.post(f"/api/v1/parse-tasks/{task.id}/resume")
+    resumed = await client.post(f"/api/v1/parse-tasks/{task.id}/resume", headers=headers)
     assert resumed.status_code == 200, resumed.text
     data = resumed.json()["data"]
     assert data["status"] == "queued"
@@ -223,10 +236,21 @@ async def test_api_pause_resume_exposes_orchestration_fields(client, session_fix
 
 @pytest.mark.asyncio
 async def test_api_recover_stale_is_static_route(client, session_fixture):
-    await _seed_task(
+    task = await _seed_task(
         session_fixture, prefix="api-stale", status="extracting", heartbeat_at=_utc(-3600)
     )
-    response = await client.post("/api/v1/parse-tasks/recover-stale")
+    # 写操作端点强制登录：注册平台管理员并带上 token。
+    reg = await client.post("/api/v1/auth/register", json={
+        "email": "stale-admin@example.com", "password": "password123", "display_name": "恢复管理员"})
+    assert reg.status_code == 200, reg.text
+    uid = reg.json()["data"]["user"]["id"]
+    headers = {"Authorization": f"Bearer {reg.json()['data']['token']}"}
+    session_fixture.add(ProjectMember(
+        id="pm-stale", project_id=task.project_id, user_id=uid, role_key="owner"))
+    await session_fixture.commit()
+    # 非平台管理员必须限定 project_id；这里传任务所属项目。
+    response = await client.post("/api/v1/parse-tasks/recover-stale",
+                                 json={"project_id": task.project_id}, headers=headers)
     assert response.status_code == 200, response.text
     assert response.json()["data"]["recovered"] == 1
 
