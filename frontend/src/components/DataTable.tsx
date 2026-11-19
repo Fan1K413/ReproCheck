@@ -14,6 +14,7 @@ type DataTableProps<T> = {
   data: T[]
   rowKey: (row: T) => string
   empty?: ReactNode
+  dense?: boolean
 }
 
 const alignClass = {
@@ -22,14 +23,14 @@ const alignClass = {
   center: 'text-center',
 } as const
 
-export function DataTable<T>({ columns, data, rowKey, empty }: DataTableProps<T>) {
+export function DataTable<T>({ columns, data, rowKey, empty, dense = false }: DataTableProps<T>) {
   if (data.length === 0 && empty) {
     return <>{empty}</>
   }
 
   return (
     <div className="w-full overflow-x-auto">
-      <table className="data-table">
+      <table className={dense ? 'data-table data-table-dense' : 'data-table'}>
         <thead>
           <tr>
             {columns.map((column) => (

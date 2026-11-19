@@ -134,6 +134,8 @@ export type Project = {
   paper_title: string
   description: string
   created_at: string
+  owner_user_id?: string | null
+  org_id?: string | null
 }
 
 export type ProjectsData = {
@@ -146,6 +148,8 @@ export type CreateProjectRequest = {
   domain: string
   paper_title: string
   description: string
+  org_id?: string | null
+  workspace_id?: string | null
 }
 
 /* ================= 第二阶段：材料 / 解析 / 事实 ================= */
@@ -418,6 +422,42 @@ export type FactsSummary = {
   with_evidence: number
   human_confirmed: number
   by_type: Record<string, number>
+}
+
+export type EvidenceGraphNode = {
+  id: string
+  type: 'fact' | 'evidence' | 'source_chunk' | 'material'
+  label: string
+  fact_id?: string
+  evidence_id?: string
+  chunk_id?: string
+  material_id?: string
+  project_id?: string
+  field_key?: string
+  value?: string | number | null
+  extraction_status?: string
+  verification_status?: string
+  sha256?: string | null
+  source_locator?: Record<string, unknown> | null
+}
+
+export type EvidenceGraphEdge = {
+  source: string
+  target: string
+  type: 'supported_by' | 'quotes' | 'located_in'
+}
+
+export type EvidenceGraph = {
+  project_id: string
+  nodes: EvidenceGraphNode[]
+  edges: EvidenceGraphEdge[]
+  counts: {
+    facts: number
+    evidence: number
+    materials: number
+    source_chunks: number
+    edges: number
+  }
 }
 
 /* ---------------- 材料解析概览 ---------------- */

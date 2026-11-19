@@ -43,7 +43,7 @@ type StatCardProps = {
 
 function StatCard({ label, value, hint, icon: Icon, tone = 'accent' }: StatCardProps) {
   const iconClass = {
-    accent: 'bg-accent-wash text-accent',
+    accent: 'bg-accent-wash text-accent-dark',
     success: 'bg-success-wash text-success',
     warning: 'bg-warning-wash text-warning',
     danger: 'bg-danger-wash text-danger',
@@ -77,7 +77,7 @@ function Section({
     <section className="panel overflow-hidden">
       <div className="panel-header">
         <div className="flex items-center gap-2">
-          <Icon size={17} className="text-accent" />
+          <Icon size={17} className="text-accent-dark" />
           <h3 className="text-sm font-semibold">{title}</h3>
         </div>
         {action}
@@ -210,7 +210,7 @@ export default function ReproductionOverviewPage() {
         </div>
       ) : (
         <div className="panel flex flex-wrap items-start gap-3 bg-accent-wash p-4">
-          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-accent" />
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-accent-dark" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-accent-dark">代码执行能力说明</p>
             <p className="mt-1 text-xs text-ink-muted">
@@ -292,7 +292,7 @@ export default function ReproductionOverviewPage() {
                 <div className="min-w-0">
                   <Link
                     to={`/reproductions/plans/${plan.plan_id}`}
-                    className="font-medium text-accent hover:underline"
+                    className="font-medium text-accent-dark hover:underline"
                   >
                     {plan.title || '未命名规划'}
                   </Link>
@@ -333,7 +333,7 @@ export default function ReproductionOverviewPage() {
               header: '运行',
               render: (run) => (
                 <div className="min-w-0">
-                  <Link to={`/reproductions/runs/${run.run_id}`} className="font-medium text-accent hover:underline">
+                  <Link to={`/reproductions/runs/${run.run_id}`} className="font-medium text-accent-dark hover:underline">
                     控制台
                   </Link>
                   <p className="mono text-[11px] text-ink-subtle">{run.run_id}</p>
@@ -375,7 +375,7 @@ export default function ReproductionOverviewPage() {
 function PageHeading() {
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Reproduction Overview</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">Reproduction Overview</p>
       <h2 className="mt-1 text-lg font-semibold">复现工作台总览</h2>
       <p className="mt-1 text-sm text-ink-muted">
         所有统计来自后端 GET /reproductions/plans 与 /runs 及规划详情，无前端伪造数据。

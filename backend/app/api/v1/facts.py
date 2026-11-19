@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_admin
 from app.core.errors import AppError, ok
 from app.db import get_db
-from app.models import ExtractedFact, Material
+from app.models import ExtractedFact, Material, SourceChunk
 from app.models.stage2 import EvidenceItem, FactRevision
 
 router = APIRouter(tags=["facts"])
@@ -141,6 +141,119 @@ async def get_revisions(fact_id: str, request: Request, db: AsyncSession = Depen
         "created_at": r.created_at.isoformat() if r.created_at else "",
     } for r in rows]
     return ok({"items": items, "total": len(items)}, getattr(request.state, "request_id", "-"))
+
+
+@router.get("/projects/{project_id}/evidence-graph")
+async def get_evidence_graph(
+    project_id: str, request: Request, db: AsyncSession = Depends(get_db),
+):
+    """从已持久化事实、证据、材料和文本块构建只读证据图谱。
+
+    只输出数据库中可追溯的关系；缺失的事实/证据/来源端点不会被补造。
+    """
+    facts = (await db.execute(
+        select(ExtractedFact).where(ExtractedFact.project_id == project_id)
+        .order_by(ExtractedFact.created_at, ExtractedFact.id).limit(1000)
+    )).scalars().all()
+    fact_ids = [f.fact_id or str(f.id) for f in facts]
+    facts_by_id = {f.fact_id or str(f.id): f for f in facts}
+    evidence_rows: list[EvidenceItem] = []
+    if fact_ids:
+        evidence_rows = list((await db.execute(
+            select(EvidenceItem).where(
+                EvidenceItem.project_id == project_id,
+                EvidenceItem.fact_id.in_(fact_ids),
+            ).order_by(EvidenceItem.id).limit(5000)
+        )).scalars().all())
+
+    material_ids = {f.material_id for f in facts}
+    materials: dict[str, Material] = {}
+    if material_ids:
+        materials = {m.id: m for m in (await db.execute(
+            select(Material).where(
+                Material.project_id == project_id, Material.id.in_(material_ids)
+            )
+        )).scalars().all()}
+
+    chunk_ids = {e.chunk_id for e in evidence_rows}
+    chunks: dict[tuple[str, str], SourceChunk] = {}
+    if chunk_ids and material_ids:
+        chunks = {(c.material_id, c.chunk_id): c for c in (await db.execute(
+            select(SourceChunk).where(
+                SourceChunk.material_id.in_(material_ids),
+                SourceChunk.chunk_id.in_(chunk_ids),
+            )
+        )).scalars().all()}
+
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+    fact_node_ids: set[str] = set()
+    evidence_node_ids: set[str] = set()
+    material_node_ids: set[str] = set()
+    chunk_node_ids: set[str] = set()
+    for fact in facts:
+        fid = fact.fact_id or str(fact.id)
+        node_id = f"fact:{fid}"
+        fact_node_ids.add(node_id)
+        nodes.append({
+                "id": node_id, "type": "fact", "label": fact.field_label or fact.field_key,
+                "fact_id": fid, "project_id": project_id, "material_id": fact.material_id,
+                "field_key": fact.field_key,
+                "value": fact.normalized_value if fact.normalized_value is not None else fact.raw_value,
+            "extraction_status": fact.extraction_status,
+        })
+
+    for evidence in evidence_rows:
+        # 防止遗留或手工写入的不一致数据形成跨材料/跨项目边。
+        fact = facts_by_id.get(evidence.fact_id)
+        material = materials.get(evidence.material_id)
+        chunk = chunks.get((evidence.material_id, evidence.chunk_id))
+        if fact is None or material is None or chunk is None:
+            continue
+        if fact.material_id != evidence.material_id or chunk.material_id != evidence.material_id:
+            continue
+        ev_node = f"evidence:{evidence.evidence_id}"
+        material_node = f"material:{material.id}"
+        chunk_node = f"chunk:{chunk.chunk_id}"
+        if ev_node not in evidence_node_ids:
+            evidence_node_ids.add(ev_node)
+            nodes.append({
+                "id": ev_node, "type": "evidence", "label": evidence.quote[:160],
+                "evidence_id": evidence.evidence_id,
+                "verification_status": evidence.verification_status,
+                "source_locator": _evidence_view(evidence)["source_locator"],
+            })
+        if material_node not in material_node_ids:
+            material_node_ids.add(material_node)
+            nodes.append({
+                "id": material_node, "type": "material", "label": material.source_name,
+                "material_id": material.id, "sha256": material.sha256,
+            })
+        if chunk_node not in chunk_node_ids:
+            chunk_node_ids.add(chunk_node)
+            try:
+                chunk_locator = json.loads(chunk.source_locator_json) if chunk.source_locator_json else None
+            except (json.JSONDecodeError, TypeError):
+                chunk_locator = None
+            nodes.append({
+                "id": chunk_node, "type": "source_chunk", "label": chunk.chunk_id,
+                "chunk_id": chunk.chunk_id, "material_id": chunk.material_id,
+                "source_locator": chunk_locator,
+            })
+        edges.extend([
+            {"source": f"fact:{evidence.fact_id}", "target": ev_node, "type": "supported_by"},
+            {"source": ev_node, "target": chunk_node, "type": "quotes"},
+            {"source": chunk_node, "target": material_node, "type": "located_in"},
+        ])
+
+    return ok({
+        "project_id": project_id, "nodes": nodes, "edges": edges,
+        "counts": {
+            "facts": len(fact_node_ids), "evidence": len(evidence_node_ids),
+            "materials": len(material_node_ids), "source_chunks": len(chunk_node_ids),
+            "edges": len(edges),
+        },
+    }, getattr(request.state, "request_id", "-"))
 
 
 @router.get("/facts/summary")

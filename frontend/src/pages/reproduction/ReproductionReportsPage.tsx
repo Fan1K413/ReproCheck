@@ -169,7 +169,7 @@ export default function ReproductionReportsPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Reproduction Reports</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">Reproduction Reports</p>
           <h2 className="mt-1 text-lg font-semibold">报告中心</h2>
           <p className="mt-1 text-sm text-ink-muted">
             章节与证据引用均来自后端报告详情；HTML 用新窗口打开，PDF 不可用时明确提示后端错误码。
@@ -181,7 +181,7 @@ export default function ReproductionReportsPage() {
       <section className="panel overflow-hidden">
         <div className="panel-header">
           <div className="flex items-center gap-2">
-            <FileBarChart size={17} className="text-accent" />
+            <FileBarChart size={17} className="text-accent-dark" />
             <h3 className="text-sm font-semibold">生成报告</h3>
           </div>
           <StatusBadge tone="neutral" dot={false}>POST /reproductions/reports</StatusBadge>
@@ -255,7 +255,7 @@ export default function ReproductionReportsPage() {
       <section className="panel overflow-hidden">
         <div className="panel-header">
           <div className="flex items-center gap-2">
-            <FileText size={17} className="text-accent" />
+            <FileText size={17} className="text-accent-dark" />
             <h3 className="text-sm font-semibold">报告列表</h3>
           </div>
           <StatusBadge tone="neutral" dot={false}>共 {reportsQuery.data?.total ?? 0} 份</StatusBadge>
@@ -270,7 +270,7 @@ export default function ReproductionReportsPage() {
                   <div className="min-w-0">
                     <button
                       type="button"
-                      className="text-left font-medium text-accent hover:underline"
+                      className="text-left font-medium text-accent-dark hover:underline"
                       onClick={() => setSelectedReportId(item.report_id)}
                     >
                       {item.title || '未命名报告'}
@@ -314,7 +314,7 @@ export default function ReproductionReportsPage() {
         <section className="panel overflow-hidden">
           <div className="panel-header">
             <div className="flex items-center gap-2">
-              <FileText size={17} className="text-accent" />
+              <FileText size={17} className="text-accent-dark" />
               <h3 className="text-sm font-semibold">报告详情</h3>
             </div>
             <div className="flex flex-wrap gap-2">

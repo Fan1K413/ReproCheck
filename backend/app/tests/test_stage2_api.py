@@ -91,6 +91,29 @@ async def test_full_pipeline_text_material(client, monkeypatch):
     assert fact["extraction_status"] == "supported"
     assert fact["evidence"][0]["verification_status"] == "verified"
 
+    # 证据图谱只输出有事实、证据、文本块、材料实体支撑的关系
+    r = await client.get(f"/api/v1/projects/{project_id}/evidence-graph")
+    assert r.status_code == 200, r.text
+    graph = r.json()["data"]
+    assert graph["project_id"] == project_id
+    assert graph["counts"] == {"facts": 1, "evidence": 1, "materials": 1, "source_chunks": 1, "edges": 3}
+    fact_node = next(node for node in graph["nodes"] if node["type"] == "fact")
+    assert fact_node["value"] == "0.001"
+    node_ids = {node["id"] for node in graph["nodes"]}
+    assert {"fact:" + fact["fact_id"], "material:" + material_id}.issubset(node_ids)
+    assert all(edge["source"] in node_ids and edge["target"] in node_ids for edge in graph["edges"])
+    evidence_node = next(node for node in graph["nodes"] if node["type"] == "evidence")
+    assert evidence_node["verification_status"] == "verified"
+
+    # 来自其他项目的 ID 必须被隔离依赖拒绝，不得返回图谱数据
+    other = await client.post("/api/v1/projects", json={
+        "name": "另一项目", "domain": "ML", "paper_title": "隔离", "description": "test"
+    })
+    other_project_id = other.json()["data"]["id"]
+    r = await client.get(f"/api/v1/projects/{other_project_id}/evidence-graph")
+    assert r.status_code == 200
+    assert r.json()["data"]["nodes"] == []
+
     # 人工修订留痕
     r = await client.patch(f"/api/v1/facts/{fact['fact_id']}", json={
         "normalized_value": "0.002", "note": "人工核实后修正"

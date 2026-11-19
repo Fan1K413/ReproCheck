@@ -28,16 +28,20 @@ async def init_db() -> None:
     - 空库：create_all 直接建全部表（含第二阶段新表与扩展列）；
     - 已有第一阶段库：create_all 跳过已存在的表，再由 migrate_stage2 幂等补列。
     """
-    # 确保第二阶段模型已注册到 metadata
+    # 确保各阶段模型已注册到 metadata
     import app.models  # noqa: F401
     import app.models.stage2  # noqa: F401
     import app.models.stage4  # noqa: F401
+    import app.models.stage6  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     from app.db.migrate import migrate_stage2
     await migrate_stage2()
+
+    from app.db.migrate_stage6 import migrate_stage6
+    await migrate_stage6()
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

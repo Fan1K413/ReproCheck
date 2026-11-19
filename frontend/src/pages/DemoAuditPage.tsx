@@ -185,7 +185,7 @@ export default function DemoAuditPage() {
           <section key={item.key} className="panel overflow-hidden">
             <div className="panel-header">
               <div className="flex min-w-0 items-center gap-2">
-                <FileText size={16} className="shrink-0 text-accent" />
+                <FileText size={16} className="shrink-0 text-accent-dark" />
                 <h3 className="text-sm font-semibold">{item.label}</h3>
                 <span className="mono truncate rounded bg-canvas px-2 py-0.5 text-[11px] text-ink-muted">
                   {item.file}
@@ -246,7 +246,7 @@ export default function DemoAuditPage() {
 
       {mutation.isPending && (
         <div className="panel flex flex-col items-center justify-center py-16" role="status" aria-live="polite">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-wash text-accent">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-wash text-accent-dark">
             <Loader2 size={24} className="animate-spin" />
           </div>
           <p className="mt-4 text-sm font-semibold text-ink">AI 正在抽取结构化信息…</p>
@@ -269,7 +269,7 @@ export default function DemoAuditPage() {
           <section className="panel overflow-hidden">
             <div className="panel-header">
               <div className="flex items-center gap-2">
-                <FlaskConical size={17} className="text-accent" />
+                <FlaskConical size={17} className="text-accent-dark" />
                 <h3 className="text-sm font-semibold">运行元信息</h3>
               </div>
               <StatusBadge tone={result.status === 'completed' || result.status === 'success' ? 'success' : 'neutral'}>
@@ -309,7 +309,7 @@ export default function DemoAuditPage() {
                 {result.extracted_facts.map((group) => (
                   <div key={group.material_id} className="min-w-0">
                     <div className="flex items-center gap-2 border-b border-line-soft bg-canvas px-4 py-2.5">
-                      <FileText size={14} className="shrink-0 text-accent" />
+                      <FileText size={14} className="shrink-0 text-accent-dark" />
                       <span className="truncate text-xs font-semibold text-ink">
                         {materialNames.get(group.material_id) ?? group.material_id}
                       </span>
@@ -421,7 +421,7 @@ export default function DemoAuditPage() {
 
 function BracesIcon() {
   return (
-    <span className="mono flex h-[17px] w-[17px] items-center justify-center rounded bg-accent-wash text-[11px] font-semibold text-accent">
+    <span className="mono flex h-[17px] w-[17px] items-center justify-center rounded bg-accent-wash text-[11px] font-semibold text-accent-dark">
       {'{}'}
     </span>
   )

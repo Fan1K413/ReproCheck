@@ -51,13 +51,13 @@ const columns: Column<Project>[] = [
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 whitespace-nowrap">
         <Link
           to={`/projects/${project.id}/materials`}
-          className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-medium text-accent-dark hover:underline"
         >
           管理材料 <ArrowUpRight size={12} />
         </Link>
         <Link
           to={`/projects/${project.id}/overview`}
-          className="text-xs text-ink-muted hover:text-accent hover:underline"
+          className="text-xs text-ink-muted hover:text-accent-dark hover:underline"
         >
           解析概览
         </Link>

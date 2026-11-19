@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import api_router
+from app.api.open_v1 import open_router
 from app.core.config import settings
 from app.core.errors import AppError, app_error_handler, fail
 from app.core.logging import configure_logging, logger
@@ -74,3 +75,4 @@ async def on_startup() -> None:
 
 
 app.include_router(api_router)
+app.include_router(open_router)

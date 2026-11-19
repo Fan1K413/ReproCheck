@@ -205,7 +205,7 @@ export default function MaterialsPage() {
         <div className="min-w-0 max-w-[260px]">
           <Link
             to={`/materials/${material.material_id}`}
-            className="block truncate font-medium text-ink hover:text-accent hover:underline"
+            className="block truncate font-medium text-ink hover:text-accent-dark hover:underline"
             title={material.filename}
           >
             {material.filename}
@@ -275,7 +275,7 @@ export default function MaterialsPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Materials</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">Materials</p>
           <h2 className="mt-1 text-lg font-semibold">材料管理</h2>
           <p className="mt-1 text-sm text-ink-muted">
             上传科研材料并发起解析，列表数据来自 GET /materials。
@@ -311,7 +311,7 @@ export default function MaterialsPage() {
             dragActive ? 'border-accent bg-accent-wash' : 'border-line bg-canvas'
           }`}
         >
-          <UploadCloud size={26} strokeWidth={1.7} className="text-accent" />
+          <UploadCloud size={26} strokeWidth={1.7} className="text-accent-dark" />
           <p className="mt-2 text-sm font-medium text-ink">拖拽文件到此处，或点击选择文件</p>
           <p className="mt-1 text-xs text-ink-muted">支持多文件；上传状态与解析状态均由服务器返回。</p>
           <input
@@ -420,7 +420,7 @@ export default function MaterialsPage() {
       <section className="panel overflow-hidden">
         <div className="panel-header">
           <div className="flex items-center gap-2">
-            <Files size={17} className="text-accent" />
+            <Files size={17} className="text-accent-dark" />
             <h3 className="text-sm font-semibold">材料列表</h3>
           </div>
           {materialsQuery.data && (
@@ -454,7 +454,7 @@ export default function MaterialsPage() {
                   <div className="flex items-start justify-between gap-2">
                     <Link
                       to={`/materials/${material.material_id}`}
-                      className="min-w-0 break-all text-sm font-medium text-ink hover:text-accent"
+                      className="min-w-0 break-all text-sm font-medium text-ink hover:text-accent-dark"
                     >
                       {material.filename}
                     </Link>

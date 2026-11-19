@@ -35,7 +35,7 @@ function StatCard({ label, value, hint, icon: Icon, tone = 'accent' }: StatCardP
       ? 'bg-success-wash text-success'
       : tone === 'warning'
         ? 'bg-warning-wash text-warning'
-        : 'bg-accent-wash text-accent'
+        : 'bg-accent-wash text-accent-dark'
   return (
     <div className="panel p-4">
       <div className="flex items-center justify-between gap-2">
@@ -55,7 +55,7 @@ function Section({ title, icon: Icon, children }: { title: string; icon: typeof 
     <section className="panel overflow-hidden">
       <div className="panel-header">
         <div className="flex items-center gap-2">
-          <Icon size={17} className="text-accent" />
+          <Icon size={17} className="text-accent-dark" />
           <h3 className="text-sm font-semibold">{title}</h3>
         </div>
       </div>
@@ -101,7 +101,7 @@ export default function OverviewPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Parse Overview</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">Parse Overview</p>
           <h2 className="mt-1 text-lg font-semibold">解析概览</h2>
           <p className="mt-1 text-sm text-ink-muted">
             所有统计均来自 GET /projects/{'{id}'}/parse-overview 的数据库聚合，无前端推算。

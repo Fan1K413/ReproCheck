@@ -33,6 +33,19 @@ class Settings(BaseSettings):
     admin_token: str = ""
     allow_unauth_test_endpoints: bool = True
 
+    # Stage6 身份与凭据安全
+    jwt_secret: str = "dev-insecure-change-me"
+    jwt_expire_hours: int = 12
+    encryption_key: str = ""  # 生产必填；为空时由 jwt_secret 派生（仅开发）
+    bootstrap_admin_email: str = ""
+    bootstrap_admin_password: str = ""
+    invitation_expire_days: int = 7
+    open_api_default_rate_limit: int = 60  # 次/分钟
+    # 治理：开启后，调用外部 LLM 前必须存在有效的 AI 授权（ai_consent），否则明确拒绝。
+    # 默认关闭以兼容本地演示与既有测试；生产建议设为 True。
+    require_ai_consent: bool = False
+    data_retention_days: int = 365
+
     # Server
     host: str = "0.0.0.0"
     port: int = 8000

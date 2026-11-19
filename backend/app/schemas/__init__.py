@@ -57,6 +57,8 @@ class ProjectCreate(BaseModel):
     domain: str = Field(default="", max_length=120)
     paper_title: str = Field(default="", max_length=300)
     description: str = Field(default="")
+    org_id: str | None = None
+    workspace_id: str | None = None
 
 
 class DemoAuditRequest(BaseModel):
@@ -169,6 +171,8 @@ class ProjectView(BaseModel):
     paper_title: str
     description: str
     created_at: str
+    owner_user_id: str | None = None
+    org_id: str | None = None
 
 
 class ProjectListData(BaseModel):

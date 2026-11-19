@@ -37,7 +37,7 @@ function FieldBlock({
     <div className="rounded-lg border border-line-soft bg-canvas/60 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Icon size={15} className="text-accent" />
+          <Icon size={15} className="text-accent-dark" />
           <h4 className="text-sm font-semibold">{title}</h4>
         </div>
         <span className="mono rounded bg-surface px-2 py-0.5 text-[10px] text-ink-subtle ring-1 ring-line">
@@ -47,6 +47,25 @@ function FieldBlock({
       <div className="mt-3">{children}</div>
     </div>
   )
+}
+
+function normalizeDependencies(raw: unknown): DependencyView[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((item) => {
+    if (typeof item === 'string') {
+      const match = item.match(/^([A-Za-z0-9_.\-[\]]+)\s*(?:==|>=|<=|~=|!=|>|<)?\s*(.*)$/)
+      return { name: match?.[1] ?? item, declared_version: match?.[2] || null, source: 'requirements' }
+    }
+    if (item && typeof item === 'object') {
+      const dep = item as Record<string, unknown>
+      return {
+        name: String(dep.name ?? dep.package ?? ''),
+        declared_version: dep.declared_version != null ? String(dep.declared_version) : dep.version != null ? String(dep.version) : null,
+        source: typeof dep.source === 'string' ? dep.source : '',
+      }
+    }
+    return { name: String(item), declared_version: null, source: '' }
+  })
 }
 
 function StringList({ items, emptyText }: { items: string[]; emptyText: string }) {
@@ -76,7 +95,7 @@ function EnvironmentCard({ env }: { env: EnvironmentView }) {
     <section className="panel overflow-hidden">
       <div className="panel-header">
         <div className="flex min-w-0 items-center gap-2">
-          <Server size={17} className="shrink-0 text-accent" />
+          <Server size={17} className="shrink-0 text-accent-dark" />
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold">环境 {env.environment_id}</h3>
             <p className="mono truncate text-[11px] text-ink-subtle">project_id: {env.project_id}</p>
@@ -117,7 +136,7 @@ function EnvironmentCard({ env }: { env: EnvironmentView }) {
                 render: (dep) => <span className="text-xs text-ink-muted">{dep.source || '—'}</span>,
               },
             ]}
-            data={env.dependencies ?? []}
+            data={normalizeDependencies(env.dependencies)}
             rowKey={(dep) => `${dep.name}-${dep.declared_version ?? ''}`}
             empty={<p className="text-xs text-ink-subtle">后端未返回依赖清单。</p>}
           />
@@ -207,7 +226,7 @@ export default function ReproductionEnvironmentPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Reproduction Environment</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">Reproduction Environment</p>
           <h2 className="mt-1 text-lg font-semibold">复现环境</h2>
           <p className="mt-1 text-sm text-ink-muted">
             全部字段来自 GET /reproductions/environments，由后端依据材料解析与静态分析生成，每个区块标注来源字段。

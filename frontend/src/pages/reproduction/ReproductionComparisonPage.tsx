@@ -120,7 +120,7 @@ export default function ReproductionComparisonPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Result Comparison</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">Result Comparison</p>
           <h2 className="mt-1 text-lg font-semibold">结果对照与质量评估</h2>
           <p className="mt-1 text-sm text-ink-muted">
             论文值与复现值均来自后端，判定由后端规则给出；展开行查看六项条件检查与容差依据。
@@ -135,7 +135,7 @@ export default function ReproductionComparisonPage() {
       <section className="panel overflow-hidden">
         <div className="panel-header">
           <div className="flex items-center gap-2">
-            <GitCompare size={17} className="text-accent" />
+            <GitCompare size={17} className="text-accent-dark" />
             <h3 className="text-sm font-semibold">指标对照</h3>
           </div>
           <StatusBadge tone="neutral" dot={false}>
@@ -243,7 +243,7 @@ export default function ReproductionComparisonPage() {
       <section className="panel overflow-hidden">
         <div className="panel-header">
           <div className="flex items-center gap-2">
-            <Scale size={17} className="text-accent" />
+            <Scale size={17} className="text-accent-dark" />
             <h3 className="text-sm font-semibold">复现质量评估</h3>
           </div>
           <StatusBadge tone="neutral" dot={false}>GET /reproductions/quality</StatusBadge>
@@ -261,7 +261,7 @@ export default function ReproductionComparisonPage() {
           ) : (
             <div className="space-y-5">
               <div className="flex items-start gap-2 rounded-md border border-accent/30 bg-accent-wash p-3">
-                <Info size={16} className="mt-0.5 shrink-0 text-accent" />
+                <Info size={16} className="mt-0.5 shrink-0 text-accent-dark" />
                 <p className="text-xs leading-relaxed text-ink-muted">
                   {qualityQuery.data?.scope_note || '后端未提供范围说明。'}
                   {' '}该评分明确不是学术质量判定，仅用于描述证据完备程度与流程可核查性。

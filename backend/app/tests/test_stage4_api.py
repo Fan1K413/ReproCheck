@@ -74,6 +74,21 @@ async def test_api_sandbox_blocked_run_and_report(client):
 
 
 @pytest.mark.asyncio
+async def test_form_project_id_isolation_does_not_reference_unbound_body(client, monkeypatch):
+    """表单体带 project_id 时应经过项目访问校验，而不是触发 UnboundLocalError。"""
+    from app.core.config import settings
+
+    # 禁用匿名开发放行，确保请求进入项目隔离逻辑；没有登录应返回 401。
+    monkeypatch.setattr(settings, "allow_unauth_test_endpoints", False)
+    response = await client.post(
+        "/api/v1/reproductions/plans",
+        data={"project_id": "form-project"},
+    )
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_api_quality_from_real_db(client):
     r = await client.post("/api/v1/projects", json={
         "name": "质量测试", "domain": "", "paper_title": "", "description": ""})

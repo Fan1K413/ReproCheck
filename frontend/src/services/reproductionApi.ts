@@ -54,11 +54,14 @@ async function readError(response: Response): Promise<ApiError> {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
+  // 第六阶段：与 api.ts 一致注入登录令牌（仅读取本地会话，密钥仍由后端管理）。
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('rc_token') : null
   try {
     response = await fetch(`${V1}${path}`, {
       ...init,
       headers: {
         Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
         ...(init?.headers ?? {}),
       },

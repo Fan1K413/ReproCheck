@@ -57,7 +57,7 @@ export default function LlmSettingsPage() {
       </div>
 
       <div className="flex items-start gap-3 rounded-panel border border-line bg-surface p-4">
-        <ShieldCheck size={19} className="mt-0.5 shrink-0 text-accent" />
+        <ShieldCheck size={19} className="mt-0.5 shrink-0 text-accent-dark" />
         <div>
           <p className="text-sm font-semibold text-ink">密钥安全说明</p>
           <p className="mt-1 text-sm text-ink-muted">
@@ -82,7 +82,7 @@ export default function LlmSettingsPage() {
           <section className="panel overflow-hidden">
             <div className="panel-header">
               <div className="flex items-center gap-2">
-                <Cpu size={17} className="text-accent" />
+                <Cpu size={17} className="text-accent-dark" />
                 <h3 className="text-sm font-semibold">服务配置</h3>
               </div>
             </div>
@@ -111,7 +111,7 @@ export default function LlmSettingsPage() {
           <section className="panel overflow-hidden">
             <div className="panel-header">
               <div className="flex items-center gap-2">
-                <PlugZap size={17} className="text-accent" />
+                <PlugZap size={17} className="text-accent-dark" />
                 <h3 className="text-sm font-semibold">最近一次调用</h3>
               </div>
             </div>

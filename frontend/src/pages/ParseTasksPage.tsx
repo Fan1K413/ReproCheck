@@ -125,7 +125,7 @@ export default function ParseTasksPage() {
         {task.status === 'failed' && (
           <button
             type="button"
-            className={`${actionClass} hover:text-accent`}
+            className={`${actionClass} hover:text-accent-dark`}
             disabled={retryMutation.isPending}
             onClick={() => {
               setActionError(null)
@@ -161,7 +161,7 @@ export default function ParseTasksPage() {
       render: (task) => (
         <button
           type="button"
-          className="mono text-xs font-medium text-accent hover:underline"
+          className="mono text-xs font-medium text-accent-dark hover:underline"
           title={task.task_id}
           onClick={() => {
             setSelectedTaskId(task.task_id)
@@ -180,7 +180,7 @@ export default function ParseTasksPage() {
           <p className="truncate text-ink" title={materialName(task)}>{materialName(task)}</p>
           <Link
             to={`/materials/${task.material_id}`}
-            className="text-xs text-accent hover:underline"
+            className="text-xs text-accent-dark hover:underline"
           >
             查看材料
           </Link>
@@ -264,11 +264,11 @@ export default function ParseTasksPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link to={`${base}/materials`} className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-accent">
+          <Link to={`${base}/materials`} className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-accent-dark">
             <ArrowLeft size={13} />
             返回材料列表
           </Link>
-          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Parse Tasks</p>
+          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">Parse Tasks</p>
           <h2 className="mt-1 text-lg font-semibold">解析任务</h2>
           <p className="mt-1 text-sm text-ink-muted">
             任务状态轮询自 GET /parse-tasks；
@@ -301,7 +301,7 @@ export default function ParseTasksPage() {
         <section className="panel overflow-hidden">
           <div className="panel-header">
             <div className="flex items-center gap-2">
-              <Activity size={17} className="text-accent" />
+              <Activity size={17} className="text-accent-dark" />
               <h3 className="text-sm font-semibold">任务详情</h3>
               <span className="mono text-xs text-ink-subtle">{selectedTaskId.slice(0, 12)}</span>
             </div>
@@ -364,7 +364,7 @@ export default function ParseTasksPage() {
       <section className="panel overflow-hidden">
         <div className="panel-header">
           <div className="flex items-center gap-2">
-            <ListChecks size={17} className="text-accent" />
+            <ListChecks size={17} className="text-accent-dark" />
             <h3 className="text-sm font-semibold">任务列表</h3>
           </div>
           <div className="flex items-center gap-3">
@@ -407,7 +407,7 @@ export default function ParseTasksPage() {
                     <div className="min-w-0">
                       <button
                         type="button"
-                        className="mono text-xs font-medium text-accent hover:underline"
+                        className="mono text-xs font-medium text-accent-dark hover:underline"
                         onClick={() => setSelectedTaskId(task.task_id)}
                       >
                         {task.task_id.slice(0, 12)}

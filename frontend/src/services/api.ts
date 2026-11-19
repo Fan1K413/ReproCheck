@@ -9,6 +9,7 @@ import type {
   FactViewV2,
   FactsData,
   FactsSummary,
+  EvidenceGraph,
   HealthData,
   LlmStatusData,
   LlmTestData,
@@ -47,15 +48,18 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
   // multipart 上传不能手工设置 Content-Type，否则浏览器无法自动补全 boundary。
   const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData
+  // 第六阶段：注入登录令牌（仅读取本地会话，密钥仍由后端管理）。
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('rc_token') : null
   try {
     response = await fetch(`${V1}${path}`, {
       ...init,
       headers: {
         Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(init?.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
         ...(init?.headers ?? {}),
       },
@@ -219,6 +223,9 @@ export const api = {
 
   getFactsSummary: (projectId: string) =>
     request<FactsSummary>(`/facts/summary?project_id=${encodeURIComponent(projectId)}`),
+
+  getEvidenceGraph: (projectId: string) =>
+    request<EvidenceGraph>(`/projects/${encodeURIComponent(projectId)}/evidence-graph`),
 
   /* ---------------- 第二阶段：解析概览 ---------------- */
 

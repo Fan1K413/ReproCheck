@@ -1,38 +1,40 @@
 /** @type {import('tailwindcss').Config} */
+const rgb = (name) => `rgb(var(--${name}-rgb) / <alpha-value>)`
+
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
         navy: {
-          950: 'var(--navy-950)',
-          900: 'var(--navy-900)',
-          800: 'var(--navy-800)',
-          700: 'var(--navy-700)',
-          600: 'var(--navy-600)',
-          100: 'var(--navy-100)',
+          950: rgb('navy-950'),
+          900: rgb('navy-900'),
+          800: rgb('navy-800'),
+          700: rgb('navy-700'),
+          600: rgb('navy-600'),
+          100: rgb('navy-100'),
         },
         accent: {
-          DEFAULT: 'var(--accent)',
-          soft: 'var(--accent-soft)',
-          dark: 'var(--accent-dark)',
-          wash: 'var(--accent-wash)',
+          DEFAULT: rgb('accent'),
+          soft: rgb('accent-soft'),
+          dark: rgb('accent-dark'),
+          wash: rgb('accent-wash'),
         },
         ink: {
-          DEFAULT: 'var(--ink)',
-          muted: 'var(--ink-muted)',
-          subtle: 'var(--ink-subtle)',
+          DEFAULT: rgb('ink'),
+          muted: rgb('ink-muted'),
+          subtle: rgb('ink-subtle'),
         },
         line: {
-          DEFAULT: 'var(--line)',
-          soft: 'var(--line-soft)',
+          DEFAULT: rgb('line'),
+          soft: rgb('line-soft'),
         },
-        canvas: 'var(--canvas)',
-        surface: 'var(--surface)',
-        success: { DEFAULT: 'var(--success)', wash: 'var(--success-wash)' },
-        danger: { DEFAULT: 'var(--danger)', wash: 'var(--danger-wash)' },
-        warning: { DEFAULT: 'var(--warning)', wash: 'var(--warning-wash)' },
-        neutral: { DEFAULT: 'var(--neutral)', wash: 'var(--neutral-wash)' },
+        canvas: rgb('canvas'),
+        surface: rgb('surface'),
+        success: { DEFAULT: rgb('success'), wash: rgb('success-wash') },
+        danger: { DEFAULT: rgb('danger'), wash: rgb('danger-wash') },
+        warning: { DEFAULT: rgb('warning'), wash: rgb('warning-wash') },
+        neutral: { DEFAULT: rgb('neutral'), wash: rgb('neutral-wash') },
       },
       fontFamily: {
         sans: ['var(--font-sans)'],

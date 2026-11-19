@@ -118,7 +118,7 @@ function FactCard({ fact, materialName, projectId }: FactCardProps) {
         <span className="mono min-w-0 break-all text-sm text-ink-muted">
           {fact.raw_value || '—'}
         </span>
-        <span className="text-accent">→</span>
+        <span className="text-accent-dark">→</span>
         <span className="text-xs text-ink-subtle">归一值</span>
         <span className="mono min-w-0 break-all text-sm font-medium text-ink">
           {displayValue(fact.normalized_value, fact.unit)}
@@ -134,7 +134,7 @@ function FactCard({ fact, materialName, projectId }: FactCardProps) {
       <div className="mt-4 space-y-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
           <span className="font-semibold text-ink-subtle">来源材料</span>
-          <Link to={`/materials/${fact.material_id}`} className="text-accent hover:underline">
+          <Link to={`/materials/${fact.material_id}`} className="text-accent-dark hover:underline">
             {materialName}
           </Link>
           <span className="mono text-ink-subtle">{fact.material_id.slice(0, 10)}</span>
@@ -229,7 +229,7 @@ function FactCard({ fact, materialName, projectId }: FactCardProps) {
                 </div>
                 <Link
                   to={`/materials/${fact.material_id}`}
-                  className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent-dark hover:underline"
                 >
                   打开原始材料 <ExternalLink size={12} />
                 </Link>
@@ -329,7 +329,7 @@ function FactCard({ fact, materialName, projectId }: FactCardProps) {
                   </div>
                   <p className="mt-1 break-words text-xs text-ink">
                     <span className="mono text-ink-muted">{displayValue(revision.old_value)}</span>
-                    <span className="mx-2 text-accent">→</span>
+                    <span className="mx-2 text-accent-dark">→</span>
                     <span className="mono font-medium">{displayValue(revision.new_value)}</span>
                   </p>
                   <p className="mono mt-0.5 text-[11px] text-ink-subtle">{revision.field_key}</p>
@@ -392,17 +392,20 @@ export default function FactsPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link to={`/projects/${projectId}/materials`} className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-accent">
+          <Link to={`/projects/${projectId}/materials`} className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-accent-dark">
             <ArrowLeft size={13} />
             返回材料列表
           </Link>
-          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Facts</p>
+          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">Facts</p>
           <h2 className="mt-1 text-lg font-semibold">科研事实</h2>
           <p className="mt-1 text-sm text-ink-muted">
             事实、证据与人工修订均来自后端接口；置信度仅为辅助信息，非校准概率。
           </p>
         </div>
-        <Link to={`/projects/${projectId}/overview`} className="btn-ghost">解析概览</Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to={`/projects/${projectId}/evidence-graph`} className="btn-primary">查看证据图谱</Link>
+          <Link to={`/projects/${projectId}/overview`} className="btn-ghost">解析概览</Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -432,7 +435,7 @@ export default function FactsPage() {
               onClick={() => setActiveType(type)}
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                 effectiveType === type
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent text-accent-dark'
                   : 'text-ink-muted hover:bg-canvas hover:text-ink'
               }`}
             >

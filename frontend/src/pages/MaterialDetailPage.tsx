@@ -122,12 +122,12 @@ export default function MaterialDetailPage() {
         <div className="min-w-0">
           <Link
             to={`/projects/${detail.project_id}/materials`}
-            className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-accent"
+            className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-accent-dark"
           >
             <ArrowLeft size={13} />
             返回材料列表
           </Link>
-          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">
+          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">
             Material Detail
           </p>
           <h2 className="mt-1 break-all text-lg font-semibold" title={detail.filename}>
@@ -172,7 +172,7 @@ export default function MaterialDetailPage() {
         <section className="panel overflow-hidden">
           <div className="panel-header">
             <div className="flex items-center gap-2">
-              <Info size={17} className="text-accent" />
+              <Info size={17} className="text-accent-dark" />
               <h3 className="text-sm font-semibold">解析元信息</h3>
             </div>
             <span className="text-xs text-ink-subtle">来自 GET /materials/{'{id}'} 的 metadata</span>
@@ -194,7 +194,7 @@ export default function MaterialDetailPage() {
       <section className="panel overflow-hidden">
         <div className="panel-header">
           <div className="flex items-center gap-2">
-            <PreviewIcon size={17} className="text-accent" />
+            <PreviewIcon size={17} className="text-accent-dark" />
             <h3 className="text-sm font-semibold">原文预览</h3>
           </div>
           <StatusBadge tone={detail.can_preview ? 'success' : 'neutral'} dot={false}>
@@ -262,7 +262,7 @@ export default function MaterialDetailPage() {
       <section className="panel overflow-hidden">
         <div className="panel-header">
           <div className="flex items-center gap-2">
-            <CalendarClock size={17} className="text-accent" />
+            <CalendarClock size={17} className="text-accent-dark" />
             <h3 className="text-sm font-semibold">证据定位</h3>
           </div>
         </div>
@@ -274,7 +274,7 @@ export default function MaterialDetailPage() {
       <section className="panel overflow-hidden">
         <div className="panel-header">
           <div className="flex items-center gap-2">
-            <Clock size={17} className="text-accent" />
+            <Clock size={17} className="text-accent-dark" />
             <h3 className="text-sm font-semibold">解析告警</h3>
           </div>
           {detail.warnings.length > 0 && (

@@ -59,7 +59,7 @@ function MiniStat({ label, value, icon: Icon }: { label: string; value: string; 
   return (
     <div className="rounded-lg border border-line-soft bg-canvas/60 p-3">
       <div className="flex items-center gap-1.5 text-[11px] text-ink-muted">
-        <Icon size={13} className="text-accent" />
+        <Icon size={13} className="text-accent-dark" />
         {label}
       </div>
       <p className="mono mt-1.5 text-sm font-semibold text-ink">{value}</p>
@@ -146,7 +146,7 @@ export default function ReproductionConsolePage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Execution Console</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">Execution Console</p>
           <h2 className="mt-1 text-lg font-semibold">执行控制台</h2>
           <p className="mt-1 text-sm text-ink-muted">
             日志、产物、指标与状态全部来自后端真实接口；{isRunning ? '运行中执行真实轮询。' : '当前不推进任何前端伪造进度。'}
@@ -245,7 +245,7 @@ export default function ReproductionConsolePage() {
         <section className="panel overflow-hidden">
           <div className="panel-header">
             <div className="flex items-center gap-2">
-              <Terminal size={17} className="text-accent" />
+              <Terminal size={17} className="text-accent-dark" />
               <h3 className="text-sm font-semibold">执行日志</h3>
             </div>
             <StatusBadge tone="neutral" dot={false}>
@@ -287,7 +287,7 @@ export default function ReproductionConsolePage() {
         <section className="panel overflow-hidden">
           <div className="panel-header">
             <div className="flex items-center gap-2">
-              <FileCode2 size={17} className="text-accent" />
+              <FileCode2 size={17} className="text-accent-dark" />
               <h3 className="text-sm font-semibold">运行指标</h3>
             </div>
             <StatusBadge tone="neutral" dot={false}>
@@ -337,7 +337,7 @@ export default function ReproductionConsolePage() {
       <section className="panel overflow-hidden">
         <div className="panel-header">
           <div className="flex items-center gap-2">
-            <Box size={17} className="text-accent" />
+            <Box size={17} className="text-accent-dark" />
             <h3 className="text-sm font-semibold">运行产物</h3>
           </div>
           <StatusBadge tone="neutral" dot={false}>

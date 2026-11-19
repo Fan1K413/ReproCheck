@@ -67,6 +67,12 @@ class TaskService:
             # 明确失败，不伪造结果；解析仍可单独进行但抽取无法完成
             raise AppError("LLM_KEY_NOT_CONFIGURED", "尚未配置 API Key，无法执行 AI 事实抽取。")
 
+        # 治理门：开启 require_ai_consent 时，调用外部模型前必须有有效授权
+        from app.models import Project
+        from app.services.governance_service import ensure_ai_consent
+        proj = (await self.db.execute(select(Project).where(Project.id == material.project_id))).scalar_one_or_none()
+        await ensure_ai_consent(self.db, material.project_id, proj.org_id if proj else None)
+
         task = ParseTask(
             id=f"task-{uuid.uuid4().hex[:16]}",
             project_id=material.project_id, material_id=material_id,

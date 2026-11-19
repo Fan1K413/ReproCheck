@@ -47,6 +47,11 @@ class Project(Base):
         DateTimeUTC(), default=_now, onupdate=_now, server_default=func.now()
     )
 
+    # ---- 第六阶段追加列（nullable，兼容遗留数据；由 migrate_stage6 回填归属） ----
+    owner_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    org_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    workspace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+
     materials: Mapped[list["Material"]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )

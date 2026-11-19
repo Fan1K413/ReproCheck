@@ -128,7 +128,7 @@ export default function ReproductionDiagnosticsPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">AI Diagnostics</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">AI Diagnostics</p>
           <h2 className="mt-1 text-lg font-semibold">AI 诊断与人工审核</h2>
           <p className="mt-1 text-sm text-ink-muted">
             诊断由后端 POST /diagnostics 生成；无模型密钥时仅显示后端返回的不可用错误，不展示任何预设诊断。
@@ -213,7 +213,7 @@ export default function ReproductionDiagnosticsPage() {
           <section className="panel overflow-hidden">
             <div className="panel-header">
               <div className="flex items-center gap-2">
-                <Bot size={17} className="text-accent" />
+                <Bot size={17} className="text-accent-dark" />
                 <h3 className="text-sm font-semibold">诊断结果</h3>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -233,7 +233,7 @@ export default function ReproductionDiagnosticsPage() {
               </div>
               <div>
                 <h4 className="flex items-center gap-2 text-xs font-semibold text-ink-muted">
-                  <ClipboardCheck size={14} className="text-accent" />错误证据
+                  <ClipboardCheck size={14} className="text-accent-dark" />错误证据
                 </h4>
                 <p className="mono mt-2 whitespace-pre-wrap break-all rounded-md border border-line-soft bg-canvas/60 p-3 text-xs text-ink">
                   {diagnostic.error_evidence || '后端未提供错误证据。'}
@@ -264,7 +264,7 @@ export default function ReproductionDiagnosticsPage() {
                 </div>
                 <div className="rounded-lg border border-line-soft p-3">
                   <h4 className="flex items-center gap-2 text-xs font-semibold text-ink-muted">
-                    <CheckCircle2 size={14} className="text-accent" />验证方式
+                    <CheckCircle2 size={14} className="text-accent-dark" />验证方式
                   </h4>
                   <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink">
                     {diagnostic.verification_method || '后端未提供验证方式。'}
@@ -280,7 +280,7 @@ export default function ReproductionDiagnosticsPage() {
           <section className="panel overflow-hidden">
             <div className="panel-header">
               <div className="flex items-center gap-2">
-                <ShieldCheck size={17} className="text-accent" />
+                <ShieldCheck size={17} className="text-accent-dark" />
                 <h3 className="text-sm font-semibold">修复建议人工审核</h3>
               </div>
               <StatusBadge tone="neutral" dot={false}>POST /remediations/{'{id}'}/review</StatusBadge>

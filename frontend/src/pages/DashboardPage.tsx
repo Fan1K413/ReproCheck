@@ -27,7 +27,7 @@ function StatCard({ label, value, hint, icon: Icon, badge }: StatCardProps) {
     <div className="panel p-5">
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</span>
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent-wash text-accent">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent-wash text-accent-dark">
           <Icon size={17} strokeWidth={1.9} />
         </span>
       </div>
@@ -76,7 +76,7 @@ const projectColumns: Column<Project>[] = [
     render: (project) => (
       <Link
         to={`/projects/${project.id}/materials`}
-        className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+        className="inline-flex items-center gap-1 text-xs font-medium text-accent-dark hover:underline"
         title="上传材料并发起解析"
       >
         管理材料 <ArrowUpRight size={12} />
@@ -108,7 +108,7 @@ export default function DashboardPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Overview</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">Overview</p>
           <h2 className="mt-1 text-lg font-semibold">复现审计工作台</h2>
           <p className="mt-1 text-sm text-ink-muted">项目、模型服务与最近审计动态均取自后端实时接口。</p>
         </div>
@@ -130,7 +130,7 @@ export default function DashboardPage() {
           value="—"
           icon={ScanSearch}
           badge={
-            <Link to="/demo/audit" className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline">
+            <Link to="/demo/audit" className="inline-flex items-center gap-1 text-xs font-medium text-accent-dark hover:underline">
               前往演示 <ArrowUpRight size={13} />
             </Link>
           }
@@ -161,10 +161,10 @@ export default function DashboardPage() {
         <section className="panel overflow-hidden lg:col-span-2">
           <div className="panel-header">
             <div className="flex items-center gap-2">
-              <FolderKanban size={17} className="text-accent" />
+              <FolderKanban size={17} className="text-accent-dark" />
               <h2 className="text-sm font-semibold">最近项目</h2>
             </div>
-            <Link to="/projects" className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline">
+            <Link to="/projects" className="inline-flex items-center gap-1 text-xs font-medium text-accent-dark hover:underline">
               查看全部 <ArrowUpRight size={13} />
             </Link>
           </div>
@@ -202,10 +202,10 @@ export default function DashboardPage() {
         <section className="panel overflow-hidden">
           <div className="panel-header">
             <div className="flex items-center gap-2">
-              <ShieldAlert size={17} className="text-accent" />
+              <ShieldAlert size={17} className="text-accent-dark" />
               <h2 className="text-sm font-semibold">最近发现问题</h2>
             </div>
-            <Link to="/demo/audit" className="text-xs font-medium text-accent hover:underline">
+            <Link to="/demo/audit" className="text-xs font-medium text-accent-dark hover:underline">
               审计演示
             </Link>
           </div>

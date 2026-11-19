@@ -266,7 +266,7 @@ export default function ReproductionPlanPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">Reproduction Plan DAG</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">Reproduction Plan DAG</p>
           <h2 className="mt-1 text-lg font-semibold">{plan.title || '未命名规划'}</h2>
           <p className="mt-1 text-sm text-ink-muted">
             节点与边均由后端 <span className="mono">dag.nodes / dag.edges</span> 返回，前端仅做布局，不推断依赖。
@@ -420,7 +420,7 @@ export default function ReproductionPlanPage() {
         <section className="panel overflow-hidden">
           <div className="panel-header">
             <div className="flex items-center gap-2">
-              <GitBranch size={17} className="text-accent" />
+              <GitBranch size={17} className="text-accent-dark" />
               <h3 className="text-sm font-semibold">任务依赖图</h3>
             </div>
             <div className="flex flex-wrap gap-2 text-[11px] text-ink-muted">
@@ -511,7 +511,7 @@ export default function ReproductionPlanPage() {
         <section className="panel overflow-hidden">
           <div className="panel-header">
             <div className="flex items-center gap-2">
-              <ShieldCheck size={17} className="text-accent" />
+              <ShieldCheck size={17} className="text-accent-dark" />
               <h3 className="text-sm font-semibold">节点详情</h3>
             </div>
           </div>
