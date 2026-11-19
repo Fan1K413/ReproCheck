@@ -403,3 +403,36 @@ export type CreateReportResult = Pick<
 > & {
   pdf_error?: string | null
 }
+
+/* ---------------- 确定性诊断（验证引擎第一层，独立于大模型）---------------- */
+
+export type FailureCategory = {
+  code: string
+  label: string
+}
+
+export type DiagnosisCandidate = {
+  category: string
+  label: string
+  confidence: number
+  /** 恒为 false：所有结论都是候选原因，不是确定根因。 */
+  is_confirmed: boolean
+  matched_evidence: string[]
+  suggested_fix: string
+}
+
+export type DeterministicDiagnosis = {
+  primary_category: string
+  primary_label: string
+  candidates: DiagnosisCandidate[]
+  raw_log_present: boolean
+  method: string
+  note: string
+}
+
+export type ClassifyLogRequest = {
+  raw_log: string
+  stage?: string
+  error_code?: string
+  environment_missing?: string
+}

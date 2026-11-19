@@ -59,6 +59,12 @@ STAGE2_COLUMNS: list[tuple[str, str, str]] = [
     ("ai_runs", "task_type", "VARCHAR(40)"),
     ("ai_runs", "prompt_version", "VARCHAR(40)"),
     ("ai_runs", "material_id", "VARCHAR(36)"),
+    # parse_tasks：第六阶段状态机字段（nullable/默认值，兼容旧库）
+    ("parse_tasks", "paused_at", "DATETIME"),
+    ("parse_tasks", "timeout_seconds", "INTEGER DEFAULT 600"),
+    ("parse_tasks", "failure_category", "VARCHAR(40) DEFAULT ''"),
+    ("parse_tasks", "resume_count", "INTEGER DEFAULT 0"),
+    ("parse_tasks", "heartbeat_at", "DATETIME"),
 ]
 
 # 新增索引（表必须已存在才建）

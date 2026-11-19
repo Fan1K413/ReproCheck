@@ -146,8 +146,12 @@ export const api = {
    */
   downloadMaterial: async (materialId: string): Promise<void> => {
     let response: Response
+    // 二进制下载端点同样需要 Bearer；否则登录后会 401。
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('rc_token') : null
     try {
-      response = await fetch(`${V1}/materials/${encodeURIComponent(materialId)}/download`)
+      response = await fetch(`${V1}/materials/${encodeURIComponent(materialId)}/download`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
     } catch {
       throw new ApiError('NETWORK_ERROR', '无法连接到服务，下载未开始。', null, 'frontend')
     }

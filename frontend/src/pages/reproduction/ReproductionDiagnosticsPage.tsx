@@ -14,6 +14,7 @@ import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
 import { LoadingState } from '../../components/LoadingState'
 import { StatusBadge } from '../../components/StatusBadge'
+import { DeterministicDiagnosisPanel } from '../../components/DeterministicDiagnosisPanel'
 import { formatConfidence, formatDateTime } from '../../features/format'
 import { DECISION_LABEL, runStatusLabel, runStatusTone } from '../../features/reproductionMeta'
 import { useTrackProject } from '../../hooks/useTrackProject'
@@ -141,6 +142,8 @@ export default function ReproductionDiagnosticsPage() {
           )}
         </div>
       </div>
+
+      <DeterministicDiagnosisPanel />
 
       <section className="panel p-5">
         <h3 className="text-sm font-semibold">选择要诊断的运行</h3>

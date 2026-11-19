@@ -25,6 +25,9 @@ import type {
   ReviewRemediationResult,
   ArtifactEntry,
   LogEntry,
+  FailureCategory,
+  DeterministicDiagnosis,
+  ClassifyLogRequest,
 } from '../types/reproduction'
 
 /**
@@ -203,10 +206,11 @@ export const reproductionApi = {
   /** HTML 导出：返回文本，由页面用 Blob URL 在新窗口打开；错误含后端 error.code。 */
   getReportHtmlText: async (reportId: string): Promise<string> => {
     let response: Response
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('rc_token') : null
     try {
       response = await fetch(
         `${V1}/reproductions/reports/${encodeURIComponent(reportId)}/html`,
-        { headers: { Accept: 'text/html' } },
+        { headers: { Accept: 'text/html', ...(token ? { Authorization: `Bearer ${token}` } : {}) } },
       )
     } catch {
       throw new ApiError('NETWORK_ERROR', '无法连接到服务，HTML 导出未开始。', null, 'frontend')
@@ -218,10 +222,11 @@ export const reproductionApi = {
   /** PDF 下载：二进制流；501 时抛出含 PDF_UNAVAILABLE 的 ApiError。 */
   downloadReportPdf: async (reportId: string, filename?: string): Promise<void> => {
     let response: Response
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('rc_token') : null
     try {
       response = await fetch(
         `${V1}/reproductions/reports/${encodeURIComponent(reportId)}/pdf`,
-        { headers: { Accept: 'application/pdf' } },
+        { headers: { Accept: 'application/pdf', ...(token ? { Authorization: `Bearer ${token}` } : {}) } },
       )
     } catch {
       throw new ApiError('NETWORK_ERROR', '无法连接到服务，PDF 下载未开始。', null, 'frontend')
@@ -243,4 +248,15 @@ export const reproductionApi = {
     anchor.remove()
     URL.revokeObjectURL(url)
   },
+
+  /* ---------------- 确定性诊断（无需大模型密钥）---------------- */
+
+  listFailureCategories: () =>
+    request<{ items: FailureCategory[]; total: number; note: string }>('/diagnosis/categories'),
+
+  classifyLog: (body: ClassifyLogRequest) =>
+    request<DeterministicDiagnosis>('/diagnosis/classify', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 }

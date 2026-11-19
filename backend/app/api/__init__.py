@@ -9,14 +9,17 @@ from app.api.isolation import enforce_project_isolation
 from app.api.v1 import (
     api_tokens,
     audit_runs,
+    benchmark_metrics,
     auth,
     cases,
     collab,
     demo,
+    diagnosis,
     fact_schema,
     facts,
     feedback,
     governance,
+    handoff,
     health,
     integrations,
     llm,
@@ -60,3 +63,8 @@ api_router.include_router(rag.router)
 api_router.include_router(integrations.router)
 api_router.include_router(api_tokens.router)
 api_router.include_router(governance.router)
+api_router.include_router(handoff.router, dependencies=_iso)
+# ---- 第六阶段：确定性诊断（验证引擎第一层，独立于 LLM）----
+api_router.include_router(diagnosis.router)
+# ---- 第六阶段：基准指标引擎（纯计算，不访问项目数据）----
+api_router.include_router(benchmark_metrics.router)

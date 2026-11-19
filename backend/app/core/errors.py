@@ -12,7 +12,9 @@ ERROR_STATUS: dict[str, int] = {
     "VALIDATION_ERROR": 422,
     "NOT_FOUND": 404,
     "LLM_KEY_NOT_CONFIGURED": 503,
-    "LLM_INVALID_KEY": 401,
+    # 上游 LLM Key 失效属于服务端配置/上游鉴权问题（502），不是用户身份失效（401）。
+    # 前端据此区分：401 清会话，LLM_* 仅提示服务端配置错误。
+    "LLM_INVALID_KEY": 502,
     "LLM_NETWORK_ERROR": 502,
     "LLM_TIMEOUT": 504,
     "LLM_RATE_LIMITED": 429,

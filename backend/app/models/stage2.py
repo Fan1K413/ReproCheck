@@ -86,6 +86,12 @@ class ParseTask(Base):
     created_at: Mapped[datetime] = mapped_column(DateTimeUTC(), default=_now, server_default=func.now())
     started_at: Mapped[datetime | None] = mapped_column(DateTimeUTC(), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTimeUTC(), nullable=True)
+    # 第六阶段：真实状态机所需字段。全部 nullable/默认值，兼容已有库。
+    paused_at: Mapped[datetime | None] = mapped_column(DateTimeUTC(), nullable=True)
+    timeout_seconds: Mapped[int] = mapped_column(Integer, default=600, server_default="600")
+    failure_category: Mapped[str] = mapped_column(String(40), default="", server_default="")
+    resume_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTimeUTC(), nullable=True)
 
 
 class EvidenceItem(Base):
