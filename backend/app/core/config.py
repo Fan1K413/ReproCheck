@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     # Server
     host: str = "0.0.0.0"
     port: int = 8000
+    # CORS：默认放行以支持本地前端；生产须在部署配置中收敛为具体域名。
+    # 用字符串承载，避免 pydantic-settings 对 list 字段强制 JSON 解码；
+    # 通过 cors_origins 属性提供 list，支持 JSON 数组与逗号分隔两种写法。
+    cors_allow_origins_raw: str = "*"
 
     # 单次请求体上限：1MB，防止超大材料滥用
     max_request_bytes: int = 1024 * 1024
@@ -68,12 +72,47 @@ class Settings(BaseSettings):
         return v.rstrip("/")
 
     @property
+    def cors_origins(self) -> list[str]:
+        """解析 CORS 来源：支持 JSON 数组与逗号分隔两种写法。"""
+        s = (self.cors_allow_origins_raw or "").strip()
+        if not s:
+            return []
+        if s.startswith("["):
+            try:
+                parsed = __import__("json").loads(s)
+                return [str(x) for x in parsed] if isinstance(parsed, list) else [s]
+            except (ValueError, TypeError):
+                return [s]
+        return [x.strip() for x in s.split(",") if x.strip()]
+
+    @property
     def is_llm_configured(self) -> bool:
         return bool(self.llm_api_key.strip())
 
     @property
     def provider_kind(self) -> Literal["qwen", "openai_compatible"]:
         return "qwen" if self.llm_provider.strip().lower() == "qwen" else "openai_compatible"
+
+    def strict_production_check(self) -> list[str]:
+        """返回生产部署必须修复的不安全配置项清单（纯函数，不改状态）。
+
+        设计意图：默认值保持开发态以兼容本地演示与既有测试；部署方在上线前
+        显式调用本函数（或启动时看警告）确认没有遗漏。返回空列表表示通过。
+        """
+        issues: list[str] = []
+        if self.allow_unauth_test_endpoints:
+            issues.append("allow_unauth_test_endpoints=True：匿名请求可访问项目接口，生产必须为 False")
+        if not self.jwt_secret or self.jwt_secret == "dev-insecure-change-me" or len(self.jwt_secret) < 32:
+            issues.append("jwt_secret 仍为开发默认值或长度不足 32：生产必须设置高强度随机密钥")
+        if not self.encryption_key or len(self.encryption_key) < 16:
+            issues.append("encryption_key 为空或过短：生产必须设置独立加密密钥（不能依赖 jwt_secret 派生）")
+        if "*" in self.cors_origins:
+            issues.append("CORS allow_origins 含 '*'：生产必须收敛为前端域名")
+        if not self.require_ai_consent:
+            issues.append("require_ai_consent=False：生产建议开启 AI 授权门禁")
+        if self.enable_code_execution and self.execution_backend == "none":
+            issues.append("enable_code_execution=True 但 execution_backend=none：不可执行不可信代码")
+        return issues
 
 
 @lru_cache

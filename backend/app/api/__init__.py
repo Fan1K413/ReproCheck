@@ -12,6 +12,7 @@ from app.api.v1 import (
     benchmark_metrics,
     auth,
     cases,
+    chart_verification,
     collab,
     demo,
     diagnosis,
@@ -32,6 +33,7 @@ from app.api.v1 import (
     reproductions,
     roles,
     rules,
+    verification_layers,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -68,3 +70,7 @@ api_router.include_router(handoff.router, dependencies=_iso)
 api_router.include_router(diagnosis.router)
 # ---- 第六阶段：基准指标引擎（纯计算，不访问项目数据）----
 api_router.include_router(benchmark_metrics.router)
+# ---- 第六阶段：论文图表反向验证（文本/数值层，非 OCR/像素级）----
+api_router.include_router(chart_verification.router, dependencies=_iso)
+# ---- 第六阶段：验证引擎分层（静态分析/数值重算，纯计算）----
+api_router.include_router(verification_layers.router)

@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.errors import ok
 from app.reproduction.deterministic_diagnosis import (
     classify_failure,
@@ -36,6 +37,17 @@ async def list_categories(request: Request,
     return ok({"items": items, "total": len(items),
                "note": "标准化错误分类；诊断结果均为候选原因，需人工核实。"},
               getattr(request.state, "request_id", "-"))
+
+
+@router.get("/diagnosis/production-check")
+async def production_check(request: Request, _user=Depends(get_current_user)):
+    """返回当前配置的生产安全检查清单（只读）；空清单表示通过。"""
+    issues = settings.strict_production_check()
+    return ok({
+        "passed": len(issues) == 0,
+        "issues": issues,
+        "note": "本检查为部署自检工具；默认开发配置会返回问题清单，生产必须在配置中逐项收敛。",
+    }, getattr(request.state, "request_id", "-"))
 
 
 @router.post("/diagnosis/classify")

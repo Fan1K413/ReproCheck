@@ -26,8 +26,11 @@
 | 4 | 审计基准指标引擎（Precision/Recall/F1/误报/漏报/定位准确率/分类准确率+回归门禁） | PASS-TESTED | `services/benchmark_metrics.py`、`api/v1/benchmark_metrics.py` | test_benchmark_metrics.py 14 项 |
 | 5 | 前端确定性诊断面板 + 三个二进制下载端点 Bearer 注入修复 | PARTIAL（未做浏览器 E2E） | `components/DeterministicDiagnosisPanel.tsx`、`api.ts`、`reproductionApi.ts` | typecheck/build 通过 |
 | 6 | 证据图谱（上一轮已完成，本阶段纳入回归） | PASS-TESTED | `api/v1/facts.py`、`pages/EvidenceGraphPage.tsx` | test_stage2_api.py 含断言 |
+| 7 | 论文图表反向验证（文本/数值层） | PASS-TESTED | `services/chart_verification_service.py`、`api/v1/chart_verification.py` | test_chart_verification.py 12 项 |
+| 8 | 验证引擎第2层静态分析 + 第4层数值重算 | PASS-TESTED | `services/static_analysis_service.py`、`services/numeric_recompute_service.py`、`api/v1/verification_layers.py` | test_verification_layers.py 18 项 |
+| 9 | 生产安全加固（自检 API + 启动守卫 + 手册） | PASS-TESTED | `core/config.py`、`main.py`、`.env.example`、`docs/PRODUCTION_HARDENING_GUIDE.md` | test_production_safety.py 5 项 |
 
-新增测试共 43 项 + 独立验收 P2 回归 2 项；后端全量从 120 → **165 passed**；前端 typecheck 通过、build 1692 modules 通过。
+新增测试共 78 项（43 核心 + 2 P2 回归 + 12 图表 + 18 验证引擎 + 5 生产安全）；后端全量从 120 → **200 passed**；前端 typecheck 通过、build 1692 modules 通过。
 
 ## 4. 科研复现工作流（实际状态）
 
@@ -37,11 +40,11 @@
 
 ## 5-10. 各专项模块真实状态
 
-- **图表反向验证**：`MISSING`。PDF 解析仅抽文本块、记录 table_pages，明确无 OCR；无绘图逻辑检索、无重绘对比。不得声称图表已精确复核。
+- **图表反向验证**：`PARTIAL→PASS-TESTED`（文本/数值层）。真实实现表格数值与图注提取（从 PDF 文本块）、AST 绘图逻辑检索（matplotlib/plotly）、CSV/JSON/日志结果文件数值提取、数值对比三态（supported/conflicting/insufficient_data）；缺数据时明确 `insufficient_data` + "未完成精确复核"。**OCR/图像级重绘对比仍缺失**，不声称已精确复核图像。
 - **失败诊断中心**：`PARTIAL→PASS-TESTED`（新增确定性分类层）。旧 LLM 诊断无 Key 完全不可用；新增规则层无 Key 可用，但所有结论为候选（`is_confirmed=false`），原始日志/环境/命令/阶段字段部分已有。
 - **项目交接包**：`PARTIAL→PASS-TESTED`（导出+校验）。导入为 `validated_not_applied`（只校验不写库），避免覆盖生产数据；不含私有数据集外传。
 - **审计申诉复核**：`IMPL-UNTESTED`。`feedback_service.py` 已实现创建反馈→分诊（triaged/resolved/disputed）→争议转人工 ReviewRequest→审计轨迹；缺浏览器级 E2E。
-- **独立验证引擎**：`PARTIAL`。第一层（确定性规则诊断）本阶段真实落地；静态代码分析、数值重算、AI 辅助层的职责边界未系统建模。
+- **独立验证引擎**：`PARTIAL（4/5 层落地）`。第1层确定性规则诊断、第2层 AST 静态分析、第4层数值重算、第5层 AI 辅助（原有 audit_service）均有真实实现；第3层动态执行仍关闭（`executed=False`，note 明说"隔离执行环境未启用"）。`GET /verification/layers` 展示每层职责/方法/是否实际执行/可信度，统一面板结构。
 - **审计基准测试**：`PARTIAL→PASS-TESTED`（指标引擎）。案例库/人工验证已有；新增 P/R/F1/误报漏报/定位准确率计算与回归门禁，但尚无"人工标注真值集 + 检测器输出"的端到端自动回归流水线。
 - **团队协作**：`IMPL-UNTESTED`。auth/orgs/collab/roles/RBAC 已实现并测试；未做多课题组隔离的浏览器级 E2E。
 
@@ -57,7 +60,7 @@
 
 ## 12. 测试报告
 
-- 后端全量：163 passed，3 warnings（FastAPI on_event 弃用、pytest-asyncio fixture loop scope、fitz API 弃用）。退出时 Windows 临时目录清理有 `PermissionError`（环境问题，不影响测试结果）。
+- 后端全量：**200 passed**，3 warnings（FastAPI on_event 弃用、pytest-asyncio fixture loop scope、fitz API 弃用）。退出时 Windows 临时目录清理有 `PermissionError`（环境问题，不影响测试结果）。
 - 前端：`npm run typecheck` 通过；`npm run build` 通过（1692 modules，bundle >500KB 警告）。
 - 独立验收：`docs/STAGE6_INDEPENDENT_ACCEPTANCE.md`（由未参与本阶段开发的测试智能体执行）。15/15 主步骤 PASS，P0=0、P1=0、P2=2；发现的两个 P2 缺陷（LLM Key 失效误报用户 401、parse 响应 material_name 空）已修复并加回归测试 `test_acceptance_p2_fixes.py`（2 项通过）。
 
@@ -82,8 +85,8 @@
 | 级别 | 问题 | 状态 |
 |---|---|---|
 | P0 | 无真实代码隔离执行后端（Docker/GVisor 未验证），"全自动复现"不成立 | 阻断发布 |
-| P0 | 生产安全默认值未收紧（匿名放行、开发 JWT 密钥） | 阻断发布 |
-| P1 | 图表反向验证完全缺失 | 未实现 |
+| P0 | 生产安全默认值未收紧（匿名放行、开发 JWT 密钥） | 已提供 `strict_production_check()` + `STRICT_PRODUCTION=1` 启动守卫 + 自检 API + 手册；默认值仍为开发态以兼容测试，**部署时必须设置并验证**（见 PRODUCTION_HARDENING_GUIDE.md） |
+| P1 | 图表反向验证的 OCR/图像级重绘对比 | 文本/数值层已实现；图像级未实现（缺数据/OCR 环境），标 BLOCKED |
 | P1 | 无浏览器级真人 E2E（15 步流程尚未全部走通） | 待独立验收 |
 | P1 | 导入交接包只校验不写库（避免覆盖，但非完整导入） | 设计约束 |
 | P2 | 前端 bundle >500KB；FastAPI/pytest/fitz 弃用告警 | 优化项 |
@@ -99,4 +102,4 @@
 
 ## 结论
 
-本阶段以**真实代码 + 真实测试**交付了 4 个核心能力切片（任务编排、交接包、确定性诊断、基准指标）与 1 项前端修复，后端测试 120→163 全绿。但全自动复现执行、图表反向验证、生产安全与部署仍是阻断项。**发布状态：NOT_READY；P0/P1 未解决前不得正式发布。**
+本阶段以**真实代码 + 真实测试**交付：核心 4 切片（任务编排、交接包、确定性诊断、基准指标）+ 缺口补齐 3 切片（文本/数值层图表反向验证、验证引擎第2/4层、生产安全自检与启动守卫），并修复独立验收发现的 2 个 P2 Bug。后端测试 120→200 全绿，前端构建通过，独立验收 15/15 主步骤 PASS。阻断项剩：真实隔离执行后端（无 Docker/GVisor）、生产配置实际收敛与备份恢复/部署验收、图表图像级重绘对比。**发布状态：NOT_READY；P0 未解决前不得正式发布。**

@@ -25,7 +25,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 开发期放行；生产应收敛为前端域名
+    allow_origins=settings.cors_origins,  # 开发期默认放行；生产在配置中收敛为前端域名
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,6 +72,14 @@ async def request_context(request: Request, call_next):
 async def on_startup() -> None:
     await init_db()
     logger.info("reprocheck_started llm_configured=%s", settings.is_llm_configured)
+    # 生产安全自检：只告警不强制失败，避免破坏本地开发/测试；部署方须按清单收敛配置。
+    # 设置 STRICT_PRODUCTION=1 时可让不安全配置直接阻止启动。
+    import os
+    issues = settings.strict_production_check()
+    if issues:
+        logger.warning("production_security_check issues=%s", " | ".join(issues))
+        if os.getenv("STRICT_PRODUCTION", "").strip() in ("1", "true", "True"):
+            raise RuntimeError("生产安全配置未通过，拒绝启动：" + " | ".join(issues))
 
 
 app.include_router(api_router)

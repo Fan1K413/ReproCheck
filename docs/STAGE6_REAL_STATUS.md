@@ -49,7 +49,12 @@
 | 项目交接包导出/校验 | PASS-TESTED | `services/handoff_service.py`、`api/v1/handoff.py`、`tests/test_handoff.py` 10 项通过；ZIP 含材料原文/事实/证据，manifest 逐文件 sha256，Zip Slip 防护 | 导入为 `validated_not_applied`（只校验不写库），避免覆盖生产数据；不含私有数据集外传 |
 | 确定性失败诊断（验证引擎第一层） | PASS-TESTED | `reproduction/deterministic_diagnosis.py`、`api/v1/diagnosis.py`、`tests/test_deterministic_diagnosis.py` 9 项通过；11 类标准分类，候选原因 `is_confirmed=false`，独立于 LLM | 只做日志规则分类，不是确定根因；无 Key 也可用 |
 | 前端确定性诊断面板 + 二进制下载 token 修复 | PARTIAL | `components/DeterministicDiagnosisPanel.tsx` 挂载到诊断页；`api.ts`/`reproductionApi.ts` 三个下载端点注入 Bearer；typecheck 通过 | 未做浏览器真人操作验证；后端下载端点依赖默认 `allow_unauth_test_endpoints=True`，生产须关闭（上线阻断项） |
-| 审计基准指标引擎（P/R/F1 等） | 实现中 | `services/benchmark_metrics.py` 已建；API/测试由并行代理收尾 | 尚未纳入全量回归 |
+| 审计基准指标引擎（P/R/F1 等） | PASS-TESTED | `services/benchmark_metrics.py`、`api/v1/benchmark_metrics.py`、`tests/test_benchmark_metrics.py` 14 项通过 | 案例库已有；尚无"人工标注真值→检测器输出→自动回归"的端到端流水线 |
+| 论文图表反向验证（文本/数值层） | PASS-TESTED | `services/chart_verification_service.py`、`api/v1/chart_verification.py`、`tests/test_chart_verification.py` 12 项通过；真实提取 `ResNet-50 76.1 91.2`→[76.1,91.2]、`Figure 1:` 图注、`plt.plot` AST 检测、CSV/JSON 数值 | 未做 OCR/图像级重绘对比（明确标 limitation）；缺数据时 `insufficient_data`，不冒充精确复核 |
+| 验证引擎第2层静态分析 + 第4层数值重算 | PASS-TESTED | `services/static_analysis_service.py`（AST 真实解析 imports/model_classes/train_test_split/seed/lr）、`services/numeric_recompute_service.py`（F1/accuracy 公式重算）、`api/v1/verification_layers.py`、`tests/test_verification_layers.py` 18 项通过 | 第3层动态执行仍关闭（executed=False，note 明说"隔离执行环境未启用"） |
+| 生产安全加固（自检+启动守卫） | PASS-TESTED | `core/config.py` `strict_production_check()`、`main.py` 启动告警 + `STRICT_PRODUCTION=1` 拒绝启动、`GET /diagnosis/production-check`、`.env.example`、`docs/PRODUCTION_HARDENING_GUIDE.md`；`tests/test_production_safety.py` 5 项通过 | 默认值仍为开发态（不破坏测试）；真实生产部署/备份恢复未验证 |
+
+**全量回归：200 passed**（基线 120 → 核心 165 → 缺口补齐 200）；前端 typecheck/build 通过（1692 modules）。
 
 申诉复核链核查修正：`services/feedback_service.py` 已实现创建反馈→分诊 (`triaged/resolved/disputed`)→争议转人工 ReviewRequest→审计轨迹留痕，比本清单初版的 PARTIAL 判断更完整；状态更新为 `IMPL-UNTESTED`（代码成立，缺浏览器级 E2E）。
 
