@@ -41,7 +41,7 @@ export function applyThemeToDocument(theme: ThemeMode, preference?: ThemePrefere
     document.documentElement.setAttribute('data-rc-skin', theme)
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
     if (meta) {
-      meta.content = theme === 'light' ? '#f4f1ea' : '#050806'
+      meta.content = theme === 'light' ? '#f4f1ea' : '#111113'
     }
   }
   if (preference) {

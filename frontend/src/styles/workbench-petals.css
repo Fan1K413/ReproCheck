@@ -2,7 +2,7 @@
  * ReproCheck 一级工作台 · 二级「空间花瓣」
  *
  * 独立于一级的视觉语言：
- * - 深色模式：黑曜石精密透镜 + 哑光深绿卡片，翡翠细线串联；
+ * - 深色模式：中性石墨哑光卡片 + 香槟金细线串联；
  * - 浅色模式：温暖棉纸编排卡片 + 陶土红线，纸墨分明无眩光。
  * 面板位置全部由 petalLayout.ts 计算，本文件不写任何单个入口坐标。
  * ========================================================================== */
@@ -13,8 +13,8 @@
   inset: 0;
   z-index: 1;
   background:
-    radial-gradient(circle at 50% 50%, rgba(5, 8, 6, 0) 0 30%, rgba(2, 5, 3, 0.52) 100%),
-    linear-gradient(180deg, rgba(5, 8, 6, 0.24), rgba(2, 5, 3, 0.44));
+    radial-gradient(circle at 50% 50%, rgba(11, 11, 13, 0) 0 30%, rgba(7, 7, 9, 0.56) 100%),
+    linear-gradient(180deg, rgba(11, 11, 13, 0.24), rgba(7, 7, 9, 0.46));
   cursor: default;
   animation: rc-petal-scrim-in 220ms var(--rc-ease-out) both;
 }
@@ -59,8 +59,8 @@
 .rc-petal-heading__name {
   font: 600 13px/1.2 var(--rc-font-display);
   letter-spacing: 0.04em;
-  color: rgba(237, 247, 240, 0.88);
-  text-shadow: 0 1px 12px rgba(2, 5, 3, 0.9);
+  color: rgba(244, 244, 245, 0.88);
+  text-shadow: 0 1px 12px rgba(7, 7, 9, 0.9);
 }
 
 [data-rc-skin='light'] .rc-petal-heading__name {
@@ -71,7 +71,7 @@
 .rc-petal-heading__rule {
   width: 22px;
   height: 1px;
-  background: linear-gradient(90deg, rgba(74, 222, 128, 0.42), transparent);
+  background: linear-gradient(90deg, rgba(212, 163, 89, 0.48), transparent);
 }
 
 [data-rc-skin='light'] .rc-petal-heading__rule {
@@ -81,7 +81,7 @@
 .rc-petal-heading__count {
   font: 500 9.5px/1 var(--rc-font-mono);
   letter-spacing: 0.14em;
-  color: rgba(187, 247, 208, 0.56);
+  color: rgba(243, 227, 195, 0.58);
 }
 
 [data-rc-skin='light'] .rc-petal-heading__count {
@@ -99,7 +99,7 @@
 
 .rc-petal-rail__line {
   fill: none;
-  stroke: rgba(74, 222, 128, 0.34);
+  stroke: rgba(212, 163, 89, 0.36);
   stroke-width: 1;
   stroke-linecap: round;
 }
@@ -110,7 +110,7 @@
 
 .rc-petal-rail__glow {
   fill: none;
-  stroke: rgba(34, 197, 94, 0.24);
+  stroke: rgba(212, 163, 89, 0.16);
   stroke-width: 7;
   stroke-linecap: round;
   filter: blur(6px);
@@ -131,18 +131,18 @@
   padding: 0 14px 0 16px;
   margin: 0;
   border-radius: 20px 8px 20px 8px;
-  border: 1px solid rgba(74, 222, 128, 0.24);
-  background: linear-gradient(152deg, rgba(12, 22, 16, 0.94) 0%, rgba(8, 15, 11, 0.96) 100%);
-  color: #edf7f0;
+  border: 1px solid rgba(255, 255, 255, 0.115);
+  background: linear-gradient(152deg, rgba(28, 28, 32, 0.94) 0%, rgba(19, 19, 22, 0.96) 100%);
+  color: #f4f4f5;
   text-align: left;
   cursor: pointer;
   pointer-events: auto;
   transform: translate(-50%, -50%);
   box-shadow:
-    inset 0 1px 0 rgba(187, 247, 208, 0.1),
-    0 18px 42px rgba(0, 0, 0, 0.48);
-  -webkit-backdrop-filter: blur(16px) saturate(125%);
-  backdrop-filter: blur(16px) saturate(125%);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 42px rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(16px) saturate(115%);
+  backdrop-filter: blur(16px) saturate(115%);
   animation: rc-petal-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: var(--rc-petal-delay, 0ms);
   transition:
@@ -173,8 +173,8 @@
   border-radius: 1px;
   background: linear-gradient(
     180deg,
-    rgba(74, 222, 128, 0.36) 0%,
-    rgba(34, 197, 94, 0.16) 45%,
+    rgba(212, 163, 89, 0.44) 0%,
+    rgba(212, 163, 89, 0.14) 45%,
     transparent 100%
   );
   pointer-events: none;
@@ -202,12 +202,12 @@
 }
 
 .rc-petal:hover {
-  border-color: rgba(74, 222, 128, 0.52);
-  background: linear-gradient(152deg, rgba(18, 34, 24, 0.96) 0%, rgba(10, 20, 14, 0.98) 100%);
+  border-color: rgba(212, 163, 89, 0.48);
+  background: linear-gradient(152deg, rgba(36, 36, 41, 0.96) 0%, rgba(24, 24, 27, 0.98) 100%);
   box-shadow:
-    inset 0 1px 0 rgba(187, 247, 208, 0.16),
+    inset 0 1px 0 rgba(243, 227, 195, 0.14),
     0 20px 48px rgba(0, 0, 0, 0.56),
-    0 0 0 1px rgba(74, 222, 128, 0.14);
+    0 0 0 1px rgba(212, 163, 89, 0.12);
 }
 
 [data-rc-skin='light'] .rc-petal:hover {
@@ -219,7 +219,7 @@
 }
 
 .rc-petal:active {
-  background: linear-gradient(152deg, rgba(22, 42, 30, 0.96) 0%, rgba(12, 22, 16, 0.98) 100%);
+  background: linear-gradient(152deg, rgba(42, 42, 48, 0.96) 0%, rgba(28, 28, 32, 0.98) 100%);
 }
 
 [data-rc-skin='light'] .rc-petal:active {
@@ -227,7 +227,7 @@
 }
 
 .rc-petal:focus-visible {
-  outline: 1.5px solid rgba(74, 222, 128, 0.8);
+  outline: 1.5px solid rgba(229, 190, 126, 0.85);
   outline-offset: 2px;
 }
 
@@ -240,7 +240,7 @@
   width: 20px;
   font: 500 9.5px/1 var(--rc-font-mono);
   letter-spacing: 0.08em;
-  color: #4ade80;
+  color: #d4a359;
   text-align: center;
 }
 
@@ -264,7 +264,7 @@
   -webkit-line-clamp: 2;
   font: 600 13px/1.25 var(--rc-font-body);
   letter-spacing: 0.006em;
-  color: #edf7f0;
+  color: #f4f4f5;
   overflow-wrap: anywhere;
 }
 
@@ -285,7 +285,7 @@
   white-space: nowrap;
   font: 500 9.5px/1.3 var(--rc-font-body);
   letter-spacing: 0.01em;
-  color: #94b2a0;
+  color: #a1a1aa;
 }
 
 [data-rc-skin='light'] .rc-petal__hint {
@@ -298,7 +298,7 @@
   place-items: center;
   width: 16px;
   height: 16px;
-  color: rgba(74, 222, 128, 0.68);
+  color: rgba(212, 163, 89, 0.65);
   transition:
     color 160ms var(--rc-ease-hover),
     transform 160ms var(--rc-ease-hover);
@@ -309,7 +309,7 @@
 }
 
 .rc-petal:hover .rc-petal__go {
-  color: #4ade80;
+  color: #e5be7e;
   transform: translate(1px, -1px);
 }
 
@@ -330,12 +330,12 @@
   padding: 0 4px;
   border: 0;
   background: transparent;
-  color: rgba(237, 247, 240, 0.68);
+  color: rgba(244, 244, 245, 0.66);
   font: 600 11px/1 var(--rc-font-body);
   letter-spacing: 0.04em;
   cursor: pointer;
   pointer-events: auto;
-  text-shadow: 0 1px 10px rgba(2, 5, 3, 0.9);
+  text-shadow: 0 1px 10px rgba(7, 7, 9, 0.9);
   transition: color 160ms var(--rc-ease-hover);
 }
 
@@ -345,7 +345,7 @@
 }
 
 .rc-petal-close:hover {
-  color: #edf7f0;
+  color: #f4f4f5;
 }
 
 [data-rc-skin='light'] .rc-petal-close:hover {
@@ -353,7 +353,7 @@
 }
 
 .rc-petal-close:focus-visible {
-  outline: 1.5px solid rgba(74, 222, 128, 0.78);
+  outline: 1.5px solid rgba(229, 190, 126, 0.8);
   outline-offset: 2px;
 }
 
@@ -363,10 +363,10 @@
 
 .rc-petal-close__esc {
   padding-left: 8px;
-  border-left: 1px solid rgba(74, 222, 128, 0.24);
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
   font: 500 9px/1 var(--rc-font-mono);
   letter-spacing: 0.1em;
-  color: rgba(187, 247, 208, 0.52);
+  color: rgba(243, 227, 195, 0.52);
 }
 
 [data-rc-skin='light'] .rc-petal-close__esc {
@@ -513,7 +513,7 @@
   }
 
   .rc-petal-stage[data-mode='stack'] .rc-petal-rail__line {
-    stroke: rgba(74, 222, 128, 0.2);
+    stroke: rgba(212, 163, 89, 0.22);
   }
 
   [data-rc-skin='light'] .rc-petal-stage[data-mode='stack'] .rc-petal-rail__line {

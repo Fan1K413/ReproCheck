@@ -345,12 +345,13 @@
 .rc-wa-seg__btn:hover { color: var(--rc-text); }
 
 .rc-wa-seg__btn[aria-selected='true'] {
-  background-color: var(--rc-accent);
-  color: var(--rc-hi);
+  background-color: var(--rc-btn-primary-bg, var(--rc-accent));
+  color: var(--rc-btn-primary-text, var(--rc-hi));
 }
 
 .rc-wa-seg__btn[aria-selected='true']:hover {
-  background-color: var(--rc-violet);
+  background-color: var(--rc-btn-primary-hover, var(--rc-violet));
+  color: var(--rc-btn-primary-text, var(--rc-hi));
 }
 
 /* 列表式选择器（规划 / 运行 chips） */

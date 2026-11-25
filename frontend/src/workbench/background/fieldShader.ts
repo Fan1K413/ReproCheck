@@ -2,7 +2,7 @@
  * ReproCheck 背景着色器（WebGL1 / GLSL ES 1.00，兼容 WebGL2）。
  *
  * 支持双主题实时驱动：
- * - 深色模式（uIsLight = 0.0）：黑曜石黑底与精密翡翠绿域扭曲丝绸褶皱；
+ * - 深色模式（uIsLight = 0.0）：中性石墨底与哑光香槟金珀域扭曲丝绸褶皱；
  * - 浅色模式（uIsLight = 1.0）：仿 Anthropic 暖米色手工纸肌理与柔和日光水纹。
  */
 
@@ -134,7 +134,7 @@ void main() {
     warmWash = mix(warmWash, uRidgeColor, pow(ridge, 4.0) * 0.18 * calm);
     color = mix(warmWash, uVignetteColor, vignette * 0.36);
   } else {
-    /* 深色黑绿模式：黑曜石底 + 精密翡翠绿丝绸脊线 */
+    /* 深色石墨金珀模式：纯净中性石墨底 + 极克制香槟金珀丝绸脊线 */
     vec3 ambient = mix(uAmbientLow, uAmbientHigh, drift);
     ambient += lightColor * light * 0.08;
     vec3 base = uBackground.rgb + ambient * (0.78 + veil * 0.42);

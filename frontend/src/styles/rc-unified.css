@@ -1,6 +1,6 @@
 /* ==========================================================================
  * ReproCheck V4 · 全站统一空间层
- * 深色模式：黑曜石精密仪表（黑 + 荧光翡翠绿）
+ * 深色模式：中性石墨 × 香槟金珀（极简杂志编排暗黑）
  * 浅色模式：仿 Anthropic 暖色类纸编排（暖米纸底 + 棉纸卡片 + 陶土红点缀 + 衬线标题）
  * ========================================================================== */
 
@@ -12,9 +12,9 @@
   min-height: 100vh;
   color: var(--rc-text);
   background:
-    radial-gradient(64rem 38rem at 12% -14%, rgba(34, 197, 94, 0.14), transparent 60%),
-    radial-gradient(50rem 32rem at 92% 4%, rgba(21, 128, 61, 0.12), transparent 62%),
-    radial-gradient(40rem 40rem at 70% 106%, rgba(52, 211, 153, 0.06), transparent 66%),
+    radial-gradient(64rem 38rem at 12% -14%, rgba(212, 163, 89, 0.06), transparent 62%),
+    radial-gradient(50rem 32rem at 92% 4%, rgba(255, 255, 255, 0.028), transparent 62%),
+    radial-gradient(40rem 40rem at 70% 106%, rgba(212, 163, 89, 0.03), transparent 68%),
     linear-gradient(155deg, var(--rc-bg) 0%, var(--rc-bg-2) 55%, var(--rc-bg-3) 100%);
   isolation: isolate;
 }
@@ -35,9 +35,9 @@
 .rc-l2-header {
   border-bottom: var(--rc-stroke-hair);
   background:
-    linear-gradient(90deg, rgb(var(--rc-accent-rgb) / 0.14), transparent 32%),
-    rgba(7, 12, 9, 0.86);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.34), inset 0 -1px 0 rgba(74, 222, 128, 0.10);
+    linear-gradient(90deg, rgba(212, 163, 89, 0.055), transparent 28%),
+    rgba(17, 17, 19, 0.88);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
   backdrop-filter: var(--rc-blur-panel);
   -webkit-backdrop-filter: var(--rc-blur-panel);
 }
@@ -156,15 +156,15 @@
   }
 }
 
-/* ---------- 全站原生登录页（深色黑绿仪盘 / 浅色 Anthropic 类纸） ---------- */
+/* ---------- 全站原生登录页（深色石墨金珀 / 浅色 Anthropic 类纸） ---------- */
 .rc-auth-stage {
   position: relative;
   min-height: 100vh;
   overflow: hidden;
   color: var(--rc-text);
   background:
-    radial-gradient(50rem 44rem at 26% 36%, rgba(21, 128, 61, 0.22), transparent 62%),
-    radial-gradient(36rem 36rem at 82% 76%, rgba(52, 211, 153, 0.10), transparent 64%),
+    radial-gradient(50rem 44rem at 26% 36%, rgba(212, 163, 89, 0.09), transparent 64%),
+    radial-gradient(36rem 36rem at 82% 76%, rgba(255, 255, 255, 0.032), transparent 64%),
     linear-gradient(160deg, var(--rc-bg) 0%, var(--rc-bg-2) 60%, var(--rc-bg-3) 100%);
   isolation: isolate;
   font-family: var(--rc-font-body);
@@ -244,8 +244,8 @@
   height: 44px;
   place-items: center;
   border-radius: 12px;
-  color: var(--rc-hi);
-  background: linear-gradient(150deg, var(--rc-accent-bright), var(--rc-accent));
+  color: var(--rc-btn-primary-text, var(--rc-hi));
+  background: linear-gradient(150deg, var(--rc-brand-vivid), var(--rc-brand-bright));
   box-shadow: var(--rc-glow-violet), var(--rc-shadow-inset-hi);
 }
 
@@ -354,13 +354,13 @@
   border-radius: 50%;
   color: var(--rc-text);
   background:
-    radial-gradient(65% 65% at 28% 24%, rgba(52, 211, 153, 0.22), transparent 72%),
-    radial-gradient(60% 70% at 80% 80%, rgba(21, 128, 61, 0.28), transparent 70%),
-    linear-gradient(145deg, rgba(16, 28, 21, 0.96), rgba(8, 14, 11, 0.98));
+    radial-gradient(65% 65% at 28% 24%, rgba(243, 227, 195, 0.11), transparent 72%),
+    radial-gradient(60% 70% at 80% 80%, rgba(212, 163, 89, 0.14), transparent 70%),
+    linear-gradient(145deg, rgba(28, 28, 32, 0.96), rgba(16, 16, 19, 0.98));
   box-shadow:
-    inset 0 1px 0 rgba(187, 247, 208, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 20px 56px rgba(0, 0, 0, 0.56),
-    0 0 36px rgba(34, 197, 94, 0.14);
+    0 0 32px rgba(212, 163, 89, 0.09);
   clip-path: circle(50% at 50% 50%);
 }
 
@@ -512,7 +512,7 @@
   left: 4px;
   width: calc(50% - 4px);
   border-radius: 6px;
-  background: var(--rc-accent);
+  background: var(--rc-btn-primary-bg, var(--rc-accent));
   box-shadow: var(--rc-glow-violet);
   transition: transform 240ms var(--rc-ease-expo);
   pointer-events: none;
@@ -537,7 +537,7 @@
 }
 
 .rc-auth-switchbtn[aria-pressed='true'] {
-  color: var(--rc-hi);
+  color: var(--rc-btn-primary-text, var(--rc-hi));
 }
 
 .rc-auth-reveal {

@@ -1,19 +1,19 @@
 /**
  * ReproCheck 一级工作台背景 · 双主题配色与光斑配置
  *
- * - dark（黑绿深色）：黑曜石黑底 + 深松林/翡翠绿光场褶皱
+ * - dark（石墨金珀深色）：纯净中性石墨底 + 哑光炭丝与克制香槟金珀光折
  * - light（仿 Anthropic 类纸）：暖米色棉纸底 + 柔和沙暖/陶土淡纹
  */
 import type { ThemeMode } from '../../stores/uiStore'
 
 export const TOKEN_HEX = {
-  ink: '#050806',
-  deep: '#0a1810',
-  dark: '#113020',
-  emerald: '#15803d',
-  bright: '#22c55e',
-  mint: '#4ade80',
-  soft: '#bbf7d0',
+  ink: '#111113',
+  deep: '#18181b',
+  dark: '#222120',
+  bronze: '#8a662b',
+  champagne: '#d4a359',
+  gold: '#e5be7e',
+  soft: '#f3e3c3',
 } as const
 
 export type RGB01 = [number, number, number]
@@ -83,7 +83,7 @@ export const FIELD_LOBES: FieldLobeConfig[] = [
   {
     anchor: [0.88, 0.8],
     radius: 0.28,
-    color: TOKEN_HEX.emerald,
+    color: TOKEN_HEX.bronze,
     driftX: 0.04,
     driftY: 0.032,
     phase: 3.9,
@@ -120,21 +120,21 @@ export const FIELD_LOBES: FieldLobeConfig[] = [
 
 export const FIELD_THEMES: Record<ThemeMode, FieldThemePalette> = {
   dark: {
-    background: hexToRgb01('#050806'),
-    silkDeep: hexToRgb01('#092014'),
-    silkLight: hexToRgb01('#1ea856'),
-    ambientLow: hexToRgb01('#030604'),
-    ambientHigh: hexToRgb01('#0d2417'),
-    fiberColor: hexToRgb01('#34d399'),
-    ridgeColor: hexToRgb01('#4ade80'),
-    vignetteColor: hexToRgb01('#020403'),
+    background: hexToRgb01('#111113'),
+    silkDeep: hexToRgb01('#18181c'),
+    silkLight: hexToRgb01('#6b532c'),
+    ambientLow: hexToRgb01('#0b0b0d'),
+    ambientHigh: hexToRgb01('#1c1c20'),
+    fiberColor: hexToRgb01('#c89c54'),
+    ridgeColor: hexToRgb01('#e5be7e'),
+    vignetteColor: hexToRgb01('#08080a'),
     isLight: 0.0,
     lobeColors: [
-      hexToRgb01('#113522'),
-      hexToRgb01('#0a1e13'),
-      hexToRgb01('#15803d'),
-      hexToRgb01('#143a24'),
-      hexToRgb01('#86efac'),
+      hexToRgb01('#211f1d'),
+      hexToRgb01('#16161a'),
+      hexToRgb01('#8a662b'),
+      hexToRgb01('#25221e'),
+      hexToRgb01('#e5c792'),
     ],
   },
   light: {

@@ -31,15 +31,15 @@
   min-height: 34px;
   padding: 6px 13px;
   border-radius: var(--rc-radius-pill);
-  background: var(--rc-accent);
-  border: 1px solid var(--rc-accent-bright);
-  color: var(--rc-hi);
+  background: var(--rc-btn-primary-bg, var(--rc-accent));
+  border: 1px solid var(--rc-btn-primary-border, var(--rc-accent-bright));
+  color: var(--rc-btn-primary-text, var(--rc-hi));
   font-size: 11px;
   font-weight: var(--rc-fw-sb);
   text-decoration: none;
   white-space: nowrap;
 }
-.ux-next-step__primary:hover { background: var(--rc-violet); box-shadow: var(--rc-glow-violet); }
+.ux-next-step__primary:hover { background: var(--rc-btn-primary-hover, var(--rc-violet)); box-shadow: var(--rc-glow-violet); }
 .ux-next-step__secondary { color: var(--rc-text-subtle); font-size: 10px; text-decoration: none; white-space: nowrap; }
 .ux-next-step__secondary:hover { color: var(--rc-lilac); }
 

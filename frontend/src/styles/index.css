@@ -4,7 +4,7 @@
 
 /* ------------------------------------------------------------------
  * ReproCheck 全局基础层与核心组件样式
- * 深色：黑曜石精密仪表（黑 + 绿） | 浅色：仿 Anthropic 暖色类纸编排
+ * 深色：中性石墨 × 香槟金珀（Editorial Graphite） | 浅色：仿 Anthropic 暖色类纸编排
  * 所有色值统一消费 ./tokens.css 定义的 --rc-* 变量。
  * ------------------------------------------------------------------ */
 
@@ -165,13 +165,13 @@
   }
 
   .btn-primary {
-    background-color: var(--rc-accent);
-    color: var(--rc-hi);
-    border: 1px solid var(--rc-accent);
+    background-color: var(--rc-btn-primary-bg, var(--rc-accent));
+    color: var(--rc-btn-primary-text, var(--rc-hi));
+    border: 1px solid var(--rc-btn-primary-border, var(--rc-accent));
   }
 
   .btn-primary:hover:not(:disabled) {
-    background-color: var(--rc-accent-hover);
+    background-color: var(--rc-btn-primary-hover, var(--rc-accent-hover));
     border-color: var(--rc-accent-bright);
     box-shadow: var(--rc-glow-violet);
     transform: translateY(-1px);

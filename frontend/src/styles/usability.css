@@ -332,8 +332,8 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: var(--rc-accent);
-  color: var(--rc-hi);
+  background: var(--rc-btn-primary-bg, var(--rc-accent));
+  color: var(--rc-btn-primary-text, var(--rc-hi));
   font-family: var(--rc-font-display);
   font-weight: var(--rc-fw-sb);
   box-shadow: var(--rc-glow-violet);
@@ -402,12 +402,12 @@
 }
 
 .ux-onboard-primary {
-  border: 1px solid var(--rc-accent-bright);
-  background: var(--rc-accent);
-  color: var(--rc-hi);
+  border: 1px solid var(--rc-btn-primary-border, var(--rc-accent-bright));
+  background: var(--rc-btn-primary-bg, var(--rc-accent));
+  color: var(--rc-btn-primary-text, var(--rc-hi));
   box-shadow: 0 8px 28px rgb(var(--rc-accent-rgb) / .28);
 }
-.ux-onboard-primary:hover:not(:disabled) { transform: translateY(-1px) scale(1.02); background: var(--rc-violet); box-shadow: var(--rc-glow-violet); }
+.ux-onboard-primary:hover:not(:disabled) { transform: translateY(-1px) scale(1.02); background: var(--rc-btn-primary-hover, var(--rc-violet)); box-shadow: var(--rc-glow-violet); }
 .ux-onboard-primary:disabled { opacity: .48; cursor: not-allowed; }
 
 .ux-onboard-secondary {

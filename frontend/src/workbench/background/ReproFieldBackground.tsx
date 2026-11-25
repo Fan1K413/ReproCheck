@@ -4,7 +4,7 @@ import { createFieldController, type FieldController } from './fieldController'
 import '../../styles/workbench-background.css'
 
 /**
- * 一级工作台背景层：随全局黑绿深色 / 类纸浅色主题实时切换 WebGL 与 CSS 兜底场。
+ * 一级工作台背景层：随全局石墨深色 / 类纸浅色主题实时切换 WebGL 与 CSS 兜底场。
  */
 export default function ReproFieldBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)

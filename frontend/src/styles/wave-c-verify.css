@@ -401,15 +401,15 @@
 }
 
 .rc2-link--primary {
-  background: var(--rc-accent);
-  border-color: var(--rc-accent);
-  color: var(--rc-hi);
+  background: var(--rc-btn-primary-bg, var(--rc-accent));
+  border-color: var(--rc-btn-primary-border, var(--rc-accent));
+  color: var(--rc-btn-primary-text, var(--rc-hi));
 }
 
 .rc2-link--primary:hover {
-  background: var(--rc-violet);
-  border-color: var(--rc-violet);
-  color: var(--rc-hi);
+  background: var(--rc-btn-primary-hover, var(--rc-violet));
+  border-color: var(--rc-btn-primary-hover, var(--rc-violet));
+  color: var(--rc-btn-primary-text, var(--rc-hi));
 }
 
 /* 仅窄屏可见：<640px 用 chip + 底部抽屉替代迷你画布（§2.2 响应式） */

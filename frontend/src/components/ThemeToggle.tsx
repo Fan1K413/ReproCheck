@@ -1,4 +1,4 @@
-import { BookOpenText, Monitor, Terminal } from 'lucide-react'
+import { BookOpenText, Monitor, Moon } from 'lucide-react'
 import { useUIStore, type ThemePreference } from '../stores/uiStore'
 
 type ThemeToggleProps = {
@@ -11,13 +11,13 @@ const META: Record<
   { label: string; nextLabel: string; icon: typeof Monitor }
 > = {
   system: { label: '跟随系统', nextLabel: '类纸浅色', icon: Monitor },
-  light: { label: '类纸浅色', nextLabel: '黑绿深色', icon: BookOpenText },
-  dark: { label: '黑绿深色', nextLabel: '跟随系统', icon: Terminal },
+  light: { label: '类纸浅色', nextLabel: '石墨深色', icon: BookOpenText },
+  dark: { label: '石墨深色', nextLabel: '跟随系统', icon: Moon },
 }
 
 /**
  * 全局外观模式三态循环切换：
- * 跟随系统（默认）→ 类纸浅色 → 黑绿深色 → 跟随系统
+ * 跟随系统（默认）→ 类纸浅色 → 石墨深色 → 跟随系统
  */
 export function ThemeToggle({ compact = false, className = '' }: ThemeToggleProps) {
   const preference = useUIStore((state) => state.themePreference)
@@ -26,7 +26,7 @@ export function ThemeToggle({ compact = false, className = '' }: ThemeToggleProp
 
   const current = META[preference]
   const Glyph = current.icon
-  const resolvedName = resolvedTheme === 'light' ? '类纸浅色' : '黑绿深色'
+  const resolvedName = resolvedTheme === 'light' ? '类纸浅色' : '石墨深色'
   const title =
     preference === 'system'
       ? `当前：跟随系统（${resolvedName}），点击切换到${current.nextLabel}`

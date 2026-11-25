@@ -5,7 +5,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { useAuthStore } from './stores/authStore'
 import { initThemeSync } from './stores/uiStore'
-// Design Token 必须最先引入：全站唯一色源（黑绿深色默认 + 类纸浅色皮肤 + 旧变量别名）
+// Design Token 必须最先引入：全站唯一色源（石墨金珀深色默认 + 类纸浅色皮肤 + 旧变量别名）
 import './styles/tokens.css'
 import './styles/index.css'
 import './styles/motion.css'
