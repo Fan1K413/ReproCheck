@@ -1,4 +1,4 @@
-import { ApiError, downloadFilename, invalidateExpiredSession, request } from './api'
+import { ApiError, downloadBlob, downloadFilename, invalidateExpiredSession, request } from './api'
 import { useAuthStore } from '../stores/authStore'
 import type { ApiResponse } from '../types/api'
 import type {
@@ -168,8 +168,8 @@ export const reproductionApi = {
   getReport: (reportId: string) =>
     request<ReportView>(`/reproductions/reports/${encodeURIComponent(reportId)}`),
 
-  /** HTML 导出：返回文本，由页面用 Blob URL 在新窗口打开；错误含后端 error.code。 */
-  getReportHtmlText: async (reportId: string): Promise<string> => {
+  /** HTML 导出：直接下载文件，错误含后端 error.code。 */
+  downloadReportHtml: async (reportId: string, filename: string): Promise<void> => {
     let response: Response
     const token = useAuthStore.getState().token
     try {
@@ -182,7 +182,7 @@ export const reproductionApi = {
     }
     invalidateExpiredSession(response, token)
     if (!response.ok) throw await readError(response)
-    return response.text()
+    downloadBlob(await response.blob(), downloadFilename(response, filename))
   },
 
   /** PDF 下载：二进制流；501 时抛出含 PDF_UNAVAILABLE 的 ApiError。 */
@@ -202,14 +202,7 @@ export const reproductionApi = {
 
     const blob = await response.blob()
     const name = downloadFilename(response, filename || `report-${reportId}.pdf`)
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = name.endsWith('.pdf') ? name : `${name}.pdf`
-    document.body.appendChild(anchor)
-    anchor.click()
-    anchor.remove()
-    URL.revokeObjectURL(url)
+    downloadBlob(blob, name.endsWith('.pdf') ? name : `${name}.pdf`)
   },
 
   /* ---------------- 确定性诊断（无需大模型密钥）---------------- */

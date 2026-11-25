@@ -22,6 +22,7 @@ import { formatBytes, formatDateTime } from '../features/format'
 import { materialTypeLabel, materialTypeTone, parseStatusLabel, parseStatusTone } from '../features/stage2Meta'
 import { useTrackProject } from '../hooks/useTrackProject'
 import { ApiError, api } from '../services/api'
+import { toast } from '../stores/toastStore'
 import type { MaterialView, ParseStatus } from '../types/api'
 import '../styles/wave-b-material.css'
 
@@ -147,6 +148,8 @@ export default function MaterialsPage() {
 
   const downloadMutation = useMutation({
     mutationFn: (materialId: string) => api.downloadMaterial(materialId),
+    onSuccess: () => toast.success('已开始下载原始文件'),
+    onError: (error) => toast.error(`下载失败：${errorMessage(error, '请重试')}`),
   })
 
   const materials = useMemo(() => materialsQuery.data?.items ?? [], [materialsQuery.data])
@@ -602,11 +605,6 @@ export default function MaterialsPage() {
           {parseMutation.isError && (
             <p className="mt-3 text-xs" style={{ color: 'var(--rc-danger)' }} role="alert">
               发起解析失败：{errorMessage(parseMutation.error, '请重试')}
-            </p>
-          )}
-          {downloadMutation.isError && (
-            <p className="mt-3 text-xs" style={{ color: 'var(--rc-danger)' }} role="alert">
-              下载失败：{errorMessage(downloadMutation.error, '请重试')}
             </p>
           )}
         </div>

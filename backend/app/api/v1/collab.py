@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, user_has_permission
 from app.core.errors import ok
 from app.db import get_db
 from app.models.stage6 import User
@@ -52,7 +52,8 @@ async def add_member(project_id: str, payload: MemberIn, request: Request, db: A
 @router.get("/projects/{project_id}/members")
 async def list_members(project_id: str, request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     items = await svc.list_project_members(db, user, project_id)
-    return ok({"items": items, "total": len(items)}, _rid(request))
+    can_manage_members = await user_has_permission(db, user, "project.manage", project_id=project_id)
+    return ok({"items": items, "total": len(items), "can_manage_members": can_manage_members}, _rid(request))
 
 
 @router.patch("/projects/{project_id}/members/{user_id}")

@@ -77,7 +77,7 @@ body: `{decision:"approve|reject|modify", reviewer, note?, modified_value?}` →
 body: `{project_id, plan_id?, run_ids?:[]}` → `{report_id,status,section_count,html_available,pdf_available,pdf_error?}`
 ### GET /api/v1/reproductions/reports/{report_id} → ReportView（含 sections，每节含 sources 证据引用）
 ### GET /api/v1/reproductions/reports/{report_id}/html → HTML 文本
-### GET /api/v1/reproductions/reports/{report_id}/pdf → PDF 二进制（不可用则 501 + PDF_UNAVAILABLE）
+### GET /api/v1/reproductions/reports/{report_id}/pdf → PDF 二进制附件（缺少已保存的 PDF 和 HTML 时返回 501 + PDF_UNAVAILABLE）
 ### GET /api/v1/reproductions/reports?project_id=xxx → `{items,total}`
 
 ## 前端约定

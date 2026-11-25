@@ -111,10 +111,11 @@ export default function ProjectTeamPage() {
   const projectsQuery = useQuery({ queryKey: ['projects'], queryFn: api.getProjects })
   const project = projectsQuery.data?.items.find((p) => p.id === projectId)
   const membersQuery = useQuery({ queryKey: ['project-members', projectId], queryFn: () => stage6Api.listProjectMembers(projectId ?? ''), enabled: Boolean(projectId) })
+  const canManageMembers = membersQuery.data?.can_manage_members === true
   const commentsQuery = useQuery({ queryKey: ['project-comments', projectId, commentFilter], queryFn: () => stage6Api.listComments(projectId ?? '', commentFilter || undefined), enabled: Boolean(projectId) })
   const reviewsQuery = useQuery({ queryKey: ['project-reviews', projectId], queryFn: () => stage6Api.listReviews(projectId ?? ''), enabled: Boolean(projectId) })
   const activityQuery = useQuery({ queryKey: ['project-activity', projectId, offset], queryFn: () => stage6Api.listActivity(projectId ?? '', ACTIVITY_LIMIT, offset), enabled: Boolean(projectId) && tab === 'activity' })
-  const orgMembersQuery = useQuery({ queryKey: ['org-members', project?.org_id], queryFn: () => stage6Api.listOrgMembers(project?.org_id ?? ''), enabled: Boolean(project?.org_id) })
+  const orgMembersQuery = useQuery({ queryKey: ['org-members', project?.org_id], queryFn: () => stage6Api.listOrgMembers(project?.org_id ?? ''), enabled: Boolean(project?.org_id) && canManageMembers && addMemberOpen })
 
   /* 活动轨迹按页累积：以 pid 守卫避免项目切换时串数据，按 id 去重防止重复追加。 */
   const trail = trailState.pid === projectId ? trailState.items : []
@@ -278,10 +279,13 @@ export default function ProjectTeamPage() {
             {tab === 'members' && (
               <>
                 <div className="rcw-row-between">
-                  <p className="text-xs rcw-faint">成员管理需项目管理员权限。</p>
-                  <button type="button" className="btn-primary" onClick={() => { setMemberForm({ user_id: '', role_key: 'researcher' }); setMemberError(null); setAddMemberOpen(true) }}>
-                    <Icon as={UserPlus} size="xs" />添加成员
-                  </button>
+                  {canManageMembers ? (
+                    <button type="button" className="btn-primary" onClick={() => { setMemberForm({ user_id: '', role_key: 'researcher' }); setMemberError(null); setAddMemberOpen(true) }}>
+                      <Icon as={UserPlus} size="xs" />添加成员
+                    </button>
+                  ) : membersQuery.isSuccess && (
+                    <p className="text-xs rcw-faint">成员管理需项目管理员权限。</p>
+                  )}
                 </div>
                 <QueryGate
                   state={membersQuery}
@@ -303,7 +307,7 @@ export default function ProjectTeamPage() {
                                 </p>
                                 <p className="mono mt-0.5 truncate text-[11px] rcw-faint">{row.email}</p>
                               </div>
-                              <button
+                              {canManageMembers && <button
                                 type="button"
                                 className="rcw-icon-btn"
                                 title="移除成员"
@@ -311,13 +315,13 @@ export default function ProjectTeamPage() {
                                 onClick={() => setRemoveTarget(row)}
                               >
                                 <Icon as={UserMinus} size="xs" />
-                              </button>
+                              </button>}
                             </div>
                             <div className="rcw-row-between" style={{ marginTop: 'var(--rc-space-3)', paddingTop: 'var(--rc-space-3)', borderTop: 'var(--rc-stroke-hair)' }}>
                               <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>
                               <span className="mono text-[11px] rcw-faint">{formatDateTime(row.added_at)}</span>
                             </div>
-                            <label className="rcw-overline" htmlFor={`pm-role-${row.user_id}`} style={{ display: 'block', marginTop: 'var(--rc-space-3)' }}>
+                            {canManageMembers && <><label className="rcw-overline" htmlFor={`pm-role-${row.user_id}`} style={{ display: 'block', marginTop: 'var(--rc-space-3)' }}>
                               项目角色
                             </label>
                             <select
@@ -329,7 +333,7 @@ export default function ProjectTeamPage() {
                               aria-label={`修改 ${row.display_name || row.email} 的项目角色`}
                             >
                               {PROJECT_ROLES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
-                            </select>
+                            </select></>}
                           </article>
                         )
                       })}
@@ -541,7 +545,7 @@ export default function ProjectTeamPage() {
       </div>
 
       <Modal
-        open={addMemberOpen}
+        open={canManageMembers && addMemberOpen}
         title="添加项目成员"
         onClose={() => setAddMemberOpen(false)}
         description={project?.org_id ? '从项目所属组织的成员中选择，已加入者自动排除。' : '项目未归属组织，请手动输入用户 ID。'}
@@ -660,7 +664,7 @@ export default function ProjectTeamPage() {
       </Modal>
 
       <ConfirmModal
-        open={Boolean(removeTarget)}
+        open={canManageMembers && Boolean(removeTarget)}
         title="移除项目成员"
         icon={UserMinus}
         confirmLabel="确认移除"

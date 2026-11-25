@@ -5,9 +5,14 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
+from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,6 +47,10 @@ router = APIRouter(tags=["reproductions"])
 # view helpers
 
 def _task_view(t: ReproductionTask) -> dict[str, Any]:
+    feasibility = t.current_feasibility
+    reason = t.feasibility_reason
+    if feasibility != t.feasibility:
+        reason = "尚未验证任务的执行条件。"
     return {
         "task_id": t.id, "plan_id": t.plan_id, "task_key": t.task_key,
         "title": t.title, "description": t.description,
@@ -50,15 +59,19 @@ def _task_view(t: ReproductionTask) -> dict[str, Any]:
         "action": t.action, "expected_result": t.expected_result,
         "acceptance_criteria": t.acceptance_criteria,
         "evidence_refs": json.loads(t.evidence_refs_json or "[]"),
-        "risk": t.risk, "feasibility": t.feasibility,
-        "feasibility_reason": t.feasibility_reason,
-        "needs_human_confirm": t.needs_human_confirm, "status": t.status,
+        "risk": t.risk, "feasibility": feasibility,
+        "feasibility_reason": reason,
+        "needs_human_confirm": t.awaiting_human_confirmation, "status": t.status,
         "created_at": t.created_at.isoformat() if t.created_at else "",
     }
 
 
-def _plan_view(p: ReproductionPlan) -> dict[str, Any]:
+def _plan_view(p: ReproductionPlan, tasks: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     summary = json.loads(p.feasibility_summary_json or "{}")
+    if tasks is not None:
+        counts = Counter(task["feasibility"] for task in tasks)
+        summary = {key: value for key, value in summary.items() if not isinstance(value, (int, float))}
+        summary.update(counts)
     return {
         "plan_id": p.id, "project_id": p.project_id, "title": p.title,
         "status": p.status, "source": p.source, "ai_available": p.ai_available,
@@ -180,7 +193,10 @@ async def list_plans(project_id: str, request: Request, db: AsyncSession = Depen
     tasks_by_plan: dict[str, list[dict[str, Any]]] = {}
     for task in tasks:
         tasks_by_plan.setdefault(task.plan_id, []).append(_task_view(task))
-    items = [{**_plan_view(p), "tasks": tasks_by_plan.get(p.id, [])} for p in rows]
+    items = []
+    for plan in rows:
+        views = tasks_by_plan.get(plan.id, [])
+        items.append({**_plan_view(plan, views), "tasks": views})
     return ok({"items": items, "total": len(items)}, getattr(request.state, "request_id", "-"))
 
 
@@ -198,7 +214,7 @@ async def get_plan(plan_id: str, request: Request, db: AsyncSession = Depends(ge
     views = [_task_view(t) for t in tasks]
     edges = [{"from": d, "to": t["task_key"]}
              for t in views for d in t["depends_on"]]
-    data = _plan_view(plan)
+    data = _plan_view(plan, views)
     data["tasks"] = views
     data["dag"] = {
         "nodes": [{"id": t["task_key"], "label": t["title"],
@@ -236,7 +252,12 @@ async def confirm_task(task_id: str, request: Request, db: AsyncSession = Depend
     )).scalar_one_or_none()
     if t is None:
         raise AppError("NOT_FOUND", "复现任务不存在。")
-    t.status = "confirmed"
+    if t.status == "pending":
+        t.status = "confirmed"
+    t.needs_human_confirm = False
+    if t.feasibility == "needs_human_review":
+        t.feasibility = "unverifiable"
+        t.feasibility_reason = "已完成人工确认，尚未验证任务的执行条件。"
     db.add(t)
     await db.commit()
     return ok({"confirmed": True, "status": t.status}, getattr(request.state, "request_id", "-"))
@@ -456,6 +477,10 @@ async def review_remediation(proposal_id: str, payload: ReviewCreate, request: R
 
 # reports
 
+def _report_pdf_available(report: ReproductionReport) -> bool:
+    return bool(report.html or (report.pdf_path and Path(report.pdf_path).is_file()))
+
+
 @router.post("/reproductions/reports", dependencies=[
     Depends(require_admin), Depends(require_project_write("report.generate")),
 ])
@@ -467,7 +492,7 @@ async def create_report(payload: ReportCreate, request: Request, db: AsyncSessio
         "report_id": report.id, "status": report.status,
         "section_count": len(json.loads(report.sections_json or "[]")),
         "html_available": bool(report.html),
-        "pdf_available": bool(report.pdf_path),
+        "pdf_available": _report_pdf_available(report),
     }, getattr(request.state, "request_id", "-"))
 
 
@@ -481,7 +506,7 @@ async def list_reports(project_id: str, request: Request, db: AsyncSession = Dep
         "report_id": r.id, "project_id": r.project_id, "title": r.title,
         "status": r.status, "version": r.version,
         "section_count": len(json.loads(r.sections_json or "[]")),
-        "html_available": bool(r.html), "pdf_available": bool(r.pdf_path),
+        "html_available": bool(r.html), "pdf_available": _report_pdf_available(r),
         "scope_note": r.scope_note,
         "created_at": r.created_at.isoformat() if r.created_at else "",
     } for r in rows]
@@ -499,7 +524,7 @@ async def get_report(report_id: str, request: Request, db: AsyncSession = Depend
         "report_id": r.id, "project_id": r.project_id, "title": r.title,
         "status": r.status, "version": r.version,
         "sections": json.loads(r.sections_json or "[]"),
-        "html_available": bool(r.html), "pdf_available": bool(r.pdf_path),
+        "html_available": bool(r.html), "pdf_available": _report_pdf_available(r),
         "scope_note": r.scope_note,
         "created_at": r.created_at.isoformat() if r.created_at else "",
     }, getattr(request.state, "request_id", "-"))
@@ -507,7 +532,6 @@ async def get_report(report_id: str, request: Request, db: AsyncSession = Depend
 
 @router.get("/reproductions/reports/{report_id}/html")
 async def get_report_html(report_id: str, db: AsyncSession = Depends(get_db)):
-    from fastapi.responses import HTMLResponse
     r = (await db.execute(
         select(ReproductionReport).where(ReproductionReport.id == report_id)
     )).scalar_one_or_none()
@@ -518,13 +542,19 @@ async def get_report_html(report_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/reproductions/reports/{report_id}/pdf")
 async def get_report_pdf(report_id: str, db: AsyncSession = Depends(get_db)):
-    from fastapi.responses import FileResponse
+    from app.reproduction.report import ReportGenerator
     r = (await db.execute(
         select(ReproductionReport).where(ReproductionReport.id == report_id)
     )).scalar_one_or_none()
     if r is None:
         raise AppError("NOT_FOUND", "复现报告不存在。")
-    if not r.pdf_path:
-        raise AppError("PDF_UNAVAILABLE", "当前环境不支持 PDF 导出，请使用 HTML 导出。")
-    return FileResponse(r.pdf_path, media_type="application/pdf",
-                        filename=f"{r.title[:40]}.pdf")
+    filename = f"{r.title[:40]}.pdf"
+    if r.pdf_path and Path(r.pdf_path).is_file():
+        return FileResponse(r.pdf_path, media_type="application/pdf", filename=filename)
+    if not r.html:
+        raise AppError("PDF_UNAVAILABLE", "此报告缺少 PDF 文件与 HTML 正文，请重新生成报告。")
+    content = await run_in_threadpool(ReportGenerator.render_pdf, r.html)
+    return Response(
+        content, media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename, safe='')}"},
+    )

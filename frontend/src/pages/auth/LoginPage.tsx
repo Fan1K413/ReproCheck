@@ -5,7 +5,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { ArrowRight, Mail, ScanSearch, UserRound } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { Icon } from '../../components/Icon'
 import { ThemeToggle } from '../../components/ThemeToggle'
 import { ApiError } from '../../services/api'
@@ -32,7 +32,6 @@ const ORBIT_NODES = [
 export default function LoginPage() {
   const token = useAuthStore((state) => state.token)
   const setSession = useAuthStore((state) => state.setSession)
-  const navigate = useNavigate()
   const location = useLocation()
   const from = (location.state as { from?: string } | null)?.from ?? '/'
 
@@ -51,7 +50,6 @@ export default function LoginPage() {
     },
     onSuccess: (data) => {
       setSession(data.token, data.user)
-      navigate(from, { replace: true })
     },
     onError: (error) => {
       setFormError(error instanceof ApiError ? error.message : '请求失败，请稍后重试。')

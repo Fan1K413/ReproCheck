@@ -132,10 +132,13 @@ async def test_member_removal_revokes_project_access(client, monkeypatch):
     # 邀请 B 入组织并接受
     token = (await client.post(f"/api/v1/orgs/{org_a}/invitations", json={"email": "member@example.com"}, headers=_auth(a["token"]))).json()["data"]["token"]
     await client.post("/api/v1/invitations/accept", json={"token": token}, headers=_auth(b["token"]))
-    # 分配 B 为项目研究人员
-    r = await client.post(f"/api/v1/projects/{pid}/members", json={"user_id": b["user"]["id"], "role_key": "researcher"}, headers=_auth(a["token"]))
+    # 项目管理员可管理成员，观察者只可查看成员列表。
+    r = await client.post(f"/api/v1/projects/{pid}/members", json={"user_id": b["user"]["id"], "role_key": "viewer"}, headers=_auth(a["token"]))
     assert r.status_code == 200
-    assert (await client.get(f"/api/v1/projects/{pid}/members", headers=_auth(b["token"]))).status_code == 200
+    for account, can_manage in [(a, True), (b, False)]:
+        r = await client.get(f"/api/v1/projects/{pid}/members", headers=_auth(account["token"]))
+        assert r.status_code == 200
+        assert r.json()["data"]["can_manage_members"] is can_manage
     # 移除组织成员 → 项目权限同步撤销
     r = await client.delete(f"/api/v1/orgs/{org_a}/members/{b['user']['id']}", headers=_auth(a["token"]))
     assert r.status_code == 200

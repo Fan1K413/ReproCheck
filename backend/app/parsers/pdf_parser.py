@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from app.core.pdf import PDF_ENGINE_LOCK
 from app.parsers.chunking import split_text
 from app.parsers.limits import MAX_CHUNK_CHARS, MAX_PDF_PAGES
 from app.schemas.parsing import ParseResult, ParseWarning, PdfLocator, SourceChunk
@@ -81,6 +82,11 @@ def parse_pdf(
     project_id: str,
 ) -> ParseResult:
     """统一入口：逐页抽取文本块，生成带 PdfLocator 的 chunks。"""
+    with PDF_ENGINE_LOCK:
+        return _parse_pdf(path, material_id=material_id, project_id=project_id)
+
+
+def _parse_pdf(path: Path, *, material_id: str, project_id: str) -> ParseResult:
     base = dict(
         material_id=material_id,
         material_type="pdf",

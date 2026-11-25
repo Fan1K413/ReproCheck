@@ -78,6 +78,16 @@ class ReproductionTask(Base):
     status: Mapped[str] = mapped_column(String(30), default="pending", server_default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTimeUTC(), default=_now, server_default=func.now())
 
+    @property
+    def awaiting_human_confirmation(self) -> bool:
+        return self.needs_human_confirm and self.status != "confirmed"
+
+    @property
+    def current_feasibility(self) -> str:
+        if self.feasibility == "needs_human_review" and not self.awaiting_human_confirmation:
+            return "unverifiable"
+        return self.feasibility
+
 
 class ReproductionRun(Base):
     __tablename__ = "reproduction_runs"

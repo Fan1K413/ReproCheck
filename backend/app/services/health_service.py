@@ -172,7 +172,7 @@ async def compute_health(db: AsyncSession, user, project_id: str) -> dict:
     blocked_tasks = (await db.execute(select(ResearchTask).where(
         ResearchTask.project_id == project_id, ResearchTask.status == "blocked"))).scalars().all()
     facts_review = [f for f in facts if (f.extraction_status or "") == "needs_review"]
-    pending_repro = [t for t in repro_tasks if t.needs_human_confirm]
+    pending_repro = [t for t in repro_tasks if t.awaiting_human_confirmation]
     unresolved = {
         "facts_needing_review": len(facts_review),
         "repro_tasks_needing_confirm": len(pending_repro),

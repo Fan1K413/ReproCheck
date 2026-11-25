@@ -108,7 +108,8 @@ export const stage6Api = {
   rolePermissions: (roleKey: string) => request<RolePermissions>(`/roles/${enc(roleKey)}/permissions`),
 
   /* ---------------- 项目协作 ---------------- */
-  listProjectMembers: (projectId: string) => request<Items<ProjectMember>>(`/projects/${enc(projectId)}/members`),
+  listProjectMembers: (projectId: string) =>
+    request<Items<ProjectMember> & { can_manage_members: boolean }>(`/projects/${enc(projectId)}/members`),
   addProjectMember: (projectId: string, body: { user_id: string; role_key?: string }) =>
     post<{ project_id: string; user_id: string; role_key: string }>(`/projects/${enc(projectId)}/members`, body),
   updateProjectMember: (projectId: string, userId: string, roleKey: string) =>

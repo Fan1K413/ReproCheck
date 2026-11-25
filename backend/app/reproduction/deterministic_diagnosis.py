@@ -33,7 +33,7 @@ CATEGORY_LABELS = {
     "config_parameter_error": "配置参数错误",
     "dataset_missing": "数据集缺失",
     "data_format_error": "数据格式错误",
-    "env_dependency_conflict": "环境依赖冲突",
+    "env_dependency_conflict": "环境依赖缺失或冲突",
     "hardware_resource_shortage": "硬件资源不足",
     "external_service_unavailable": "外部服务不可用",
     "run_timeout": "运行超时",
@@ -41,14 +41,16 @@ CATEGORY_LABELS = {
     "other_unknown": "其他未知原因",
 }
 
+_IMPORT_FAILURE = re.compile(r"\b(?:modulenotfounderror|importerror|no module named)\b", re.IGNORECASE)
+_TRACEBACK_CONTEXT = (r"traceback", r"\.py.{0,20}(line|行)")
+
 # 每类：正则模式（命中任一即得分）+ 基础置信度 + 修复建议
 _RULES: dict[str, tuple[list[str], float, str]] = {
     "paper_material_missing": (
         [r"论文.{0,12}(缺失|未找到|不存在|not\s*found)", r"(paper|pdf).{0,20}(missing|not\s*found)"],
         0.6, "检查论文材料是否已上传并完成解析。"),
     "code_implementation_error": (
-        [r"traceback", r"syntaxerror", r"nameerror", r"typeerror", r"attributeerror",
-         r"modulenotfounderror", r"\.py.{0,20}(line|行)", r"assertionerror"],
+        [*_TRACEBACK_CONTEXT, r"syntaxerror", r"nameerror", r"typeerror", r"attributeerror", r"assertionerror"],
         0.7, "核对报错栈定位的源码文件与行号，确认实现与论文描述一致。"),
     "config_parameter_error": (
         [r"(learning_rate|batch_size|epoch|lr|参数).{0,20}(错误|无效|invalid|非法|缺失)",
@@ -64,8 +66,8 @@ _RULES: dict[str, tuple[list[str], float, str]] = {
         0.55, "检查数据文件的编码、分隔符与字段结构是否与代码预期一致。"),
     "env_dependency_conflict": (
         [r"(module|package|依赖|dependency).{0,20}(version|版本|conflict|冲突|incompatible|不兼容)",
-         r"importerror", r"could not find version", r"requirement"],
-        0.6, "对照环境依赖清单，核对冲突包的版本约束。"),
+         _IMPORT_FAILURE.pattern, r"could not find version", r"requirement"],
+        0.6, "对照环境依赖清单，检查当前解释器是否能导入日志中的模块，并核对依赖版本约束。"),
     "hardware_resource_shortage": (
         [r"out of memory", r"\bom\b", r"cuda.{0,15}(out of memory|oom)", r"no cuda",
          r"insufficient (memory|gpu|disk)", r"内存不足", r"显存不足", r"磁盘空间不足"],
@@ -119,8 +121,11 @@ def classify_failure(
         part for part in (raw_log or "", stage or "", error_code or "", environment_missing or "") if part
     )
     candidates: list[CandidateCause] = []
+    has_import_failure = bool(_IMPORT_FAILURE.search(evidence_text))
     for cat, patterns in _COMPILED.items():
         matches = [p.pattern for p in patterns if p.search(evidence_text)]
+        if has_import_failure and cat == "code_implementation_error":
+            matches = [pattern for pattern in matches if pattern not in _TRACEBACK_CONTEXT]
         if not matches:
             continue
         base = _RULES[cat][1]

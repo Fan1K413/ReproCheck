@@ -151,6 +151,7 @@ class ReproductionPlanner:
         known = {t.task_key for t in exists}
         if any(d not in known for d in deps):
             raise AppError("DAG_INVALID", "任务依赖了不存在的任务。")
+        needs_confirmation = bool(payload.get("needs_human_confirm", True))
         task = ReproductionTask(
             id=f"rtask-{uuid.uuid4().hex[:16]}", plan_id=plan_id,
             project_id=plan.project_id, task_key=task_key,
@@ -160,9 +161,10 @@ class ReproductionPlanner:
             action=payload.get("action", ""), expected_result=payload.get("expected_result", ""),
             acceptance_criteria=payload.get("acceptance_criteria", ""),
             evidence_refs_json=json.dumps(payload.get("evidence_refs", []), ensure_ascii=False),
-            risk=payload.get("risk", ""), feasibility="needs_human_review",
-            feasibility_reason="人工新增任务，需确认",
-            needs_human_confirm=bool(payload.get("needs_human_confirm", True)),
+            risk=payload.get("risk", ""),
+            feasibility="needs_human_review" if needs_confirmation else "unverifiable",
+            feasibility_reason="人工新增任务，待人工确认。" if needs_confirmation else "尚未验证任务的执行条件。",
+            needs_human_confirm=needs_confirmation,
             status="pending",
         )
         self.db.add(task)
@@ -172,7 +174,8 @@ class ReproductionPlanner:
         )).scalars().all()
         summary: dict[str, int] = {}
         for item in tasks:
-            summary[item.feasibility] = summary.get(item.feasibility, 0) + 1
+            feasibility = item.current_feasibility
+            summary[feasibility] = summary.get(feasibility, 0) + 1
         plan.feasibility_summary_json = json.dumps(summary, ensure_ascii=False)
         self.db.add(plan)
         await self.db.commit()

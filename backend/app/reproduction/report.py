@@ -1,7 +1,7 @@
-"""正式科研复现审计报告生成器（HTML + 可选 PDF）。
+"""正式科研复现审计报告生成器（HTML 和 PDF）。
 
 区分：AI 分析 / 程序检测 / 实际执行 / 人工判断 / 无法验证。
-每个关键结论带 sources 证据引用；PDF 不可用时明确标注，不伪造导出。
+每个关键结论带 sources 证据引用。
 """
 from __future__ import annotations
 
@@ -9,12 +9,14 @@ import html
 import json
 import uuid
 from datetime import datetime, timezone
+from io import BytesIO
+
+import pymupdf
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import BACKEND_STORAGE
-from app.core.logging import logger
+from app.core.pdf import PDF_ENGINE_LOCK
 from app.models import ExtractedFact, Project
 from app.models.stage4 import (
     ExecutionEnvironment,
@@ -142,13 +144,12 @@ class ReportGenerator:
             [], "综合声明")
 
         html_text = self._render(project.name, sec, quality)
-        pdf_path = await self._try_pdf(project.name, html_text)
         report = ReproductionReport(
             id=f"rreport-{uuid.uuid4().hex[:14]}", project_id=project_id,
             title=f"ReproCheck 复现审计报告 - {project.name}",
             status="generated", version=1,
             sections_json=json.dumps(sec, ensure_ascii=False),
-            html=html_text, pdf_path=pdf_path,
+            html=html_text,
             scope_note=quality["scope_note"],
         )
         self.db.add(report)
@@ -181,16 +182,20 @@ class ReportGenerator:
         return "".join(parts)
 
     @staticmethod
-    async def _try_pdf(title: str, html_text: str) -> str | None:
-        """使用可用库导出 PDF；不可用时返回 None。"""
-        try:
-            from weasyprint import HTML  # type: ignore
-            out = BACKEND_STORAGE / "reports"
-            out.mkdir(parents=True, exist_ok=True)
-            path = out / f"report-{uuid.uuid4().hex[:12]}.pdf"
-            HTML(string=html_text).write_pdf(str(path))
-            logger.info("pdf_export_success path=%s", str(path))
-            return str(path)
-        except Exception as exc:  # noqa: BLE001
-            logger.info("pdf_export_unavailable type=%s", type(exc).__name__)
-            return None
+    def render_pdf(html_text: str) -> bytes:
+        """从已生成的报告 HTML 排版 PDF，也支持早期仅存有 HTML 的报告。"""
+        buffer = BytesIO()
+        with PDF_ENGINE_LOCK:
+            page = pymupdf.paper_rect("a4")
+            body = page + (42, 42, -42, -42)
+            story = pymupdf.Story(html=html_text)
+            with pymupdf.DocumentWriter(buffer, options="compress") as writer:
+                more = True
+                while more:
+                    more, filled = story.place(body)
+                    if more and pymupdf.Rect(filled).is_empty:
+                        raise ValueError("Report content could not fit on a PDF page")
+                    device = writer.begin_page(page)
+                    story.draw(device)
+                    writer.end_page()
+        return buffer.getvalue()

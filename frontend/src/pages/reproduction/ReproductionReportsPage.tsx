@@ -13,7 +13,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
-  ExternalLink,
   FileBarChart,
   FileText,
   Quote,
@@ -30,6 +29,7 @@ import { formatDateTime } from '../../features/format'
 import { useTrackProject } from '../../hooks/useTrackProject'
 import { ApiError } from '../../services/api'
 import { reproductionApi } from '../../services/reproductionApi'
+import { toast } from '../../stores/toastStore'
 import '../../styles/report-accordion.css'
 import '../../styles/wave-e-model.css'
 import type {
@@ -201,6 +201,7 @@ export default function ReproductionReportsPage() {
 
   const selectReport = (reportId: string) => {
     setSelectedReportId(reportId)
+    setExportError(null)
     setActiveSection(null)
     setLocatedEvidence(null)
   }
@@ -224,33 +225,20 @@ export default function ReproductionReportsPage() {
     },
   })
 
-  const openHtml = async (reportId: string) => {
-    setExportError(null)
-    try {
-      const html = await reproductionApi.getReportHtmlText(reportId)
-      const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }))
-      const opened = window.open(url, '_blank', 'noopener,noreferrer')
-      if (!opened) setExportError('浏览器拦截了新窗口，请允许弹出窗口后重试。')
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
-    } catch (error) {
+  const exportMutation = useMutation({
+    mutationFn: ({ report, format }: { report: ReportView; format: 'HTML' | 'PDF' }) => {
+      const filename = report.title || `report-${report.report_id}`
+      return format === 'HTML'
+        ? reproductionApi.downloadReportHtml(report.report_id, `${filename}.html`)
+        : reproductionApi.downloadReportPdf(report.report_id, `${filename}.pdf`)
+    },
+    onMutate: () => { setExportError(null) },
+    onSuccess: (_data, { format }) => toast.success(`已开始下载 ${format} 报告`),
+    onError: (error, { format }) => {
       const code = error instanceof ApiError ? error.code : 'UNKNOWN_ERROR'
-      setExportError(`HTML 导出失败（${code}）：${error instanceof Error ? error.message : '未知错误'}`)
-    }
-  }
-
-  const downloadPdf = async (report: ReportView) => {
-    setExportError(null)
-    try {
-      await reproductionApi.downloadReportPdf(report.report_id, `${report.title || 'report'}.pdf`)
-    } catch (error) {
-      const code = error instanceof ApiError ? error.code : 'UNKNOWN_ERROR'
-      if (code === 'PDF_UNAVAILABLE') {
-        setExportError(`PDF 不可用（后端 ${code}）：当前环境未提供 PDF 生成能力。`)
-      } else {
-        setExportError(`PDF 下载失败（${code}）：${error instanceof Error ? error.message : '未知错误'}`)
-      }
-    }
-  }
+      setExportError(`${format} 下载失败（${code}）：${error.message}`)
+    },
+  })
 
   const report = reportQuery.data
   const sections = useMemo(() => report?.sections ?? [], [report])
@@ -500,14 +488,19 @@ export default function ReproductionReportsPage() {
               报告详情
             </h2>
             <div className="rc-we-row" style={{ gap: 'var(--rc-space-2)' }}>
-              <button type="button" className="btn-ghost" onClick={() => void openHtml(selectedReportId)}>
-                <Icon as={ExternalLink} size="sm" />HTML 导出
+              <button
+                type="button"
+                className="btn-ghost"
+                disabled={!report?.html_available || exportMutation.isPending}
+                onClick={() => report && exportMutation.mutate({ report, format: 'HTML' })}
+              >
+                <Icon name="download" size="sm" />HTML 导出
               </button>
               <button
                 type="button"
                 className="btn-ghost"
-                disabled={report?.pdf_available === false}
-                onClick={() => report && void downloadPdf(report)}
+                disabled={!report?.pdf_available || exportMutation.isPending}
+                onClick={() => report && exportMutation.mutate({ report, format: 'PDF' })}
               >
                 <Icon name="download" size="sm" />PDF 下载
               </button>
@@ -516,7 +509,7 @@ export default function ReproductionReportsPage() {
 
           <div className="rc-we-card__body">
             {exportError && (
-              <div className="rc-we-note rc-we-note--warn" style={{ marginBottom: 'var(--rc-space-4)' }}>
+              <div className="rc-we-note rc-we-note--warn" role="alert" style={{ marginBottom: 'var(--rc-space-4)' }}>
                 <Icon as={AlertTriangle} size="md" className="rc-we-note__icon" />
                 <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{exportError}</p>
               </div>

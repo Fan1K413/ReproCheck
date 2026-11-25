@@ -192,7 +192,7 @@ async def build_bundle(db: AsyncSession, user: User, project_id: str) -> dict[st
                                "id": fact.fact_id or str(fact.id),
                                "detail": fact.field_key})
     for task in repro_tasks:
-        if task.needs_human_confirm:
+        if task.awaiting_human_confirmation:
             unresolved.append({"kind": "task_needs_human_confirm",
                                "id": task.id, "detail": task.title})
     for diagnostic in diagnostics:

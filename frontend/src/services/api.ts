@@ -73,6 +73,18 @@ export function downloadFilename(response: Response, fallback: string): string {
   return /filename\s*=\s*(?:"([^"]*)"|([^;]+))/i.exec(disposition)?.slice(1).find(Boolean)?.trim() || fallback
 }
 
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  // The browser may consume the object URL after the click handler returns.
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
   // multipart 上传不能手工设置 Content-Type，否则浏览器无法自动补全 boundary。
@@ -218,14 +230,7 @@ export const api = {
     }
     const blob = await response.blob()
     const filename = downloadFilename(response, `material-${materialId}`)
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = filename
-    document.body.appendChild(anchor)
-    anchor.click()
-    anchor.remove()
-    URL.revokeObjectURL(url)
+    downloadBlob(blob, filename)
   },
 
   deleteMaterial: (materialId: string) =>
@@ -318,14 +323,7 @@ export const api = {
 
     const blob = await response.blob()
     const filename = downloadFilename(response, `handoff-${projectId}.zip`)
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = filename
-    document.body.appendChild(anchor)
-    anchor.click()
-    anchor.remove()
-    URL.revokeObjectURL(url)
+    downloadBlob(blob, filename)
   },
 
   /** 上传 ZIP 校验：multipart 由 request 自动跳过 Content-Type，Bearer 仍由 request 注入。 */

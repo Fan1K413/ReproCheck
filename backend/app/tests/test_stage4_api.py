@@ -89,15 +89,22 @@ async def test_api_sandbox_blocked_run_and_report(client):
     assert r.status_code == 200
     assert r.json()["data"]["section_count"] == 14
     assert r.json()["data"]["html_available"] is True
+    assert r.json()["data"]["pdf_available"] is True
 
     report_id = r.json()["data"]["report_id"]
     r = await client.get(f"/api/v1/reproductions/reports/{report_id}/html")
     assert r.status_code == 200 and "第14章" in r.text
 
-    # PDF 不可用明确 501
+    # 没有预先保存的 PDF 时，直接使用已有的 HTML 生成含中文的 PDF。
     r = await client.get(f"/api/v1/reproductions/reports/{report_id}/pdf")
-    assert r.status_code == 501
-    assert r.json()["error"]["code"] == "PDF_UNAVAILABLE"
+    assert r.status_code == 200
+    assert r.headers["Content-Type"] == "application/pdf"
+    assert r.headers["Content-Disposition"].startswith("attachment;")
+    import pymupdf
+    with pymupdf.open(stream=r.content, filetype="pdf") as pdf:
+        text = "".join(page.get_text() for page in pdf)
+    assert "项目基本信息" in text
+    assert "最终复现结论与限制说明" in text
 
 
 @pytest.mark.asyncio
@@ -132,7 +139,7 @@ async def test_api_quality_from_real_db(client):
 
 @pytest.mark.asyncio
 async def test_api_manual_task_and_confirm(client):
-    from app.models.stage4 import ReproductionPlan
+    from app.models.stage4 import ReproductionPlan, ReproductionTask
     from app.main import app
     from app.db import get_db
     r = await client.post("/api/v1/projects", json={
@@ -149,9 +156,27 @@ async def test_api_manual_task_and_confirm(client):
     assert r.status_code == 200
     task = r.json()["data"]
     assert task["task_key"] == "T01"
+    assert task["needs_human_confirm"] is True
 
     r = await client.post(f"/api/v1/reproductions/tasks/{task['task_id']}/confirm")
     assert r.status_code == 200 and r.json()["data"]["confirmed"] is True
+    assert r.json()["data"]["status"] == "confirmed"
+
+    # 旧版已确认任务仍保留待确认标记，读取时也不能再次记为待确认。
+    async for db in factory():
+        saved = await db.get(ReproductionTask, task["task_id"])
+        assert saved is not None
+        assert saved.needs_human_confirm is False
+        db.add(ReproductionTask(id="rtask-legacy-confirmed", plan_id="rplan-task", project_id=pid,
+                                task_key="T02", title="旧版已确认任务", status="confirmed",
+                                feasibility="needs_human_review", needs_human_confirm=True))
+        await db.commit()
+        break
+    r = await client.get("/api/v1/reproductions/plans/rplan-task")
+    plan = r.json()["data"]
+    assert plan["feasibility_summary"] == {"unverifiable": 2}
+    assert all(item["status"] == "confirmed" and not item["needs_human_confirm"] for item in plan["tasks"])
+    assert all(item["feasibility"] == "unverifiable" for item in plan["dag"]["nodes"])
 
     # 重复 key 被拒
     r = await client.post("/api/v1/reproductions/plans/rplan-task/tasks", json={

@@ -67,7 +67,7 @@ plan → create_run → SecurityPreflight.scan + EnvDetector.detect
 |---|---|
 | 无真实 API Key | 规划/诊断接口复用 LLMService、无 Key 报 503，协议级 mock 验证逻辑 |
 | 无容器运行时 | 执行默认禁用，提供静态检查与环境分析 |
-| 无 weasyprint | PDF 不可用报 501，HTML 报告完整可用 |
+| 旧报告未保存 PDF | 用 PyMuPDF 从已生成的 HTML 按需生成 PDF |
 
 ## 7. 前序兼容
 

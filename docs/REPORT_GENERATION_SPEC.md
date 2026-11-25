@@ -20,8 +20,8 @@
 
 ## 4. 导出
 
-- HTML：`GET /reports/{id}/html`，完整独立可阅读（内联 CSS，深蓝科研风格）；
-- PDF：`GET /reports/{id}/pdf`，仅当 weasyprint 可用时生成；**不可用时返回 501 + PDF_UNAVAILABLE，不伪造 PDF**；
+- HTML 由 `GET /reports/{id}/html` 返回，报告页直接下载含内联样式的独立文件。
+- PDF 由 `GET /reports/{id}/pdf` 返回。优先提供已保存的 PDF，否则用 PyMuPDF 将已生成的 HTML 按需排版。两种内容都缺失时返回 `501 PDF_UNAVAILABLE`。
 - 报告版本：version 字段，支持重复生成新版本。
 
 ## 5. 范围声明（每份报告必含）

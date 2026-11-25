@@ -34,6 +34,14 @@ def test_syntax_error_classified_as_code():
     assert r.primary_category == "code_implementation_error"
 
 
+@pytest.mark.parametrize("prefix", ["", 'Traceback (most recent call last):\n  File "train.py", line 1\n    import numpy\n'])
+def test_missing_module_classified_as_dependency(prefix):
+    result = classify_failure(raw_log=f"{prefix}ModuleNotFoundError: No module named 'numpy'")
+    assert result.primary_category == "env_dependency_conflict"
+    assert "导入日志中的模块" in result.candidates[0].suggested_fix
+    assert all(candidate.category != "code_implementation_error" for candidate in result.candidates)
+
+
 def test_dataset_missing_classified():
     r = classify_failure(raw_log="FileNotFoundError: dataset/train.csv no such file or directory")
     assert r.primary_category == "dataset_missing"

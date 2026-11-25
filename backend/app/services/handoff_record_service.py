@@ -66,7 +66,7 @@ async def build_handoff_snapshot(db: AsyncSession, project_id: str) -> tuple[dic
         ResearchTask.status.in_(["todo", "in_progress", "blocked"])))).scalars().all()
     repro_tasks = (await db.execute(select(ReproductionTask).where(
         ReproductionTask.project_id == project_id))).scalars().all()
-    pending_repro = [t for t in repro_tasks if t.status in ("pending", "in_progress") or t.needs_human_confirm]
+    pending_repro = [t for t in repro_tasks if t.status in ("pending", "in_progress") or t.awaiting_human_confirmation]
     parse_tasks = (await db.execute(select(ParseTask).where(
         ParseTask.project_id == project_id, ParseTask.status.in_(ACTIVE_PARSE)))).scalars().all()
 

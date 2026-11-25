@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react'
-import { Route, Routes, useLocation, useNavigationType } from 'react-router-dom'
+import { matchPath, Route, Routes, useLocation, useNavigationType } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
 import { LoadingState } from './components/LoadingState'
 import { RequireAuth } from './components/RequireAuth'
@@ -21,6 +21,9 @@ export default function App() {
   const [isPending, startTransition] = useTransition()
   const lastLocationRef = useRef(location)
   const lastNavDirRef = useRef<'push' | 'pop' | 'replace'>('push')
+  const crossesLogin = Boolean(matchPath('/login', location.pathname) || matchPath('/login', displayLocation.pathname))
+  const routeLocation = crossesLogin ? location : displayLocation
+  const routePending = !crossesLogin && isPending
 
   useEffect(() => {
     if (token) warmCoreRoutes()
@@ -30,32 +33,32 @@ export default function App() {
     if (lastLocationRef.current === location) return
     lastLocationRef.current = location
 
-    if (location.pathname !== displayLocation.pathname) {
-      lastNavDirRef.current = navType === 'POP' ? 'pop' : navType === 'REPLACE' ? 'replace' : 'push'
-      // 在并发路由切换前同步抓取当前页面的视觉快照，用于旧页滑出 + 新页滑入双层转场
-      window.dispatchEvent(new CustomEvent('rc:capture-route-ghost'))
-      startTransition(() => {
-        setDisplayLocation(location)
-      })
-    } else {
-      // 同页内仅 query / hash 变化时直接更新，不触发跨页转场
+    // 认证切换直接使用新路由，避免保留旧页面的 Navigate 并重复重定向。
+    if (crossesLogin || location.pathname === displayLocation.pathname) {
       setDisplayLocation(location)
+      return
     }
-  }, [location, displayLocation.pathname, navType, startTransition])
+
+    lastNavDirRef.current = navType === 'POP' ? 'pop' : navType === 'REPLACE' ? 'replace' : 'push'
+    window.dispatchEvent(new CustomEvent('rc:capture-route-ghost'))
+    startTransition(() => {
+      setDisplayLocation(location)
+    })
+  }, [location, displayLocation.pathname, crossesLogin, navType, startTransition])
 
   const transitionCtx = useMemo(
     () => ({
-      displayLocation,
-      isPending,
+      displayLocation: routeLocation,
+      isPending: routePending,
       direction: lastNavDirRef.current,
     }),
-    [displayLocation, isPending],
+    [routeLocation, routePending],
   )
 
   return (
     <RouteTransitionContext.Provider value={transitionCtx}>
       <RouteProgressBar />
-      <Routes location={displayLocation}>
+      <Routes location={routeLocation}>
         <Route
           path="/login"
           element={
