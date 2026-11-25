@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.isolation import enforce_project_isolation
 from app.api.v1 import (
+    agentarts,
     api_tokens,
     assistant,
     audit_runs,
@@ -112,3 +113,6 @@ api_router.include_router(handoff_records.router, dependencies=_iso)
 api_router.include_router(project_health.router, dependencies=_iso)
 # 知识库：服务层按组织/项目成员身份做隔离，不挂项目隔离依赖
 api_router.include_router(knowledge.router)
+
+api_router.include_router(agentarts.router, dependencies=_iso)
+api_router.include_router(agentarts.tools_router)

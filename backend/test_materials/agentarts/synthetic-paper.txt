@@ -1,0 +1,5 @@
+Synthetic submission — ReproCheck competition sample
+
+Training settings: batch size = 64; learning rate = 0.001.
+Reproducibility setting: random seed = 42.
+Held-out experiment: split=test; positive_label=1; binary F1 = 0.92.

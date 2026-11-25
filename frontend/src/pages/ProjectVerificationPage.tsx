@@ -287,6 +287,7 @@ export default function ProjectVerificationPage() {
         description="可信结论、图表核验与确定性引擎"
         actions={
           <nav className="flex flex-wrap items-center gap-2">
+            <Link to={`${base}/paper-audits`} className="btn-primary">AgentArts 投稿前审计</Link>
             <Link to={`${base}/tasks`} className="btn-ghost">
               <Icon name="clipboardCheck" size="sm" />
               解析任务

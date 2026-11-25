@@ -102,6 +102,7 @@ export default function App() {
 
             {/* 第九阶段：能力驾驶舱 */}
             <Route path="projects/:projectId/verification" element={<LazyPages.ProjectVerificationPage />} />
+            <Route path="projects/:projectId/paper-audits" element={<LazyPages.PaperAuditPage />} />
             <Route path="projects/:projectId/handoff" element={<LazyPages.HandoffPage />} />
 
             {/* 第十一阶段：新增科研功能 */}

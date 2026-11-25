@@ -49,6 +49,7 @@ async def init_db() -> None:
     import app.models.modelhub  # noqa: F401 - 第十一阶段模型中心 7 表
     import app.models.stage12  # noqa: F401 - 第十二阶段生命周期/知识库/交接/工作项
     import app.models.data_audit  # noqa: F401 - 数据质量审计运行记录
+    import app.models.agentarts  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     llm_timeout: float = Field(default=60.0, gt=0)
     llm_max_retries: int = Field(default=1, ge=0, le=5)
 
+    # Published AgentArts workflow (API Key authentication).
+    agentarts_invoke_url: str = ""
+    agentarts_api_key: str = ""
+    agentarts_tool_secret: str = ""
+    agentarts_workflow_version: str = ""
+    agentarts_timeout: float = Field(default=90.0, ge=5, le=180)
+
     # DB
     database_url: str = f"sqlite+aiosqlite:///{_DEFAULT_SQLITE_PATH}"
     sync_database_url: str = f"sqlite:///{_DEFAULT_SQLITE_PATH}"

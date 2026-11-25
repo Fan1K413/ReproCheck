@@ -6,6 +6,10 @@
 
 > 定位依据见 `docs/STAGE9_COMPETITOR_AND_POSITIONING.md`。当前代码主阶段为第六阶段（后端 205 项测试通过），第九阶段正在做"研究驱动重构"（独立分支 `stage9/research-driven-refactor`）。
 
+## 华为 ICT 创新赛 · AgentArts 投稿前审计
+
+在「项目验证 → AgentArts 投稿前审计」选择论文和实验材料，运行已发布的 AgentArts 工作流。报告展示逐条证据和核验结果，并支持补料后复审。部署、环境变量、工作流节点和演示样例见 [AgentArts 接入说明](docs/AGENTARTS_COMPETITION.md)。
+
 ## 当前能力（真实状态，2026-11-19）
 
 状态口径：`已测试`=有真实后端测试；`仅API`=后端可用但前端无入口；`部分`=有边界；`未实现`=缺失。

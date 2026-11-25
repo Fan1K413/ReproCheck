@@ -1,0 +1,6 @@
+{
+  "split": "test",
+  "average": "binary",
+  "positive_label": 1,
+  "counts": { "tp": 45, "fp": 5, "fn": 15 }
+}
