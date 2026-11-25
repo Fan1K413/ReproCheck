@@ -255,6 +255,18 @@ async def build_project_verdict(db: AsyncSession, project_id: str) -> dict[str, 
     comparison_statuses = await _comparison_statuses(db, project_id, notes)
     benchmark_statuses = await _benchmark_statuses(db, project_id, notes)
 
+    return summarize_verdict(
+        project_id, materials=materials, facts=facts, evidence_items=evidence_items,
+        findings=findings, audit_evidences=audit_evidences, revisions=revisions,
+        metrics=metrics, comparison_rows=comparison_rows, diagnostics=diagnostics,
+        comparison_statuses=comparison_statuses, benchmark_statuses=benchmark_statuses, notes=notes,
+    )
+
+
+def summarize_verdict(
+    project_id: str, *, materials, facts, evidence_items, findings, audit_evidences,
+    revisions, metrics, comparison_rows, diagnostics, comparison_statuses=(), benchmark_statuses=(), notes=(),
+) -> dict[str, Any]:
     verdicts = _empty_verdicts()
     for fact in facts:
         verdicts[map_to_verdict("extraction", fact.extraction_status)] += 1
@@ -301,7 +313,7 @@ async def build_project_verdict(db: AsyncSession, project_id: str) -> dict[str, 
             "ratio": round(with_location / total_evidence, 4) if total_evidence else 0.0,
         },
         "counts": counts,
-        "notes": notes,
+        "notes": list(notes),
         "scope_note": SCOPE_NOTE,
         "framework_note": FRAMEWORK_NOTE,
     }

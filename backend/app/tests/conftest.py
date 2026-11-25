@@ -29,6 +29,12 @@ async def session_fixture(engine_fixture):
         yield s
 
 
+@pytest.fixture(autouse=True)
+def legacy_demo_endpoints(request, monkeypatch):
+    if "client" in request.fixturenames:
+        monkeypatch.setattr(settings, "allow_unauth_test_endpoints", True)
+
+
 @pytest_asyncio.fixture
 async def client(engine_fixture):
     factory = async_sessionmaker(engine_fixture, class_=AsyncSession, expire_on_commit=False)

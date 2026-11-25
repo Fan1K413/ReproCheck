@@ -159,15 +159,17 @@ def compare_baseline(current: dict, baseline: dict, metrics: list[str]) -> dict:
     """回归门禁：指定指标低于基线即退化；存在退化时 gate_pass=False。"""
     regressions: list[dict] = []
     improvements: list[dict] = []
+    lower_is_better = {"false_positive_rate", "false_negative_rate"}
     tolerance = 1e-9  # 浮点尾差不算退化
     for name in metrics:
         old = baseline.get(name)
         new = current.get(name)
         if old is None or new is None:
             continue  # 无法比较（如 TP=0 时 evidence accuracy 为 None）
-        if new < old - tolerance:
+        delta = old - new if name in lower_is_better else new - old
+        if delta < -tolerance:
             regressions.append({"metric": name, "baseline": old, "current": new})
-        elif new > old + tolerance:
+        elif delta > tolerance:
             improvements.append({"metric": name, "baseline": old, "current": new})
     return {
         "regressions": regressions,

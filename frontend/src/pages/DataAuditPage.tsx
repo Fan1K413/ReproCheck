@@ -25,7 +25,7 @@ import { LoadingState } from '../components/LoadingState'
 import { PageHeader } from '../components/PageHeader'
 import { StatusBadge, type Tone } from '../components/StatusBadge'
 import { formatBytes } from '../features/format'
-import { ApiError, api } from '../services/api'
+import { ApiError, api, IS_SITE_API } from '../services/api'
 import { dataAuditApi } from '../services/dataAuditApi'
 import { toast } from '../stores/toastStore'
 import type {
@@ -494,9 +494,14 @@ function RuleResultsTable({ ruleResults }: { ruleResults: Record<string, string>
 
 export default function DataAuditPage() {
   const { projectId = '' } = useParams()
+  return <DataAudit key={projectId} projectId={projectId} />
+}
+
+function DataAudit({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [includeCodeScan, setIncludeCodeScan] = useState(true)
+  const [auditFiles, setAuditFiles] = useState<File[]>([])
   const [materialId, setMaterialId] = useState<string | null>(null)
   const [fading, setFading] = useState(false)
 
@@ -508,7 +513,14 @@ export default function DataAuditPage() {
   })
 
   const runMutation = useMutation({
-    mutationFn: () => dataAuditApi.run(projectId, { include_code_scan: includeCodeScan }),
+    mutationFn: async () => {
+      if (!IS_SITE_API) return dataAuditApi.run(projectId, { include_code_scan: includeCodeScan })
+      if (auditFiles.length > 10 || auditFiles.reduce((sum, file) => sum + file.size, 0) > 512 * 1024) {
+        throw new ApiError('VALIDATION_ERROR', '最多选择 10 个 CSV 文件，总大小上限为 512 KiB。', null, 'frontend')
+      }
+      const files = await Promise.all(auditFiles.map(async file => ({ name: file.name, text: await file.text() })))
+      return dataAuditApi.run(projectId, { files, include_code_scan: false })
+    },
     onSuccess: (report) => {
       toast.success(`审计完成：${report.findings.length} 条发现，阻断 ${report.blocking_count} 条`)
       setSelectedId(report.audit_id)
@@ -580,11 +592,19 @@ export default function DataAuditPage() {
               执行审计
             </h3>
             <p className="rc4-panel__hint">
-              对项目已上传的数据材料做本地只读扫描：不上传、不外发、不修改原文件。
+              {IS_SITE_API
+                ? '所选 CSV 会发送给站点配置的计算服务，只保存审计报告。'
+                : '对项目已上传的数据材料做本地只读扫描，不修改原文件。'}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex cursor-pointer items-center gap-2 text-xs" style={{ color: 'var(--rc-text-muted)' }}>
+            {IS_SITE_API ? (
+              <label className="flex items-center gap-2 text-xs">
+                CSV（总计 ≤ 512 KiB）
+                <input type="file" accept=".csv,text/csv" multiple
+                  onChange={(event) => setAuditFiles(Array.from(event.target.files ?? []))} />
+              </label>
+            ) : <label className="flex cursor-pointer items-center gap-2 text-xs" style={{ color: 'var(--rc-text-muted)' }}>
               <input
                 type="checkbox"
                 checked={includeCodeScan}
@@ -593,11 +613,11 @@ export default function DataAuditPage() {
                 style={{ accentColor: 'var(--rc-accent)' }}
               />
               同时扫描代码（泄漏/预处理规则）
-            </label>
+            </label>}
             <button
               type="button"
               className="btn-primary"
-              disabled={runMutation.isPending || !projectId}
+              disabled={runMutation.isPending || !projectId || (IS_SITE_API && !auditFiles.length)}
               onClick={() => runMutation.mutate()}
             >
               {runMutation.isPending ? (
@@ -613,7 +633,7 @@ export default function DataAuditPage() {
 
       {runMutation.isPending && (
         <section className="rc4-panel">
-          <LoadingState message="正在执行数据审计…" hint="分块读取、哈希与规则计算均为本地确定性过程。" compact />
+          <LoadingState message="正在执行数据审计…" hint="正在计算文件哈希和审计规则。" compact />
         </section>
       )}
       {runMutation.isError && (

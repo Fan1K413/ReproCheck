@@ -71,6 +71,7 @@ export interface DataAuditRule {
 }
 
 export interface DataAuditRunRequest {
+  files?: Array<{ name: string; text: string }>
   include_code_scan?: boolean
   max_files?: number
   sample_rows?: number

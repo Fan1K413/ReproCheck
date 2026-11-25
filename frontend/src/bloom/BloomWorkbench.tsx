@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import type { BloomMode, BloomUnitId, WorkbenchUnitData } from './types'
 import { BloomStage } from './BloomStage'
 
@@ -22,6 +22,7 @@ function syncFocusParam(id: BloomUnitId | null) {
  */
 export function BloomWorkbench({ projectId, data }: BloomWorkbenchProps) {
   const [searchParams] = useSearchParams()
+  const { key: locationKey } = useLocation()
   const [mode, setMode] = useState<BloomMode>('rest')
   const [activeId, setActiveId] = useState<BloomUnitId | null>(null)
   const [selectedIds, setSelectedIds] = useState<BloomUnitId[]>([])
@@ -31,15 +32,15 @@ export function BloomWorkbench({ projectId, data }: BloomWorkbenchProps) {
   const ids = useMemo(() => new Set(units.map((unit) => unit.id)), [units])
 
   // 深链恢复：数据可能异步到达，必须等 units 就绪后再读取一次 URL。
-  const focusRestored = useRef(false)
+  const focus = searchParams.get('focus') as BloomUnitId | null
+  const canRestoreFocus = Boolean(focus && ids.has(focus))
   useEffect(() => {
-    if (focusRestored.current || ids.size === 0) return
-    focusRestored.current = true
-    const focus = searchParams.get('focus') as BloomUnitId | null
-    if (!focus || !ids.has(focus)) return
+    if (focus && !canRestoreFocus) return
+    setCombinedPair(null)
+    setSelectedIds([])
     setActiveId(focus)
-    setMode('open')
-  }, [ids, searchParams])
+    setMode(focus ? 'open' : 'rest')
+  }, [focus, canRestoreFocus, locationKey])
 
   const open = (id: BloomUnitId) => {
     if (!ids.has(id)) return

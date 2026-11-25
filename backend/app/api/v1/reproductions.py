@@ -12,7 +12,8 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_admin
+from app.api.deps import get_current_user, require_admin
+from app.api.isolation import require_project_write
 from app.core.errors import AppError, ok
 from app.db import get_db
 from app.models.stage4 import (
@@ -26,8 +27,10 @@ from app.models.stage4 import (
     ReproductionReport,
     ReproductionRun,
     ReproductionTask,
+    RemediationProposal,
     RemediationReview,
 )
+from app.models.stage6 import User
 from app.reproduction.diagnostics import FailureDiagnoser
 from app.reproduction.planner import ReproductionPlanner
 from app.reproduction.sandbox import ExecutionSandbox
@@ -139,7 +142,7 @@ class DiagnosticCreate(BaseModel):
 class ReviewCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     decision: str
-    reviewer: str
+    reviewer: str | None = None
     note: str = ""
     modified_value: str | None = None
 
@@ -153,7 +156,9 @@ class ReportCreate(BaseModel):
 
 # plans / tasks
 
-@router.post("/reproductions/plans", dependencies=[Depends(require_admin)])
+@router.post("/reproductions/plans", dependencies=[
+    Depends(require_admin), Depends(require_project_write("audit.run")),
+])
 async def create_plan(payload: PlanCreate, request: Request, db: AsyncSession = Depends(get_db)):
     planner = ReproductionPlanner(db)
     if payload.mode == "manual":
@@ -169,7 +174,13 @@ async def list_plans(project_id: str, request: Request, db: AsyncSession = Depen
         select(ReproductionPlan).where(ReproductionPlan.project_id == project_id)
         .order_by(ReproductionPlan.created_at.desc())
     )).scalars().all()
-    items = [_plan_view(p) for p in rows]
+    tasks = (await db.scalars(select(ReproductionTask).where(
+        ReproductionTask.project_id == project_id,
+    ).order_by(ReproductionTask.task_key))).all()
+    tasks_by_plan: dict[str, list[dict[str, Any]]] = {}
+    for task in tasks:
+        tasks_by_plan.setdefault(task.plan_id, []).append(_task_view(task))
+    items = [{**_plan_view(p), "tasks": tasks_by_plan.get(p.id, [])} for p in rows]
     return ok({"items": items, "total": len(items)}, getattr(request.state, "request_id", "-"))
 
 
@@ -197,7 +208,9 @@ async def get_plan(plan_id: str, request: Request, db: AsyncSession = Depends(ge
     return ok(data, getattr(request.state, "request_id", "-"))
 
 
-@router.post("/reproductions/plans/{plan_id}/tasks", dependencies=[Depends(require_admin)])
+@router.post("/reproductions/plans/{plan_id}/tasks", dependencies=[
+    Depends(require_admin), Depends(require_project_write("audit.run")),
+])
 async def add_task(plan_id: str, payload: TaskCreate, request: Request,
                    db: AsyncSession = Depends(get_db)):
     task = await ReproductionPlanner(db).add_manual_task(plan_id, payload.model_dump())
@@ -214,7 +227,9 @@ async def get_task(task_id: str, request: Request, db: AsyncSession = Depends(ge
     return ok(_task_view(t), getattr(request.state, "request_id", "-"))
 
 
-@router.post("/reproductions/tasks/{task_id}/confirm", dependencies=[Depends(require_admin)])
+@router.post("/reproductions/tasks/{task_id}/confirm", dependencies=[
+    Depends(require_admin), Depends(require_project_write("review.decide")),
+])
 async def confirm_task(task_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     t = (await db.execute(
         select(ReproductionTask).where(ReproductionTask.id == task_id)
@@ -229,7 +244,9 @@ async def confirm_task(task_id: str, request: Request, db: AsyncSession = Depend
 
 # runs / env / logs / artifacts / metrics
 
-@router.post("/reproductions/runs", dependencies=[Depends(require_admin)])
+@router.post("/reproductions/runs", dependencies=[
+    Depends(require_admin), Depends(require_project_write("audit.run")),
+])
 async def create_run(payload: RunCreate, request: Request, db: AsyncSession = Depends(get_db)):
     plan = (await db.execute(
         select(ReproductionPlan).where(ReproductionPlan.id == payload.plan_id)
@@ -269,7 +286,9 @@ async def get_run(run_id: str, request: Request, project_id: str | None = None,
     return ok(_run_view(r), getattr(request.state, "request_id", "-"))
 
 
-@router.post("/reproductions/runs/{run_id}/cancel", dependencies=[Depends(require_admin)])
+@router.post("/reproductions/runs/{run_id}/cancel", dependencies=[
+    Depends(require_admin), Depends(require_project_write("audit.run")),
+])
 async def cancel_run(run_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     return ok(await ExecutionSandbox(db).cancel(run_id), getattr(request.state, "request_id", "-"))
 
@@ -392,11 +411,17 @@ async def get_quality(project_id: str, request: Request, db: AsyncSession = Depe
 
 # diagnostics / remediation
 
-@router.post("/reproductions/diagnostics", dependencies=[Depends(require_admin)])
+@router.post("/reproductions/diagnostics", dependencies=[
+    Depends(require_admin), Depends(require_project_write("audit.run")),
+])
 async def create_diagnostic(payload: DiagnosticCreate, request: Request,
                             db: AsyncSession = Depends(get_db)):
     d = await FailureDiagnoser(db).diagnose(
         payload.run_id, payload.project_id, payload.problem)
+    proposals = (await db.scalars(
+        select(RemediationProposal).where(RemediationProposal.diagnostic_id == d.id)
+        .order_by(RemediationProposal.created_at, RemediationProposal.id)
+    )).all()
     return ok({
         "diagnostic_id": d.id, "run_id": d.run_id, "project_id": d.project_id,
         "problem": d.problem, "error_evidence": d.error_evidence,
@@ -405,15 +430,21 @@ async def create_diagnostic(payload: DiagnosticCreate, request: Request,
         "verification_method": d.verification_method,
         "needs_human_confirm": d.needs_human_confirm, "ai_available": d.ai_available,
         "prompt_version": d.prompt_version or "",
+        "remediation_proposals": [{
+            "proposal_id": p.id, "change_type": p.change_type, "target_file": p.target_file,
+            "original_value": p.original_value, "proposed_value": p.proposed_value,
+            "changes_research_conditions": p.changes_research_conditions, "status": p.status,
+        } for p in proposals],
         "created_at": d.created_at.isoformat() if d.created_at else "",
     }, getattr(request.state, "request_id", "-"))
 
 
-@router.post("/reproductions/remediations/{proposal_id}/review", dependencies=[Depends(require_admin)])
+@router.post("/reproductions/remediations/{proposal_id}/review",
+             dependencies=[Depends(require_project_write("review.decide"))])
 async def review_remediation(proposal_id: str, payload: ReviewCreate, request: Request,
-                             db: AsyncSession = Depends(get_db)):
+                             db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     r = await FailureDiagnoser(db).review_remediation(
-        proposal_id, decision=payload.decision, reviewer=payload.reviewer,
+        proposal_id, decision=payload.decision, reviewer=user.display_name, reviewer_user_id=user.id,
         note=payload.note, modified_value=payload.modified_value)
     return ok({
         "review_id": r.id, "proposal_id": r.proposal_id, "decision": r.decision,
@@ -425,7 +456,9 @@ async def review_remediation(proposal_id: str, payload: ReviewCreate, request: R
 
 # reports
 
-@router.post("/reproductions/reports", dependencies=[Depends(require_admin)])
+@router.post("/reproductions/reports", dependencies=[
+    Depends(require_admin), Depends(require_project_write("report.generate")),
+])
 async def create_report(payload: ReportCreate, request: Request, db: AsyncSession = Depends(get_db)):
     from app.reproduction.report import ReportGenerator
     report = await ReportGenerator(db).generate(

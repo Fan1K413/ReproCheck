@@ -14,6 +14,7 @@ if not exist "node_modules\vite\bin\vite.js" (
 
 set "NODE_EXE="
 if defined REPROCHECK_NODE if exist "%REPROCHECK_NODE%" set "NODE_EXE=%REPROCHECK_NODE%"
+if not defined NODE_EXE for /f "delims=" %%I in ('where.exe node.exe 2^>nul') do if not defined NODE_EXE set "NODE_EXE=%%I"
 if not defined NODE_EXE if exist "%ProgramFiles%\nodejs\node.exe" set "NODE_EXE=%ProgramFiles%\nodejs\node.exe"
 if not defined NODE_EXE if exist "%LOCALAPPDATA%\Programs\nodejs\node.exe" set "NODE_EXE=%LOCALAPPDATA%\Programs\nodejs\node.exe"
 if not defined NODE_EXE for /d %%D in ("%LOCALAPPDATA%\Doubao\User Data\sandbox_runtime\bases\*") do if exist "%%~D\node\node.exe" set "NODE_EXE=%%~D\node\node.exe"

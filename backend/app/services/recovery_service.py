@@ -21,7 +21,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.config import BACKEND_STORAGE, settings
 from app.core.errors import AppError
 from app.models import Material
 from app.models.stage7 import RecoveryPlan
@@ -57,8 +57,7 @@ def _load(raw: str | None, default: Any) -> Any:
 
 
 def _storage_root() -> Path:
-    # 与 material_service 一致：相对后端工作目录的 ./storage 目录
-    return Path("./storage").resolve()
+    return BACKEND_STORAGE
 
 
 class RecoveryService:

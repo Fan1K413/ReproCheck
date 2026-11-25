@@ -8,9 +8,10 @@ import json
 
 import httpx
 import pytest
+from sqlalchemy import select
 
 from app.core.config import settings
-from app.models import Project
+from app.models import ExtractedFact, Project
 from app.services.task_service import TaskService
 
 PAPER = "研究使用 Learning Rate 0.001, Batch Size 64, Epochs 100, 优化器 AdamW。"
@@ -36,7 +37,7 @@ def extract_payload(chunk_ids: list[str]):
 
 
 @pytest.mark.asyncio
-async def test_full_pipeline_text_material(client, monkeypatch):
+async def test_full_pipeline_text_material(client, monkeypatch, session_fixture):
     """上传 TXT → 解析 → 抽取 → 事实 → 证据 → 修订 → 概览。"""
     # 项目
     r = await client.post("/api/v1/projects", json={
@@ -122,6 +123,8 @@ async def test_full_pipeline_text_material(client, monkeypatch):
     revised = r.json()["data"]
     assert revised["parser_source"] == "human"
     assert revised["revision_count"] >= 1
+    row = await session_fixture.scalar(select(ExtractedFact).where(ExtractedFact.fact_id == fact["fact_id"]))
+    assert json.loads(row.ai_original_json)["normalized_value"] == fact["normalized_value"]
 
     r = await client.get(f"/api/v1/facts/{fact['fact_id']}/revisions")
     assert r.status_code == 200
@@ -142,6 +145,43 @@ async def test_full_pipeline_text_material(client, monkeypatch):
     r = await client.get(f"/api/v1/parse-tasks/{task['task_id']}")
     assert r.status_code == 200
     assert r.json()["data"]["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_upload_and_download_large_unicode_material(client, monkeypatch, tmp_path):
+    monkeypatch.setattr("app.services.material_service.STORAGE_ROOT", tmp_path)
+    response = await client.post("/api/v1/projects", json={"name": "上传与下载"})
+    project_id = response.json()["data"]["id"]
+    content = b"x" * (settings.max_request_bytes + 1)
+    response = await client.post(
+        "/api/v1/materials/upload", data={"project_id": project_id},
+        files={"file": ("研究材料.txt", content, "text/plain")},
+    )
+    assert response.status_code == 200, response.text
+    material_id = response.json()["data"]["material_id"]
+    response = await client.get(f"/api/v1/materials/{material_id}/download")
+    assert response.status_code == 200
+    assert response.content == content
+    assert "filename*=utf-8''" in response.headers["content-disposition"].lower()
+
+
+@pytest.mark.asyncio
+async def test_streamed_json_respects_request_limit(client, monkeypatch):
+    monkeypatch.setattr(settings, "max_request_bytes", 64)
+
+    async def body():
+        yield b'{"name":"'
+        yield b"x" * 128
+        yield b'"}'
+
+    request = client.build_request(
+        "POST", "/api/v1/projects", content=body(),
+        headers={"Content-Type": "application/json"},
+    )
+    assert "content-length" not in request.headers
+    response = await client.send(request)
+    assert response.status_code == 413
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
 def _init_with_llm(self, db, llm):

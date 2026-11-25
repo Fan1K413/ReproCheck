@@ -363,22 +363,29 @@ async def update_credential(cred_id: str, body: CredentialUpdate,
                             user: User = Depends(get_current_user),
                             db: AsyncSession = Depends(get_db)):
     row = await _own_credential(db, cred_id, user.id)
+    api_key = (body.api_key or "").strip()
+    if body.base_url is not None:
+        base_url = _resolved_base_url(row.provider_key, body.base_url)
+        spec = get_provider(row.provider_key)
+        previous_url = (row.base_url or spec.default_base_url).rstrip("/")
+        if base_url != previous_url and not api_key:
+            raise AppError("VALIDATION_ERROR", "更换服务地址时须重新提供 API 密钥。")
+        row.base_url = base_url
+    status = body.status if body.status is not None else row.status
+    if status not in ("active", "revoked", "disabled"):
+        raise AppError("VALIDATION_ERROR", "凭据状态非法。")
+    if status != "revoked" and row.status == "revoked" and not api_key:
+        raise AppError("VALIDATION_ERROR", "重新启用已吊销凭据时须提供 API 密钥。")
     if body.name is not None:
         row.name = body.name[:120]
-    if body.api_key:
-        row.key_ciphertext = encrypt_credential(body.api_key.strip())
-        row.key_hint = mask_key(body.api_key.strip())
+    if status == "revoked":
+        row.key_ciphertext = ""
+        row.key_hint = ""
+    elif api_key:
+        row.key_ciphertext = encrypt_credential(api_key)
+        row.key_hint = mask_key(api_key)
         row.last_error_code = None
-    if body.base_url is not None:
-        base_url = body.base_url.strip().rstrip("/")
-        spec = get_provider(row.provider_key)
-        if row.provider_key == "openai_compatible" or (spec and base_url != spec.default_base_url):
-            base_url = validate_base_url(base_url)
-        row.base_url = base_url
-    if body.status is not None:
-        if body.status not in ("active", "revoked", "disabled"):
-            raise AppError("VALIDATION_ERROR", "凭据状态非法。")
-        row.status = body.status
+    row.status = status
     row.updated_at = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
     await db.commit()
     return credential_view(row)
@@ -389,6 +396,8 @@ async def revoke_credential(cred_id: str, user: User = Depends(get_current_user)
                             db: AsyncSession = Depends(get_db)):
     row = await _own_credential(db, cred_id, user.id)
     row.status = "revoked"
+    row.key_ciphertext = ""
+    row.key_hint = ""
     await db.commit()
     return {"revoked": True, "id": cred_id}
 
@@ -433,6 +442,8 @@ async def verify_owned_key(cred_id: str, user: User = Depends(get_current_user),
                            db: AsyncSession = Depends(get_db)):
     """仅用于测试：确认密文可解密且属于当前用户，不返回明文。"""
     cred = await _own_credential(db, cred_id, user.id)
+    if cred.status != "active":
+        raise AppError("FORBIDDEN", "该凭据已停用。")
     plain = decrypt_credential(cred.key_ciphertext)
     return {"id": cred.id, "decryptable": bool(plain), "key_hint": mask_key(plain)}
 

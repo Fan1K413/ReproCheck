@@ -114,6 +114,11 @@ function UploadZone({ accept, label, hint, onUpload, busy }: { accept: string; l
 }
 
 export default function GuidedReproductionPage() {
+  const [params] = useSearchParams()
+  return <GuidedReproduction key={params.get('project') ?? ''} />
+}
+
+function GuidedReproduction() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const initialProject = params.get('project') ?? ''

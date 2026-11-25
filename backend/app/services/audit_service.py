@@ -129,7 +129,7 @@ class AuditService:
         ai_run = AIRun(id=run_id, project_id=project_id, run_type="demo_audit",
                        provider=self.llm.provider, model=self.llm.model, status="running")
         self.db.add(ai_run)
-        await self.db.flush()
+        await self.db.commit()
 
         try:
             # 第一层：AI 结构化抽取（两份材料各一次真实调用）

@@ -5,16 +5,18 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, require_admin, resolve_project_access
+from app.api.deps import get_current_user, require_admin
+from app.api.isolation import require_project_write
 from app.core.errors import AppError, ok
 from app.db import get_db
 from app.models import ExtractedFact, Material, SourceChunk
 from app.models.stage6 import User
+from app.parsers.limits import MAX_SINGLE_FILE_BYTES
 from app.services.material_service import MaterialService
 
 router = APIRouter(tags=["materials"])
@@ -33,12 +35,14 @@ def _view(m: Material, chunk_count: int = 0, fact_count: int = 0) -> dict[str, A
     }
 
 
-@router.post("/materials/upload", dependencies=[Depends(require_admin)])
+@router.post("/materials/upload", dependencies=[
+    Depends(require_admin), Depends(require_project_write("material.upload")),
+])
 async def upload_material(
     project_id: str = Form(...), file: UploadFile = File(...),
     request: Request = None, db: AsyncSession = Depends(get_db),
 ):
-    data = await file.read()
+    data = await file.read(MAX_SINGLE_FILE_BYTES + 1)
     service = MaterialService(db)
     try:
         material = await service.upload(project_id, file.filename or "unnamed", data)
@@ -57,7 +61,7 @@ class RepositoryLinkIn(BaseModel):
     name: str = Field(default="", max_length=200)
 
 
-@router.post("/materials/link-repository")
+@router.post("/materials/link-repository", dependencies=[Depends(require_project_write("material.upload"))])
 async def link_repository(
     body: RepositoryLinkIn,
     request: Request,
@@ -65,7 +69,6 @@ async def link_repository(
     user: User = Depends(get_current_user),
 ):
     """把代码仓库地址登记为项目材料；权限与项目成员规则一致。"""
-    await resolve_project_access(db, body.project_id, user)
     service = MaterialService(db)
     material = await service.link_repository(
         project_id=body.project_id, url=body.url, name=body.name,
@@ -78,15 +81,16 @@ async def list_materials(project_id: str, request: Request, db: AsyncSession = D
     rows = (await db.execute(
         select(Material).where(Material.project_id == project_id).order_by(Material.created_at.desc())
     )).scalars().all()
-    items = []
-    for m in rows:
-        cc = (await db.execute(
-            select(func.count(SourceChunk.id)).where(SourceChunk.material_id == m.id)
-        )).scalar() or 0
-        fc = (await db.execute(
-            select(func.count(ExtractedFact.id)).where(ExtractedFact.material_id == m.id)
-        )).scalar() or 0
-        items.append(_view(m, cc, fc))
+    ids = [m.id for m in rows]
+    chunk_counts = dict((await db.execute(
+        select(SourceChunk.material_id, func.count()).where(SourceChunk.material_id.in_(ids))
+        .group_by(SourceChunk.material_id)
+    )).all())
+    fact_counts = dict((await db.execute(
+        select(ExtractedFact.material_id, func.count()).where(ExtractedFact.material_id.in_(ids))
+        .group_by(ExtractedFact.material_id)
+    )).all())
+    items = [_view(m, chunk_counts.get(m.id, 0), fact_counts.get(m.id, 0)) for m in rows]
     return ok({"items": items, "total": len(items)}, getattr(request.state, "request_id", "-"))
 
 
@@ -134,15 +138,16 @@ async def download_material(material_id: str, db: AsyncSession = Depends(get_db)
     service = MaterialService(db)
     m = await service.get(material_id)
     path = await service.path_of(m)
-    content = path.read_bytes()
-    return Response(
-        content=content,
+    return FileResponse(
+        path,
         media_type=m.mime_type or "application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{m.source_name}"'},
+        filename=m.source_name,
     )
 
 
-@router.delete("/materials/{material_id}", dependencies=[Depends(require_admin)])
+@router.delete("/materials/{material_id}", dependencies=[
+    Depends(require_admin), Depends(require_project_write("material.delete")),
+])
 async def delete_material(material_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     service = MaterialService(db)
     result = await service.delete(material_id)

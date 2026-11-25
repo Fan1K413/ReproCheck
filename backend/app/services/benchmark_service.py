@@ -504,8 +504,8 @@ async def create_case(db: AsyncSession, user: User, payload: Any, rid: str = "")
         raise AppError("FORBIDDEN", "创建基准案例需要 case.manage 权限（researcher 及以上）。")
 
     is_public = _as_bool(data.get("is_public", False))
-    if is_public and not await user_has_permission(db, user, "org.manage", org_id=org_id):
-        raise AppError("FORBIDDEN", "发布公共案例需要组织管理员（org_admin）权限。")
+    if is_public and not user.is_platform_admin:
+        raise AppError("FORBIDDEN", "仅平台管理员可发布公共基准案例。")
 
     dataset_raw = _clean(data.get("dataset_name"))
     dataset_name = fs.normalize_value("dataset_name", dataset_raw)[0] if dataset_raw else ""

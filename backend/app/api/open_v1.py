@@ -11,12 +11,14 @@ from fastapi import APIRouter, Depends, File, Form, Header, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import check_project_permission, user_has_permission
 from app.core.errors import AppError, ok
 from app.db import get_db
 from app.models import Material, Project
 from app.models.stage2 import ParseTask
 from app.models.stage4 import ReproductionReport, ReproductionRun
 from app.models.stage6 import ApiToken, OrgMember, ProjectMember, User
+from app.parsers.limits import MAX_SINGLE_FILE_BYTES
 from app.services import api_token_service as tok
 from app.services.material_service import MaterialService
 from app.services.task_service import TaskService
@@ -83,6 +85,8 @@ async def create_project(request: Request, ctx=Depends(get_api_context), db: Asy
     started = time.perf_counter()
     token, user = ctx
     tok.check_scope(token, "project.write")
+    if token.org_id and not await user_has_permission(db, user, "project.create", org_id=token.org_id):
+        raise AppError("FORBIDDEN", "无权在指定组织创建项目。")
     body = await request.json()
     name = (body or {}).get("name")
     if not name:
@@ -106,10 +110,8 @@ async def upload_material(request: Request, project_id: str = Form(...), file: U
     started = time.perf_counter()
     token, user = ctx
     tok.check_scope(token, "material.write")
-    visible = await _visible_ids(db, user)
-    if visible is not None and project_id not in visible:
-        raise AppError("NOT_FOUND", "项目不存在或无权访问。")
-    data = await file.read()
+    await check_project_permission(db, user, project_id, "material.upload")
+    data = await file.read(MAX_SINGLE_FILE_BYTES + 1)
     material = await MaterialService(db).upload(project_id, file.filename or "unnamed", data)
     await _log(request, db, token, 200, started)
     return ok({"material_id": material.id, "parse_status": material.parse_status}, _rid(request))
@@ -127,9 +129,7 @@ async def start_audit(request: Request, ctx=Depends(get_api_context), db: AsyncS
     m = (await db.execute(select(Material).where(Material.id == material_id))).scalar_one_or_none()
     if m is None:
         raise AppError("NOT_FOUND", "材料不存在。")
-    visible = await _visible_ids(db, user)
-    if visible is not None and m.project_id not in visible:
-        raise AppError("NOT_FOUND", "材料不存在或无权访问。")
+    await check_project_permission(db, user, m.project_id, "audit.run")
     service = TaskService(db)
     task = await service.start(material_id)
     if task.status != "completed":

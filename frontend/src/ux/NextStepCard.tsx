@@ -7,7 +7,6 @@ import {
   useFactsSummary,
   useProjectMaterials,
   useProjectTasks,
-  useReproEnvironments,
   useReproPlans,
   useReproReports,
   useReproRuns,
@@ -38,12 +37,13 @@ export default function NextStepCard() {
     staleTime: 15_000,
   })
   const materials = useProjectMaterials(projectId ?? '')
-  const tasks = useProjectTasks(projectId ?? '')
-  const facts = useFactsSummary(projectId ?? '')
-  const plans = useReproPlans(projectId ?? '')
-  const environments = useReproEnvironments(projectId ?? '')
-  const runs = useReproRuns(projectId ?? '')
-  const reports = useReproReports(projectId ?? '')
+  const hasPaper = materials.data?.items.some((m) => ['pdf', 'readme', 'text'].includes(m.material_type))
+  const tasks = useProjectTasks(hasPaper ? projectId ?? '' : '')
+  const hasCompletedTask = tasks.data?.items.some((t) => ['completed', 'partially_completed'].includes(t.status))
+  const facts = useFactsSummary(hasCompletedTask ? projectId ?? '' : '')
+  const plans = useReproPlans(facts.data?.total ? projectId ?? '' : '')
+  const runs = useReproRuns(plans.data?.items.length ? projectId ?? '' : '')
+  const reports = useReproReports(runs.data?.items.length ? projectId ?? '' : '')
 
   const step = useMemo<Step | null>(() => {
     if (pathname === '/projects') {
@@ -66,7 +66,8 @@ export default function NextStepCard() {
       }
     }
     if (!projectId) return null
-    if (materials.isLoading || tasks.isLoading || facts.isLoading) {
+    if (materials.isLoading || tasks.isLoading || facts.isLoading ||
+        plans.isLoading || runs.isLoading || reports.isLoading) {
       return {
         title: '正在查看项目状态…',
         detail: '只读取真实项目数据，不会用示例进度代替。',
@@ -135,24 +136,13 @@ export default function NextStepCard() {
           : { label: '补充数据或代码', to: `/start/reproduce?project=${projectId}&step=3` },
       }
     }
-    const envCount = environments.data?.items?.length ?? 0
-    if (!envCount) {
-      return {
-        title: '第四步：确认实验环境',
-        detail: '规划已建立，但还没有记录运行环境。先对齐 Python、依赖与系统，减少“环境不一致”导致的假差异。',
-        action: '记录实验环境',
-        to: `/projects/${projectId}/reproduction/environment`,
-        secondary: { label: '查看规划', to: `/projects/${projectId}/reproduction` },
-      }
-    }
     const runCount = runs.data?.items?.length ?? 0
     if (!runCount) {
       return {
-        title: '环境已记录，开始一次复现',
-        detail: '下一步是执行或记录一次真实运行。若后端没有安全执行环境，系统会明确阻止，而不是假装跑完。',
-        action: '进入复现总览',
+        title: '第四步：创建复现运行',
+        detail: '创建运行时会记录实验环境。运行创建后，可查看 Python、依赖与系统信息。',
+        action: '创建复现运行',
         to: `/projects/${projectId}/reproduction`,
-        secondary: { label: '先检查规划', to: `/projects/${projectId}/reproduction` },
       }
     }
     const reportCount = reports.data?.items?.length ?? 0
@@ -175,7 +165,7 @@ export default function NextStepCard() {
   }, [
     pathname, projectId, projects.data, materials.data, materials.isLoading,
     tasks.data, tasks.isLoading, facts.data, facts.isLoading, plans.data,
-    environments.data, runs.data, reports.data,
+    plans.isLoading, runs.data, runs.isLoading, reports.data, reports.isLoading,
   ])
 
   if (!step) return null

@@ -49,6 +49,6 @@ async def validate_handoff(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> dict:
-    data = await file.read()
+    data = await file.read(svc.MAX_BUNDLE_BYTES + 1)
     result = await svc.validate_bundle(db, user, data, project_id)
     return ok(result, getattr(request.state, "request_id", "-"))

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, resolve_project_access
+from app.api.deps import check_project_permission, get_current_user, resolve_project_access
 from app.core.errors import ok
 from app.db import get_db
 from app.models.stage6 import User
@@ -36,7 +36,7 @@ async def list_gaps(project_id: str, request: Request,
 async def analyze_gaps(project_id: str, request: Request,
                        db: AsyncSession = Depends(get_db),
                        user: User = Depends(get_current_user)):
-    await resolve_project_access(db, project_id, user)
+    await check_project_permission(db, user, project_id, "audit.run")
     svc = EvidenceGapService(db)
     summary = await svc.analyze(project_id, user_id=user.id)
     return ok({"summary": summary, "items": await svc.list_gaps(project_id)}, _rid(request))
@@ -46,7 +46,7 @@ async def analyze_gaps(project_id: str, request: Request,
 async def create_tasks(project_id: str, payload: CreateTasksIn, request: Request,
                        db: AsyncSession = Depends(get_db),
                        user: User = Depends(get_current_user)):
-    await resolve_project_access(db, project_id, user)
+    await check_project_permission(db, user, project_id, "audit.run")
     svc = EvidenceGapService(db)
     tasks = await svc.create_tasks(project_id, payload.gap_ids, user_id=user.id)
     return ok({"items": tasks}, _rid(request))
@@ -67,7 +67,7 @@ async def confirm_task(task_id: str, request: Request, db: AsyncSession = Depend
                        user: User = Depends(get_current_user)):
     svc = EvidenceGapService(db)
     task = await svc._get_task(task_id)
-    await resolve_project_access(db, task.project_id, user)
+    await check_project_permission(db, user, task.project_id, "review.decide")
     await svc.confirm_task(task_id, user_id=user.id)
     return ok(svc._task_view(await svc._get_task(task_id)), _rid(request))
 
@@ -77,6 +77,6 @@ async def execute_task(task_id: str, request: Request, db: AsyncSession = Depend
                        user: User = Depends(get_current_user)):
     svc = EvidenceGapService(db)
     task = await svc._get_task(task_id)
-    await resolve_project_access(db, task.project_id, user)
+    await check_project_permission(db, user, task.project_id, "audit.run")
     await svc.execute_task(task_id, user_id=user.id)
     return ok(svc._task_view(await svc._get_task(task_id)), _rid(request))

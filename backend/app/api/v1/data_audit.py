@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import json
+from asyncio import to_thread
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -18,6 +19,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.isolation import require_project_write
 from app.core.errors import AppError, ok
 from app.dataaudit import RULE_CATALOG, run_data_audit
 from app.dataaudit.readers import MAX_FILES, MAX_ROWS_PER_FILE, MAX_SAMPLE_ROWS
@@ -50,7 +52,7 @@ async def _get_project(db: AsyncSession, project_id: str) -> Project:
     return project
 
 
-@router.post("/projects/{project_id}/data-audits")
+@router.post("/projects/{project_id}/data-audits", dependencies=[Depends(require_project_write("audit.run"))])
 async def run_project_data_audit(
     project_id: str,
     payload: DataAuditRunIn,
@@ -83,7 +85,8 @@ async def run_project_data_audit(
                 Path(m.stored_path).suffix.lower() == ".py":
             code_paths.append(m.stored_path)
 
-    report = run_data_audit(
+    report = await to_thread(
+        run_data_audit,
         project_id=project_id,
         data_roots=[data_root],
         code_files=code_paths,

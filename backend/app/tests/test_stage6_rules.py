@@ -10,14 +10,13 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import select
 
 from app.api.v1 import feedback as feedback_router
 from app.api.v1 import rag as rag_router
 from app.api.v1 import rules as rules_router
 from app.db import get_db
 from app.main import app
-from app.models.stage6 import OrgMember
+from app.models.stage6 import User
 
 
 def _register_routers() -> None:
@@ -31,10 +30,21 @@ def _register_routers() -> None:
 _register_routers()
 
 
-async def _register(client, email, password="password123", name="测试用户"):
+async def _register(client, email, password="password123", name="测试用户", *, platform_admin=True):
     r = await client.post("/api/v1/auth/register", json={"email": email, "password": password, "display_name": name})
     assert r.status_code == 200, r.text
-    return r.json()["data"]
+    data = r.json()["data"]
+    if platform_admin:
+        factory = app.dependency_overrides[get_db]
+        db_context = factory()
+        try:
+            db = await anext(db_context)
+            user = await db.get(User, data["user"]["id"])
+            user.is_platform_admin = True
+            await db.commit()
+        finally:
+            await db_context.aclose()
+    return data
 
 
 def _auth(token):
@@ -50,16 +60,6 @@ async def _project(client, token, name="C组项目"):
     r = await client.post("/api/v1/projects", json={"name": name}, headers=_auth(token))
     assert r.status_code == 200, r.text
     return r.json()["data"]["id"]
-
-
-async def _demote_to_member(user_id):
-    """把用户个人组织角色降为 member，使其不再具备 org 级 rule.manage。"""
-    factory = app.dependency_overrides[get_db]
-    async for db in factory():
-        m = (await db.execute(select(OrgMember).where(OrgMember.user_id == user_id))).scalar_one()
-        m.role_key = "member"
-        await db.commit()
-        break
 
 
 def _rule_create_body(rule_key="custom_param", logic=None, samples=None):
@@ -315,10 +315,9 @@ async def test_rule_manage_permission_enforced(client, monkeypatch):
     from app.core.config import settings
     monkeypatch.setattr(settings, "allow_unauth_test_endpoints", False)
     a = await _register(client, "perm-admin@example.com")
-    b = await _register(client, "perm-member@example.com")
-    await _demote_to_member(b["user"]["id"])
+    b = await _register(client, "perm-member@example.com", platform_admin=False)
 
-    # 非管理员（org member）不能创建规则 / 种子
+    # 自注册的个人组织管理员不能创建全局规则或种子。
     r = await client.post("/api/v1/rules", json=_rule_create_body(rule_key="no_perm"), headers=_auth(b["token"]))
     assert r.status_code == 403
     assert r.json()["error"]["code"] == "FORBIDDEN"

@@ -117,7 +117,7 @@ class FailureDiagnoser:
         return row
 
     async def review_remediation(self, proposal_id: str, *, decision: str,
-                                 reviewer: str, note: str = "",
+                                 reviewer: str, reviewer_user_id: str | None = None, note: str = "",
                                  modified_value: str | None = None) -> RemediationReview:
         if decision not in ("approve", "reject", "modify"):
             raise AppError("VALIDATION_ERROR", "审核决定必须是 approve/reject/modify。")
@@ -130,7 +130,7 @@ class FailureDiagnoser:
             note = (note + "；注意：该修改可能改变原始研究条件，不能称为严格复现").strip("；")
         review = RemediationReview(
             id=f"rev-{uuid.uuid4().hex[:14]}", proposal_id=proposal_id,
-            decision=decision, reviewer=reviewer, note=note,
+            decision=decision, reviewer=reviewer, reviewer_user_id=reviewer_user_id, note=note,
             modified_value=modified_value, original_preserved=True,
         )
         proposal.status = {"approve": "approved", "reject": "rejected", "modify": "modified"}[decision]

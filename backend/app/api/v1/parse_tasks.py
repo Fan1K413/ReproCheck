@@ -7,11 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import (
+    check_project_permission,
     get_optional_user,
     require_admin,
     require_write_user,
     resolve_project_access,
 )
+from app.api.isolation import require_project_write
 from app.core.errors import AppError, ok
 from app.db import get_db
 from app.models import Material
@@ -59,8 +61,7 @@ async def _task_for_request(
 ) -> ParseTask:
     """按 ID 读取任务并做项目级隔离。
 
-    全局隔离依赖目前只反查 stage4 的 task_id，这里对 parse_tasks 做二次校验，
-    确保非项目成员拿到 404 而不是任务状态。
+    查询参数若提供项目，必须与任务实际归属一致。
     """
     task = (await db.execute(select(ParseTask).where(ParseTask.id == task_id))).scalar_one_or_none()
     if task is None:
@@ -95,13 +96,15 @@ async def recover_stale_tasks(
     if user is not None and not user.is_platform_admin:
         if not project_id:
             raise AppError("FORBIDDEN", "非平台管理员需通过 project_id 限定恢复范围。")
-        await resolve_project_access(db, project_id, user)
+        await check_project_permission(db, user, project_id, "audit.run")
     service = TaskService(db)
     recovered = await service.recover_stale_tasks(project_id=project_id)
     return ok({"recovered": recovered}, getattr(request.state, "request_id", "-"))
 
 
-@router.post("/materials/{material_id}/parse", dependencies=[Depends(require_admin)])
+@router.post("/materials/{material_id}/parse", dependencies=[
+    Depends(require_admin), Depends(require_project_write("audit.run")),
+])
 async def start_parse(material_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     service = TaskService(db)
     task = await service.start(material_id)
@@ -130,17 +133,18 @@ async def get_task(
 @router.get("/parse-tasks")
 async def list_tasks(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     rows = (await db.execute(
-        select(ParseTask).where(ParseTask.project_id == project_id)
+        select(ParseTask, Material.source_name)
+        .outerjoin(Material, Material.id == ParseTask.material_id)
+        .where(ParseTask.project_id == project_id)
         .order_by(ParseTask.created_at.desc())
-    )).scalars().all()
-    items = []
-    for t in rows:
-        m = (await db.execute(select(Material).where(Material.id == t.material_id))).scalar_one_or_none()
-        items.append(_view(t, m.source_name if m else ""))
+    )).all()
+    items = [_view(task, source_name or "") for task, source_name in rows]
     return ok({"items": items, "total": len(items)}, getattr(request.state, "request_id", "-"))
 
 
-@router.post("/parse-tasks/{task_id}/retry", dependencies=[Depends(require_admin)])
+@router.post("/parse-tasks/{task_id}/retry", dependencies=[
+    Depends(require_admin), Depends(require_project_write("audit.run")),
+])
 async def retry_task(
     task_id: str,
     request: Request,
@@ -154,7 +158,9 @@ async def retry_task(
     return ok(_view(task, m.source_name if m else ""), getattr(request.state, "request_id", "-"))
 
 
-@router.post("/parse-tasks/{task_id}/pause", dependencies=[Depends(require_admin)])
+@router.post("/parse-tasks/{task_id}/pause", dependencies=[
+    Depends(require_admin), Depends(require_project_write("audit.run")),
+])
 async def pause_task(
     task_id: str,
     request: Request,
@@ -168,7 +174,9 @@ async def pause_task(
     return ok(_view(task, m.source_name if m else ""), getattr(request.state, "request_id", "-"))
 
 
-@router.post("/parse-tasks/{task_id}/resume", dependencies=[Depends(require_admin)])
+@router.post("/parse-tasks/{task_id}/resume", dependencies=[
+    Depends(require_admin), Depends(require_project_write("audit.run")),
+])
 async def resume_task(
     task_id: str,
     request: Request,
@@ -182,7 +190,9 @@ async def resume_task(
     return ok(_view(task, m.source_name if m else ""), getattr(request.state, "request_id", "-"))
 
 
-@router.delete("/parse-tasks/{task_id}", dependencies=[Depends(require_admin)])
+@router.delete("/parse-tasks/{task_id}", dependencies=[
+    Depends(require_admin), Depends(require_project_write("audit.run")),
+])
 async def cancel_task(
     task_id: str,
     request: Request,

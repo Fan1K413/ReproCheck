@@ -7,7 +7,7 @@ from app.core.config import Settings
 def test_default_dev_config_reports_issues():
     s = Settings(_env_file=None)
     issues = s.strict_production_check()
-    assert any("allow_unauth_test_endpoints" in i for i in issues)
+    assert s.allow_unauth_test_endpoints is False
     assert any("jwt_secret" in i for i in issues)
     assert any("CORS" in i for i in issues)
 
@@ -53,3 +53,11 @@ def test_cors_field_parses_both_formats():
     assert s.cors_origins == ["https://a.com", "https://b.com"]
     s.cors_allow_origins_raw = '["https://c.com"]'
     assert s.cors_origins == ["https://c.com"]
+
+
+def test_dotenv_production_settings(tmp_path):
+    env = tmp_path / ".env"
+    env.write_text("STRICT_PRODUCTION=1\nCORS_ALLOW_ORIGINS=https://lab.example.edu\n")
+    s = Settings(_env_file=env)
+    assert s.strict_production is True
+    assert s.cors_origins == ["https://lab.example.edu"]

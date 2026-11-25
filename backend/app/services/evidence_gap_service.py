@@ -171,7 +171,9 @@ class EvidenceGapService:
         if not fact_ids:
             return set()
         rows = (await self.db.execute(
-            select(EvidenceItem.fact_id).where(EvidenceItem.fact_id.in_(fact_ids))
+            select(EvidenceItem.fact_id).where(
+                EvidenceItem.fact_id.in_(fact_ids), EvidenceItem.verification_status == "verified",
+            )
         )).all()
         return {r[0] for r in rows}
 
@@ -295,11 +297,12 @@ class EvidenceGapService:
             select(EvidenceGap).where(EvidenceGap.id == task.gap_id)
         )).scalar_one_or_none()
         evidence = await self._extract_existing_evidence(task.project_id, task.linked_claim_id)
-        task.status = "completed"
+        resolved = evidence.get("resolved", False)
+        task.status = "completed" if resolved else "awaiting_input"
         task.executed_at = _now()
         task.result_evidence_json = _dump(evidence)
         self.db.add(task)
-        if gap is not None:
+        if resolved and gap is not None:
             gap.status = "closed"
             gap.resolved_at = _now()
             self.db.add(gap)
@@ -307,7 +310,7 @@ class EvidenceGapService:
             self.db, action="evidence_task.execute", actor_user_id=user_id,
             project_id=task.project_id, target_type="evidence_task", target_id=task.id,
             after={"evidence": evidence, "claim_id": task.linked_claim_id},
-            summary="补证完成，证据已回链主张",
+            summary="补证完成，证据已回链主张" if resolved else "现有材料不足以关闭证据缺口",
         )
         await self.db.commit()
         return task
@@ -319,15 +322,45 @@ class EvidenceGapService:
         target = next((f for f in facts if (f.fact_id or str(f.id)) == claim_id), None)
         if target is None:
             return {"found": False, "reason": "原始主张事实已不存在。"}
-        existing = await self._evidence_ids([target.fact_id or str(target.id)])
+        fact_id = target.fact_id or str(target.id)
+        existing = await self._evidence_ids([fact_id])
+        value = (target.normalized_value if target.normalized_value is not None else target.raw_value or "").strip()
+        resolved = self._missing_kind(target, value, fact_id in existing) is None
+        evidence_id = None
+        if self._missing_kind(target, value, True) is None and not resolved:
+            key, _ = normalize_field_key(target.field_key)
+            candidates = [
+                fact for fact in facts
+                if fact.fact_id and fact.material_id != target.material_id
+                and fact.parser_source == "program"
+                and (fact.unit or "") == (target.unit or "")
+                and normalize_field_key(fact.field_key)[0] == key
+                and (fact.normalized_value or fact.raw_value or "").strip() == value
+            ]
+            source = await self.db.scalar(select(EvidenceItem).where(
+                EvidenceItem.project_id == project_id,
+                EvidenceItem.fact_id.in_([fact.fact_id for fact in candidates]),
+                EvidenceItem.verification_status == "verified",
+            ).order_by(EvidenceItem.evidence_id).limit(1))
+            if source and source.quote and source.quote in (source.original_text or ""):
+                evidence_id = f"ev-{uuid.uuid4().hex[:14]}"
+                self.db.add(EvidenceItem(
+                    evidence_id=evidence_id, fact_id=fact_id, project_id=project_id,
+                    material_id=source.material_id, chunk_id=source.chunk_id, source_name=source.source_name,
+                    quote=source.quote, original_text=source.original_text, source_locator=source.source_locator,
+                    verification_status="verified",
+                ))
+                resolved = True
         return {
             "found": True,
-            "claim_id": target.fact_id or str(target.id),
+            "claim_id": fact_id,
             "field_key": target.field_key,
             "material_id": target.material_id,
             "source_name": target.source_name,
             "value": target.normalized_value if target.normalized_value is not None else target.raw_value,
-            "already_has_evidence": claim_id in existing,
+            "already_has_evidence": fact_id in existing,
+            "evidence_id": evidence_id,
+            "resolved": resolved,
         }
 
     async def _get_task(self, task_id: str) -> EvidenceTask:

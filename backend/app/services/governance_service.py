@@ -14,14 +14,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import resolve_project_access, user_has_permission
-from app.core.config import settings
+from app.core.config import BACKEND_STORAGE, settings
 from app.core.errors import AppError
 from app.core.security import new_id
 from app.models import ExtractedFact, Material, Project
 from app.models.stage6 import AiConsent, DataExportRequest, OrgMember, ProjectMember, User
 from app.services.trail_service import record_trail
 
-EXPORT_ROOT = Path("./storage/exports").resolve()
+EXPORT_ROOT = BACKEND_STORAGE / "exports"
 
 DATA_CLASSES = [
     {"level": "public", "label": "公开", "examples": ["公开基准案例", "已发布报告摘要"],
@@ -56,7 +56,9 @@ async def grant_ai_consent(db: AsyncSession, user: User, payload: dict, rid: str
     org_id = payload.get("org_id")
     if project_id:
         proj = await resolve_project_access(db, project_id, user, min_rank=3)  # project_lead+
-        org_id = org_id or proj.org_id
+        if org_id and org_id != proj.org_id:
+            raise AppError("VALIDATION_ERROR", "组织与项目归属不一致。")
+        org_id = proj.org_id
     else:
         if not org_id:
             rows = (await db.execute(select(OrgMember.org_id).where(
@@ -100,7 +102,14 @@ async def get_ai_consent(db: AsyncSession, user: User, project_id: str | None, o
     if project_id:
         stmt = stmt.where(AiConsent.project_id == project_id)
     elif org_id:
-        stmt = stmt.where(AiConsent.org_id == org_id)
+        if not await user_has_permission(db, user, "data.manage", org_id=org_id):
+            raise AppError("FORBIDDEN", "缺少权限：data.manage。")
+        stmt = stmt.where(AiConsent.org_id == org_id, AiConsent.project_id.is_(None))
+    elif not user.is_platform_admin:
+        managed_orgs = select(OrgMember.org_id).where(
+            OrgMember.user_id == user.id, OrgMember.role_key == "org_admin",
+        )
+        stmt = stmt.where(AiConsent.org_id.in_(managed_orgs), AiConsent.project_id.is_(None))
     rows = (await db.execute(stmt.order_by(AiConsent.granted_at.desc()))).scalars().all()
     active = rows[0] if rows else None
     return {"active": _consent_view(active) if active else None,
@@ -112,13 +121,15 @@ async def ensure_ai_consent(db: AsyncSession, project_id: str | None, org_id: st
     """LLM 调用前的授权门。require_ai_consent=False 时直接放行（兼容演示/测试）。"""
     if not settings.require_ai_consent:
         return
-    stmt = select(AiConsent).where(AiConsent.revoked_at.is_(None), AiConsent.allow_external_llm.is_(True))
+    stmt = select(AiConsent).where(AiConsent.revoked_at.is_(None))
+    row = None
     if project_id:
-        stmt = stmt.where((AiConsent.project_id == project_id) | (AiConsent.org_id == org_id))
-    elif org_id:
-        stmt = stmt.where(AiConsent.org_id == org_id)
-    row = (await db.execute(stmt)).scalars().first()
-    if row is None:
+        row = await db.scalar(stmt.where(AiConsent.project_id == project_id)
+                              .order_by(AiConsent.granted_at.desc()).limit(1))
+    if row is None and org_id:
+        row = await db.scalar(stmt.where(AiConsent.project_id.is_(None), AiConsent.org_id == org_id)
+                              .order_by(AiConsent.granted_at.desc()).limit(1))
+    if row is None or not row.allow_external_llm:
         raise AppError("AI_CONSENT_REQUIRED",
                        "未授权外部模型：请先在治理设置中授予 AI 外部模型调用同意。", status_code=403)
 

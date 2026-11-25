@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_optional_user, resolve_project_access
+from app.api.deps import get_optional_user, resolve_project_access, user_has_permission
 from app.core.errors import AppError, ok
 from app.db import get_db
 from app.models import Project
-from app.models.stage6 import OrgMember, ProjectMember, User
+from app.models.stage6 import OrgMember, ProjectMember, User, Workspace
 from app.schemas import ProjectCreate, ProjectListData, ProjectView
 from app.services.trail_service import record_trail
 
@@ -61,6 +61,12 @@ async def create_project(payload: ProjectCreate, request: Request, db: AsyncSess
         if user is not None and not org_id:
             om = (await db.execute(select(OrgMember).where(OrgMember.user_id == user.id))).scalars().first()
             org_id = om.org_id if om else None
+        if org_id and (user is None or not await user_has_permission(db, user, "project.create", org_id=org_id)):
+            raise AppError("FORBIDDEN", "无权在指定组织创建项目。")
+        if payload.workspace_id:
+            workspace = await db.get(Workspace, payload.workspace_id)
+            if not org_id or workspace is None or workspace.org_id != org_id:
+                raise AppError("NOT_FOUND", "工作空间不存在或无权访问。")
         p = Project(
             id=f"proj-{uuid.uuid4().hex[:16]}",
             name=payload.name, domain=payload.domain,
@@ -94,28 +100,43 @@ async def delete_project(project_id: str, request: Request, db: AsyncSession = D
         raise AppError("UNAUTHORIZED", "需要登录。", status_code=401)
     proj = await resolve_project_access(db, project_id, user, min_rank=3)  # project_lead+
 
-    from sqlalchemy import delete as sa_delete
+    from sqlalchemy import delete as sa_delete, update
 
     from app.models import Material
     from app.models.stage4 import (
         ExecutionArtifact, ExecutionEnvironment, ExecutionLog, FailureDiagnostic,
-        MetricComparison, RemediationProposal, ReproductionMetric, ReproductionPlan,
+        MetricComparison, RemediationProposal, RemediationReview, ReproductionMetric, ReproductionPlan,
         ReproductionReport, ReproductionRun, ReproductionTask,
     )
-    from app.models.stage6 import Comment, ReviewRequest
+    from app.models.data_audit import DataAuditRun
+    from app.models.modelhub import TaskModelBinding
+    from app.models.stage6 import AiConsent, Comment, RepositorySnapshot, ReviewRequest
+    from app.models.stage7 import EvidenceGap, EvidenceTask, NodeAttempt, RecoveryPlan, Workflow, WorkflowEvent, WorkflowNode
+    from app.models.stage12 import KnowledgeEntry
     from app.services.material_service import MaterialService
 
     # 物理材料文件 + DB 级联（chunks/facts/evidence）
     svc = MaterialService(db)
     materials = (await db.execute(select(Material).where(Material.project_id == project_id))).scalars().all()
+    stored_paths = [m.stored_path for m in materials]
     for m in materials:
-        await svc.delete(m.id)
+        await svc.delete(m.id, commit=False)
 
     # 复现引擎关联（按 project_id 清理；任务随计划 FK 级联）
+    proposal_ids = select(RemediationProposal.id).where(RemediationProposal.project_id == project_id)
+    await db.execute(sa_delete(RemediationReview).where(RemediationReview.proposal_id.in_(proposal_ids)))
+    node_ids = select(WorkflowNode.id).where(WorkflowNode.project_id == project_id)
+    await db.execute(sa_delete(NodeAttempt).where(NodeAttempt.node_id.in_(node_ids)))
     for model in (ExecutionLog, ExecutionArtifact, ReproductionMetric, MetricComparison,
                   FailureDiagnostic, RemediationProposal, ReproductionRun,
-                  ExecutionEnvironment, ReproductionReport, ReproductionTask, ReproductionPlan):
+                  ExecutionEnvironment, ReproductionReport, ReproductionTask, ReproductionPlan,
+                  WorkflowEvent, WorkflowNode, Workflow, EvidenceTask, EvidenceGap, RecoveryPlan,
+                  DataAuditRun, RepositorySnapshot, AiConsent, TaskModelBinding):
         await db.execute(sa_delete(model).where(model.project_id == project_id))
+    await db.execute(sa_delete(KnowledgeEntry).where(
+        KnowledgeEntry.project_id == project_id, KnowledgeEntry.visibility == "project",
+    ))
+    await db.execute(update(KnowledgeEntry).where(KnowledgeEntry.project_id == project_id).values(project_id=None))
     # 协作关联（NotebookCell 随材料 FK 级联清理）
     await db.execute(sa_delete(Comment).where(Comment.project_id == project_id))
     await db.execute(sa_delete(ReviewRequest).where(ReviewRequest.project_id == project_id))
@@ -126,5 +147,7 @@ async def delete_project(project_id: str, request: Request, db: AsyncSession = D
                        before={"name": proj.name}, summary="删除项目并级联清理", request_id=rid)
     await db.delete(proj)
     await db.commit()
+    for path in stored_paths:
+        svc.remove_file(path)
     return ok({"deleted": True, "project_id": project_id,
                "materials_removed": len(materials)}, rid)

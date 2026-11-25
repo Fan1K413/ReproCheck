@@ -76,11 +76,12 @@ async def _snapshot(db: AsyncSession, project_id: str, run: ReproductionRun) -> 
     # 并在结果中明确标注该关联不是运行级强绑定，避免伪造因果关系。
     snap = (await db.execute(select(RepositorySnapshot).where(
         RepositorySnapshot.project_id == project_id,
+        RepositorySnapshot.commit_sha != "",
         RepositorySnapshot.fetched_at <= run.created_at,
     ).order_by(RepositorySnapshot.fetched_at.desc()).limit(1))).scalar_one_or_none()
     if snap is None:
         snap = (await db.execute(select(RepositorySnapshot).where(
-            RepositorySnapshot.project_id == project_id).order_by(
+            RepositorySnapshot.project_id == project_id, RepositorySnapshot.commit_sha != "").order_by(
             RepositorySnapshot.fetched_at.desc()).limit(1))).scalar_one_or_none()
     frameworks = _json(env.frameworks_json, {}) if env else {}
     hardware = _json(env.hardware_json, {}) if env else {}

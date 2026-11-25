@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_admin
+from app.api.isolation import find_fact, require_project_write
 from app.core.errors import AppError, ok
 from app.db import get_db
 from app.models import ExtractedFact, Material, SourceChunk
@@ -86,12 +87,12 @@ async def list_facts(
     return ok({"items": items, "total": len(items)}, getattr(request.state, "request_id", "-"))
 
 
-@router.patch("/facts/{fact_id}", dependencies=[Depends(require_admin)])
+@router.patch("/facts/{fact_id}", dependencies=[
+    Depends(require_admin), Depends(require_project_write("fact.revise")),
+])
 async def patch_fact(fact_id: str, payload: FactPatch, request: Request,
                      db: AsyncSession = Depends(get_db)):
-    f = (await db.execute(
-        select(ExtractedFact).where(ExtractedFact.fact_id == fact_id)
-    )).scalar_one_or_none()
+    f = await find_fact(db, fact_id)
     if f is None:
         raise AppError("NOT_FOUND", "事实不存在。")
 
@@ -103,7 +104,6 @@ async def patch_fact(fact_id: str, payload: FactPatch, request: Request,
         old = getattr(f, field)
         if old != new:
             changes.append((field, old, new))
-            setattr(f, field, new)
 
     if changes:
         # 第一次人工修订时保存 AI 原始快照，后续修订不再覆盖
@@ -115,6 +115,7 @@ async def patch_fact(fact_id: str, payload: FactPatch, request: Request,
         f.parser_source = "human"
         f.revision_count = (f.revision_count or 0) + 1
         for field, old, new in changes:
+            setattr(f, field, new)
             db.add(FactRevision(
                 revision_id=f"rev-{uuid.uuid4().hex[:14]}", fact_id=fact_id,
                 field_key=field, old_value=old, new_value=new,

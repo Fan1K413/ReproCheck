@@ -8,10 +8,12 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import zipfile
 from itertools import islice
 from pathlib import Path
 from typing import Any
 
+from app.parsers.limits import MAX_ZIP_TOTAL_UNCOMPRESSED
 from app.schemas.parsing import DataLocator, ParseResult, SourceChunk
 
 PARSER_VERSION = "data-v1"
@@ -172,6 +174,12 @@ def _parse_xlsx(path: Path, *, material_id: str, project_id: str) -> ParseResult
         )
 
     try:
+        with zipfile.ZipFile(path) as archive:
+            if sum(entry.file_size for entry in archive.infolist()) > MAX_ZIP_TOTAL_UNCOMPRESSED:
+                return ParseResult(
+                    **base, parser_version=PARSER_VERSION, status="failed",
+                    error_code="SUSPICIOUS_ARCHIVE", error_message="XLSX 解压总量超过安全限制。",
+                )
         workbook = load_workbook(path, read_only=True, data_only=True)
     except Exception as exc:  # noqa: BLE001
         return ParseResult(

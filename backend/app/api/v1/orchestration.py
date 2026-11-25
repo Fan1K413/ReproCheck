@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, resolve_project_access
+from app.api.deps import check_project_permission, get_current_user, resolve_project_access
+from app.api.isolation import require_project_write
 from app.core.errors import ok
 from app.db import get_db
 from app.models.stage6 import User
@@ -71,7 +72,8 @@ async def list_workflows(project_id: str, request: Request,
     return ok({"items": [svc._wf_view(w) for w in rows]}, _rid(request))
 
 
-@router.post("/projects/{project_id}/workflows/templates/{template_key}")
+@router.post("/projects/{project_id}/workflows/templates/{template_key}",
+             dependencies=[Depends(require_project_write("audit.run"))])
 async def create_from_template(project_id: str, template_key: str, payload: TemplateCreateIn,
                                request: Request, db: AsyncSession = Depends(get_db),
                                user: User = Depends(get_current_user)):
@@ -84,7 +86,8 @@ async def create_from_template(project_id: str, template_key: str, payload: Temp
     return ok(await svc.workflow_view(wf.id), _rid(request))
 
 
-@router.post("/projects/{project_id}/workflows/manual")
+@router.post("/projects/{project_id}/workflows/manual",
+             dependencies=[Depends(require_project_write("audit.run"))])
 async def create_manual(project_id: str, payload: ManualCreateIn, request: Request,
                         db: AsyncSession = Depends(get_db),
                         user: User = Depends(get_current_user)):
@@ -111,7 +114,7 @@ async def start_workflow(workflow_id: str, request: Request, db: AsyncSession = 
                          user: User = Depends(get_current_user)):
     svc = OrchestrationService(db)
     wf = await svc._get_workflow(workflow_id)
-    await resolve_project_access(db, wf.project_id, user)
+    await check_project_permission(db, user, wf.project_id, "audit.run")
     await svc.start(workflow_id, user_id=user.id)
     return ok(await svc.workflow_view(workflow_id), _rid(request))
 
@@ -121,7 +124,7 @@ async def pause_workflow(workflow_id: str, request: Request, db: AsyncSession = 
                          user: User = Depends(get_current_user)):
     svc = OrchestrationService(db)
     wf = await svc._get_workflow(workflow_id)
-    await resolve_project_access(db, wf.project_id, user)
+    await check_project_permission(db, user, wf.project_id, "audit.run")
     await svc.pause(workflow_id, user_id=user.id)
     return ok(await svc.workflow_view(workflow_id), _rid(request))
 
@@ -131,7 +134,7 @@ async def resume_workflow(workflow_id: str, request: Request, db: AsyncSession =
                           user: User = Depends(get_current_user)):
     svc = OrchestrationService(db)
     wf = await svc._get_workflow(workflow_id)
-    await resolve_project_access(db, wf.project_id, user)
+    await check_project_permission(db, user, wf.project_id, "audit.run")
     await svc.resume(workflow_id, user_id=user.id)
     return ok(await svc.workflow_view(workflow_id), _rid(request))
 
@@ -141,7 +144,7 @@ async def cancel_workflow(workflow_id: str, request: Request, db: AsyncSession =
                           user: User = Depends(get_current_user)):
     svc = OrchestrationService(db)
     wf = await svc._get_workflow(workflow_id)
-    await resolve_project_access(db, wf.project_id, user)
+    await check_project_permission(db, user, wf.project_id, "audit.run")
     result = await svc.cancel(workflow_id, user_id=user.id)
     return ok(result, _rid(request))
 
@@ -151,8 +154,8 @@ async def confirm_node(workflow_id: str, node_id: str, payload: ConfirmIn, reque
                        db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     svc = OrchestrationService(db)
     wf = await svc._get_workflow(workflow_id)
-    await resolve_project_access(db, wf.project_id, user)
-    await svc.confirm_node(node_id, payload.decision, note=payload.note, user_id=user.id)
+    await check_project_permission(db, user, wf.project_id, "review.decide")
+    await svc.confirm_node(workflow_id, node_id, payload.decision, note=payload.note, user_id=user.id)
     return ok(await svc.workflow_view(workflow_id), _rid(request))
 
 
@@ -161,6 +164,6 @@ async def retry_node(workflow_id: str, node_id: str, request: Request,
                      db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     svc = OrchestrationService(db)
     wf = await svc._get_workflow(workflow_id)
-    await resolve_project_access(db, wf.project_id, user)
-    await svc.retry_node(node_id, user_id=user.id)
+    await check_project_permission(db, user, wf.project_id, "audit.run")
+    await svc.retry_node(workflow_id, node_id, user_id=user.id)
     return ok(await svc.workflow_view(workflow_id), _rid(request))

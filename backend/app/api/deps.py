@@ -133,6 +133,16 @@ async def resolve_project_access(
     return proj
 
 
+async def check_project_permission(
+    db: AsyncSession, user: User, project_id: str, permission: str,
+) -> None:
+    project = await resolve_project_access(db, project_id, user)
+    if not await user_has_permission(
+        db, user, permission, org_id=project.org_id, project_id=project.id,
+    ):
+        raise AppError("FORBIDDEN", f"缺少权限：{permission}")
+
+
 def require_permission(perm: str, org_param: str = "org_id", project_param: str = "project_id"):
     """权限校验依赖工厂：从路径/查询参数取 org_id/project_id 后校验。"""
     async def _dep(

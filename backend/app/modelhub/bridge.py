@@ -19,6 +19,7 @@ class TaskLLM:
                  injected_llm: Any | None = None) -> None:
         self.db = db
         self.task_key = task_key
+        self.project_id: str | None = None
         self.injected_llm = injected_llm
         self.provider = "modelhub"
         self.model = "task-bound"
@@ -33,7 +34,7 @@ class TaskLLM:
         else:
             resp = await model_gateway.chat(
                 messages, response_schema=response_schema, max_tokens=max_tokens,
-                task_key=self.task_key, db=self.db)
+                task_key=self.task_key, db=self.db, project_id=self.project_id)
         # 记录任务实际使用的模型，供 LLMMeta / ai_runs 使用
         self.provider = getattr(resp, "provider", self.provider)
         self.model = getattr(resp, "model", self.model)

@@ -87,7 +87,16 @@ STAGE2_TABLES = [
 
 async def migrate_stage2(engine: AsyncEngine | None = None) -> dict:
     """幂等执行第二阶段迁移，返回统计供测试与日志使用。"""
-    eng = engine or _make_sync_backed_engine()
+    if engine is not None:
+        return await _apply_stage2(engine)
+    engine = _make_sync_backed_engine()
+    try:
+        return await _apply_stage2(engine)
+    finally:
+        await engine.dispose()
+
+
+async def _apply_stage2(engine: AsyncEngine) -> dict:
     stats = {"columns_added": 0, "indexes_added": 0, "tables_expected": len(STAGE2_TABLES)}
 
     def _inspect(conn):
@@ -102,7 +111,7 @@ async def migrate_stage2(engine: AsyncEngine | None = None) -> dict:
                         for t in insp.get_table_names()},
         }
 
-    async with eng.begin() as conn:
+    async with engine.begin() as conn:
         state = await conn.run_sync(_inspect)
 
         # 补列（仅当表存在）

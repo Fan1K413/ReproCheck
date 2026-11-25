@@ -135,6 +135,10 @@ function QualityCard({ dimension }: { dimension: QualityDimension }) {
 
 export default function ReproductionComparisonPage() {
   const pid = useParams().pid ?? ''
+  return <Comparison key={pid} pid={pid} />
+}
+
+function Comparison({ pid }: { pid: string }) {
   useTrackProject(pid)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [activeMetric, setActiveMetric] = useState<string | null>(null)

@@ -180,11 +180,18 @@ export default function IntegrationsPage() {
   })
   const [syncRepo, setSyncRepo] = useState('')
   const [syncRef, setSyncRef] = useState('')
+  const [syncProjectId, setSyncProjectId] = useState('')
+  const projectsQuery = useQuery({ queryKey: ['projects'], queryFn: api.getProjects })
+  const connectionProjects = (projectsQuery.data?.items ?? []).filter((project) =>
+    (project.org_id ?? null) === (selectedConn?.org_id ?? null),
+  )
   const [syncError, setSyncError] = useState<string | null>(null)
 
   const syncMutation = useMutation({
-    mutationFn: (vars: { connId: string; repo: string; ref: string }) =>
-      stage6Api.syncRepository(vars.connId, { repo_full_name: vars.repo, ref: vars.ref || undefined }),
+    mutationFn: (vars: { connId: string; repo: string; ref: string; projectId?: string }) =>
+      stage6Api.syncRepository(vars.connId, {
+        repo_full_name: vars.repo, ref: vars.ref || undefined, project_id: vars.projectId,
+      }),
     onSuccess: (snapshot) => {
       void queryClient.invalidateQueries({ queryKey: ['stage6-snapshots', snapshot.connection_id] })
       if (snapshot.status === 'synced') toast.success('快照同步成功，已获取真实 commit。')
@@ -202,7 +209,10 @@ export default function IntegrationsPage() {
       setSyncError('该仓库不在此连接的白名单内，后端将拒绝同步。'); return
     }
     setSyncError(null)
-    syncMutation.mutate({ connId: selectedConn.connection_id, repo, ref: syncRef.trim() })
+    syncMutation.mutate({
+      connId: selectedConn.connection_id, repo, ref: syncRef.trim(),
+      projectId: connectionProjects.find((project) => project.id === syncProjectId)?.id,
+    })
   }
 
   const freshResult = syncMutation.data && syncMutation.data.connection_id === syncConnId ? syncMutation.data : null
@@ -212,7 +222,6 @@ export default function IntegrationsPage() {
     : null
 
   /* ---------------- Notebook 视图 ---------------- */
-  const projectsQuery = useQuery({ queryKey: ['projects'], queryFn: api.getProjects })
   const projects = projectsQuery.data?.items ?? []
   const [nbProjectId, setNbProjectId] = useState<string | null>(null)
   const nbProject =
@@ -416,6 +425,17 @@ export default function IntegrationsPage() {
                       <label className="field-label" htmlFor="sync-ref">分支 / Tag（可选）</label>
                       <input id="sync-ref" className="field-input mono" value={syncRef}
                         onChange={(e) => setSyncRef(e.target.value)} placeholder="留空则使用远端默认 HEAD" />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="sync-project">关联项目（可选）</label>
+                      <select id="sync-project" className="field-input"
+                        value={connectionProjects.some((project) => project.id === syncProjectId) ? syncProjectId : ''}
+                        onChange={(event) => setSyncProjectId(event.target.value)}>
+                        <option value="">仅保存到仓库连接</option>
+                        {connectionProjects.map((project) => (
+                          <option key={project.id} value={project.id}>{project.name}</option>
+                        ))}
+                      </select>
                     </div>
                     {syncError && <p className="text-xs font-medium" style={{ color: 'var(--rc-danger)' }}>{syncError}</p>}
                     {selectedConn.status === 'revoked' && <p className="text-xs font-medium" style={{ color: 'var(--rc-warning)' }}>连接已撤销，无法同步。</p>}

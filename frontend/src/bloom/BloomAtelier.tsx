@@ -278,6 +278,7 @@ export function BloomAtelier({ projectId, data }: { projectId: string; data: Wor
               <Icon as={CircleDot} size={9} />
               工坊
             </span>
+            <Link to={`/projects/${projectId}/workbench?view=loom`}>证据织机</Link>
           </nav>
 
           <div className="bloom-atelier__readout">

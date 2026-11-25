@@ -110,8 +110,6 @@ async def _links(db: AsyncSession, entry_id: str) -> list[dict]:
 
 
 async def create_entry(db: AsyncSession, user: User, payload: dict, request_id: str = "") -> dict:
-    if not await user_has_permission(db, user, "knowledge.write"):
-        raise AppError("FORBIDDEN", "缺少权限：knowledge.write。")
     category = payload.get("category")
     if category not in KNOWLEDGE_CATEGORIES:
         raise AppError("VALIDATION_ERROR", f"category 须为 {sorted(KNOWLEDGE_CATEGORIES)}。")
@@ -124,9 +122,13 @@ async def create_entry(db: AsyncSession, user: User, payload: dict, request_id: 
         raise AppError("VALIDATION_ERROR", "title 与 body 不能为空。")
 
     org_id, project_id = await _resolve_scope(db, user, payload.get("project_id"), payload.get("org_id"))
+    if not await user_has_permission(db, user, "knowledge.write", org_id=org_id, project_id=project_id):
+        raise AppError("FORBIDDEN", "缺少权限：knowledge.write。")
     visibility = payload.get("visibility") or ("project" if project_id else "org")
     if visibility not in ("org", "project"):
         raise AppError("VALIDATION_ERROR", "visibility 须为 org 或 project。")
+    if visibility == "project" and not project_id:
+        raise AppError("VALIDATION_ERROR", "项目可见的知识条目必须指定项目。")
 
     entry = KnowledgeEntry(
         id=new_id("ke"), org_id=org_id, project_id=project_id, category=category,
@@ -161,7 +163,11 @@ async def create_entry(db: AsyncSession, user: User, payload: dict, request_id: 
 
 async def revise_entry(db: AsyncSession, user: User, entry_id: str, payload: dict,
                        request_id: str = "") -> dict:
-    entry = await _get_visible_entry(db, user, entry_id, write=True)
+    entry = await _get_visible_entry(db, user, entry_id)
+    if not await user_has_permission(
+        db, user, "knowledge.write", org_id=entry.org_id, project_id=entry.project_id,
+    ):
+        raise AppError("FORBIDDEN", "缺少权限：knowledge.write。")
     if entry.status in ("deprecated", "retracted"):
         raise AppError("CONFLICT", "已过时/撤回的条目不能直接修订，请先恢复或新建替代条目。")
     body = (payload.get("body") or "").strip()
@@ -195,7 +201,7 @@ async def revise_entry(db: AsyncSession, user: User, entry_id: str, payload: dic
 
 async def set_entry_status(db: AsyncSession, user: User, entry_id: str, status: str,
                            reason: str = "", request_id: str = "") -> dict:
-    entry = await _get_visible_entry(db, user, entry_id, write=True)
+    entry = await _get_visible_entry(db, user, entry_id)
     if not await user_has_permission(db, user, "knowledge.review", org_id=entry.org_id, project_id=entry.project_id):
         raise AppError("FORBIDDEN", "缺少权限：knowledge.review。")
     if status not in ("active", "deprecated", "retracted"):
@@ -217,7 +223,7 @@ async def set_entry_status(db: AsyncSession, user: User, entry_id: str, status: 
 
 async def report_correction(db: AsyncSession, user: User, entry_id: str, payload: dict,
                             request_id: str = "") -> dict:
-    entry = await _get_visible_entry(db, user, entry_id, write=False)
+    entry = await _get_visible_entry(db, user, entry_id)
     kind = payload.get("kind")
     if kind not in CORRECTION_KINDS:
         raise AppError("VALIDATION_ERROR", f"纠错类型须为 {sorted(CORRECTION_KINDS)}。")
@@ -243,7 +249,7 @@ async def resolve_correction(db: AsyncSession, user: User, correction_id: str, s
         KnowledgeCorrection.id == correction_id))).scalar_one_or_none()
     if corr is None:
         raise AppError("NOT_FOUND", "纠错记录不存在。")
-    entry = await _get_visible_entry(db, user, corr.entry_id, write=False)
+    entry = await _get_visible_entry(db, user, corr.entry_id)
     if not await user_has_permission(db, user, "knowledge.review", org_id=entry.org_id, project_id=entry.project_id):
         raise AppError("FORBIDDEN", "缺少权限：knowledge.review。")
     if status not in ("accepted", "rejected"):
@@ -273,11 +279,16 @@ def _correction_view(c: KnowledgeCorrection) -> dict:
 # 读操作（隔离）
 
 
-async def _get_visible_entry(db: AsyncSession, user: User, entry_id: str, write: bool) -> KnowledgeEntry:
+async def _get_visible_entry(db: AsyncSession, user: User, entry_id: str) -> KnowledgeEntry:
     entry = (await db.execute(select(KnowledgeEntry).where(KnowledgeEntry.id == entry_id))).scalar_one_or_none()
     if entry is None:
         raise AppError("NOT_FOUND", "知识条目不存在或无权访问。")
     if user.is_platform_admin:
+        return entry
+    if entry.visibility == "project":
+        if not entry.project_id:
+            raise AppError("NOT_FOUND", "知识条目不存在或无权访问。")
+        await resolve_project_access(db, entry.project_id, user)
         return entry
     org_ids = set(await _user_org_ids(db, user))
     if entry.org_id and entry.org_id in org_ids:
@@ -286,7 +297,6 @@ async def _get_visible_entry(db: AsyncSession, user: User, entry_id: str, write:
         project_ids = await _user_project_ids(db, user)
         if entry.project_id in project_ids:
             return entry
-    # 写操作要求归属明确；读操作由可见性过滤兜底
     raise AppError("NOT_FOUND", "知识条目不存在或无权访问。")
 
 
@@ -295,12 +305,21 @@ async def list_entries(db: AsyncSession, user: User, category: str | None = None
     rows = (await db.execute(select(KnowledgeEntry).order_by(KnowledgeEntry.updated_at.desc()))).scalars().all()
     org_ids = set(await _user_org_ids(db, user))
     project_ids = await _user_project_ids(db, user)
+    admin_orgs = select(OrgMember.org_id).where(
+        OrgMember.user_id == user.id, OrgMember.role_key == "org_admin",
+    )
+    accessible_projects = project_ids | set((await db.scalars(
+        select(Project.id).where(Project.org_id.in_(admin_orgs))
+    )).all())
     visible: list[KnowledgeEntry] = []
     for e in rows:
         if not user.is_platform_admin:
             same_org = e.org_id is not None and e.org_id in org_ids
             same_project = e.project_id is not None and e.project_id in project_ids
-            if not (same_org or same_project):
+            if e.visibility == "project":
+                if e.project_id not in accessible_projects:
+                    continue
+            elif not (same_org or same_project):
                 continue
         if category and e.category != category:
             continue
@@ -319,7 +338,7 @@ async def list_entries(db: AsyncSession, user: User, category: str | None = None
 
 
 async def get_entry(db: AsyncSession, user: User, entry_id: str) -> dict:
-    entry = await _get_visible_entry(db, user, entry_id, write=False)
+    entry = await _get_visible_entry(db, user, entry_id)
     versions = (await db.execute(select(KnowledgeEntryVersion).where(
         KnowledgeEntryVersion.entry_id == entry_id).order_by(KnowledgeEntryVersion.version.desc()))).scalars().all()
     view = _entry_view(entry, await _active_version(db, entry.id))

@@ -9,6 +9,7 @@ import pytest
 
 from app.core.errors import AppError
 from app.models import ExtractedFact, Material, Project
+from app.models.stage2 import EvidenceItem
 from app.services.assistant_service import AssistantService
 from app.services.evidence_gap_service import EvidenceGapService
 from app.services.orchestration_service import OrchestrationService
@@ -76,17 +77,27 @@ async def test_human_confirm_node_waits_then_executes_after_approval(session_fix
         "node_key": "C1", "title": "高风险检查", "handler": "materials_presence",
         "needs_human_confirm": True, "risk_level": "high",
     }
-    wf = await svc.create_manual(project_id, "确认门控任务", [node], user_id="u1")
+    successor = {
+        "node_key": "C2", "title": "复核材料", "handler": "materials_presence",
+        "depends_on": ["C1"],
+    }
+    wf = await svc.create_manual(project_id, "确认门控任务", [node, successor], user_id="u1")
     wf = await svc.start(wf.id, user_id="u1")
     view = await svc.workflow_view(wf.id)
-    c1 = view["nodes"][0]
+    c1, c2 = sorted(view["nodes"], key=lambda n: n["node_key"])
     assert c1["status"] == state.NODE_AWAITING_CONFIRMATION
+    assert c2["status"] == state.NODE_PENDING
+    assert not c2["attempts"]
+    with pytest.raises(AppError) as wrong_workflow:
+        await svc.confirm_node("other-workflow", c1["id"], "approved", user_id="u1")
+    assert wrong_workflow.value.status_code == 404
 
-    await svc.confirm_node(c1["id"], "approved", note="放行", user_id="u1")
+    await svc.confirm_node(wf.id, c1["id"], "approved", note="放行", user_id="u1")
     view = await svc.workflow_view(wf.id)
-    c1 = view["nodes"][0]
+    c1, c2 = sorted(view["nodes"], key=lambda n: n["node_key"])
     assert c1["status"] == state.NODE_COMPLETED
     assert c1["confirmed_by"] == "u1"
+    assert c2["status"] == state.NODE_COMPLETED
 
 
 @pytest.mark.asyncio
@@ -109,10 +120,19 @@ async def test_evidence_gap_full_cycle(session_fixture):
     ])
     await _seed_fact(session_fixture, project_id, f"{project_id}-mat-0",
                      field_key="learning_rate", raw_value="0.001", fact_id="fact-lr")
+    code_fact = await _seed_fact(session_fixture, project_id, f"{project_id}-mat-1",
+                                 field_key="learning_rate", raw_value="0.001", fact_id="fact-code-lr")
+    code_fact.parser_source = "program"
+    session_fixture.add(EvidenceItem(
+        evidence_id="ev-code-lr", fact_id=code_fact.fact_id, project_id=project_id,
+        material_id=code_fact.material_id, chunk_id=code_fact.chunk_id, source_name="train.py",
+        quote="lr = 0.001", original_text="lr = 0.001", verification_status="verified",
+    ))
+    await session_fixture.commit()
 
     gap_svc = EvidenceGapService(session_fixture)
     summary = await gap_svc.analyze(project_id)
-    assert summary["total_facts"] == 1
+    assert summary["total_facts"] == 2
     gaps = await gap_svc.list_gaps(project_id)
     assert len(gaps) == 1
     gap = gaps[0]
@@ -133,6 +153,7 @@ async def test_evidence_gap_full_cycle(session_fixture):
     done = await gap_svc.list_tasks(project_id)
     assert done[0]["status"] == "completed"
     assert done[0]["result_evidence"]["found"] is True
+    assert done[0]["result_evidence"]["evidence_id"]
     assert done[0]["linked_claim_id"] == "fact-lr"
 
 
@@ -174,6 +195,7 @@ async def test_cancel_marks_nonterminal_nodes_cancelled(session_fixture):
     view = await svc.workflow_view(wf.id)
     by_key = {n["node_key"]: n for n in view["nodes"]}
     assert by_key["A1"]["status"] == state.NODE_BLOCKED
+    assert by_key["B1"]["status"] == state.NODE_PENDING
 
     result = await svc.cancel(wf.id, user_id="u1")
     assert result["cancelled"] is True
@@ -181,8 +203,8 @@ async def test_cancel_marks_nonterminal_nodes_cancelled(session_fixture):
     by_key = {n["node_key"]: n for n in view["nodes"]}
     assert view["workflow"]["status"] == state.WF_CANCELLED
     assert by_key["A1"]["status"] == state.NODE_CANCELLED
-    # 已终结（跳过）节点不被取消操作覆盖
-    assert by_key["B1"]["status"] == state.NODE_SKIPPED
+    assert by_key["B1"]["status"] == state.NODE_CANCELLED
+    assert not by_key["B1"]["attempts"]
 
 
 @pytest.mark.asyncio
@@ -200,7 +222,7 @@ async def test_manual_retry_keeps_all_attempt_history(session_fixture):
     assert r1["attempt_count"] == 1
     assert r1["error_code"] == "UNKNOWN_HANDLER"
 
-    await svc.retry_node(r1["id"], user_id="u1")
+    await svc.retry_node(wf.id, r1["id"], user_id="u1")
     view = await svc.workflow_view(wf.id)
     r1 = view["nodes"][0]
     assert r1["status"] == state.NODE_FAILED
@@ -219,7 +241,7 @@ async def test_recover_stale_terminates_expired_running_node(session_fixture):
     node = {"node_key": "S1", "title": "过期节点", "handler": "materials_presence"}
     wf = await svc.create_manual(project_id, "过期回收任务", [node], user_id="u1")
     view = await svc.workflow_view(wf.id)
-    node_row = await svc._get_node(view["nodes"][0]["id"])
+    node_row = await svc._get_node(wf.id, view["nodes"][0]["id"])
     node_row.status = state.NODE_RUNNING
     node_row.heartbeat_at = datetime.now(timezone.utc) - timedelta(hours=2)
     session_fixture.add(node_row)

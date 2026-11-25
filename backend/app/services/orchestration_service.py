@@ -86,9 +86,11 @@ class OrchestrationService:
             raise AppError("NOT_FOUND", "工作流不存在。")
         return wf
 
-    async def _get_node(self, node_id: str) -> WorkflowNode:
+    async def _get_node(self, workflow_id: str, node_id: str) -> WorkflowNode:
         node = (await self.db.execute(
-            select(WorkflowNode).where(WorkflowNode.id == node_id)
+            select(WorkflowNode).where(
+                WorkflowNode.id == node_id, WorkflowNode.workflow_id == workflow_id,
+            )
         )).scalar_one_or_none()
         if node is None:
             raise AppError("NOT_FOUND", "工作流节点不存在。")
@@ -299,7 +301,9 @@ class OrchestrationService:
                 if slots <= 0:
                     break
                 node = by_id[nd["id"]]
-                if node.needs_human_confirm or node.node_type == "human_confirm":
+                if node.needs_human_confirm or (
+                    node.node_type == "human_confirm" and node.confirmed_at is None
+                ):
                     await self._await_confirmation(wf, node, user_id)
                     continue
                 await self._execute_node(wf, node, context, user_id)
@@ -456,8 +460,10 @@ class OrchestrationService:
         await self.db.commit()
         return {"cancelled": True, "status": state.WF_CANCELLED}
 
-    async def retry_node(self, node_id: str, user_id: str | None = None) -> WorkflowNode:
-        node = await self._get_node(node_id)
+    async def retry_node(
+        self, workflow_id: str, node_id: str, user_id: str | None = None,
+    ) -> WorkflowNode:
+        node = await self._get_node(workflow_id, node_id)
         if node.status != state.NODE_FAILED:
             raise AppError("INVALID_STATE", "仅失败节点可重试。", status_code=409)
         node.status = state.NODE_PENDING
@@ -479,9 +485,9 @@ class OrchestrationService:
         await self.advance(node.workflow_id, user_id=user_id)
         return node
 
-    async def confirm_node(self, node_id: str, decision: str, *,
+    async def confirm_node(self, workflow_id: str, node_id: str, decision: str, *,
                            note: str = "", user_id: str | None = None) -> WorkflowNode:
-        node = await self._get_node(node_id)
+        node = await self._get_node(workflow_id, node_id)
         if node.status != state.NODE_AWAITING_CONFIRMATION:
             raise AppError("INVALID_STATE", "仅等待确认的节点可审批。", status_code=409)
         if decision not in ("approved", "rejected"):

@@ -37,6 +37,7 @@ function assertSafeUrl(raw: string): string {
   let parsed: URL;
   try { parsed = new URL(url); } catch { throw new AppError('SSRF_BLOCKED', '模型地址格式非法。'); }
   if (parsed.username || parsed.password) throw new AppError('SSRF_BLOCKED', '地址不允许携带用户名或密码。');
+  if (parsed.search || parsed.hash) throw new AppError('SSRF_BLOCKED', '地址不允许包含查询参数或片段。');
   if (parsed.protocol !== 'https:') throw new AppError('SSRF_BLOCKED', 'Site 版仅允许 HTTPS 模型地址。');
   const host = parsed.hostname.toLowerCase();
   if (['metadata', 'metadata.google.internal', '169.254.169.254', 'localhost', '127.0.0.1'].includes(host)
@@ -48,6 +49,21 @@ function assertSafeUrl(raw: string): string {
     throw new AppError('SSRF_BLOCKED', '地址路径非法。');
   }
   return url;
+}
+
+function providerUrl(provider: typeof PROVIDERS[number], raw: unknown): string {
+  const url = assertSafeUrl(String(raw || provider.default_base_url || ''));
+  if (url === provider.default_base_url) return url;
+  const allowlist = String((globalThis as any).Deno?.env?.get?.('APP_MODEL_ALLOWED_URLS') ?? '')
+    .split(',').map(address => address.trim().replace(/\/+$/, ''));
+  if (!allowlist.includes(url)) {
+    throw new AppError('SSRF_BLOCKED', '非默认服务地址须由 Site 管理员加入出站许可。');
+  }
+  return url;
+}
+
+function requireActive(credential: any) {
+  if (credential.status !== 'active') throw new AppError('FORBIDDEN', '该凭据已停用。');
 }
 
 const maskKey = (k: string) => k.length <= 8 ? '****' : `${k.slice(0, 4)}…${k.slice(-2)}`;
@@ -106,7 +122,7 @@ async function realTest(providerKey: string, baseUrl: string, apiKey: string,
       headers = { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
       payload = { model, messages: [{ role: 'user', content: '请只回复：OK' }], max_tokens: 32 };
     } else if (protocol === 'gemini_generate') {
-      url = `${baseUrl}/models/${model}:generateContent`;
+      url = `${baseUrl}/models/${encodeURIComponent(model.replace(/^models\//, ''))}:generateContent`;
       headers = { 'content-type': 'application/json', 'x-goog-api-key': apiKey };
       payload = { contents: [{ role: 'user', parts: [{ text: '请只回复：OK' }] }], generationConfig: { maxOutputTokens: 32 } };
     } else {
@@ -151,13 +167,71 @@ export function register(router: Router) {
     rows(await c.db.from('model_credentials').select('*').eq('owner_user_id', c.user!.id)
       .order('created_at', { ascending: false })).map(credentialView));
 
+  router.post('/api/v1/model-credentials/test-draft', async (c: Call) => {
+    const provider = PROVIDER_MAP.get(c.body?.provider_key);
+    const key = String(c.body?.api_key ?? '').trim();
+    const model = String(c.body?.model_id ?? '').trim();
+    if (!provider || !key || !model) throw new AppError('VALIDATION_ERROR', '请填写供应商、密钥和模型。');
+    return realTest(provider.key, providerUrl(provider, c.body.base_url), key, model, provider.protocol);
+  });
+
+  router.post('/api/v1/model-setup', async (c: Call) => {
+    const provider = PROVIDER_MAP.get(c.body?.provider_key);
+    const key = String(c.body?.api_key ?? '').trim();
+    const model = String(c.body?.model_id ?? '').trim();
+    if (!provider || !key || !model || model.length > 160) {
+      throw new AppError('VALIDATION_ERROR', '请填写有效的供应商、密钥和模型。');
+    }
+    const baseUrl = providerUrl(provider, c.body.base_url);
+    const uid = c.user!.id;
+    const duplicate = one(await c.db.from('model_profiles').select('id').eq('owner_user_id', uid)
+      .eq('provider_key', provider.key).eq('model_id', model).limit(1));
+    if (duplicate) throw new AppError('CONFLICT', '同供应商的模型配置已存在。');
+    const timeout = Number(c.body.timeout_s ?? 60);
+    const maxTokens = c.body.max_tokens ?? null;
+    const temperature = c.body.temperature;
+    if (!Number.isFinite(timeout) || timeout <= 0 || (maxTokens !== null && (
+      !Number.isInteger(maxTokens) || maxTokens <= 0
+    )) || (temperature != null && (!Number.isFinite(temperature) || temperature < 0 || temperature > 2))) {
+      throw new AppError('VALIDATION_ERROR', '超时、最大输出长度或温度参数不合法。');
+    }
+
+    const credId = newId('mcred'), profileId = newId('mprof');
+    const isDefault = c.body.is_default !== false;
+    const defaults = isDefault ? rows(await c.db.from('model_profiles').select('id')
+      .eq('owner_user_id', uid).eq('is_default', true)) : [];
+    const ciphertext = await encryptSecret(key, modelKey(c));
+    try {
+      const credential = one(await c.db.from('model_credentials').insert({
+        id: credId, owner_user_id: uid, provider_key: provider.key, base_url: baseUrl,
+        name: String(c.body.name || provider.name).slice(0, 120),
+        key_ciphertext: ciphertext, key_hint: maskKey(key), status: 'active', created_at: nowIso(),
+      }).select('*'));
+      const profile = one(await c.db.from('model_profiles').insert({
+        id: profileId, owner_user_id: uid, provider_key: provider.key, credential_id: credId,
+        model_id: model, display_name: String(c.body.display_name || model).slice(0, 160),
+        params_json: JSON.stringify(temperature == null ? {} : { temperature }),
+        timeout_s: timeout, max_tokens: maxTokens, enabled: true, is_default: isDefault, created_at: nowIso(),
+      }).select('*'));
+      if (!credential || !profile) throw new AppError('DB_SAVE_FAILED', '无法保存模型配置。');
+      if (defaults.length) rows(await c.db.from('model_profiles').update({ is_default: false })
+        .eq('owner_user_id', uid).in('id', defaults.map(d => d.id)).select('id'));
+      return { credential: credentialView(credential), profile: profileView(profile), note: '模型配置已保存。' };
+    } catch (error) {
+      await c.db.from('model_profiles').delete().eq('owner_user_id', uid).eq('id', profileId);
+      await c.db.from('model_credentials').delete().eq('owner_user_id', uid).eq('id', credId);
+      if (defaults.length) await c.db.from('model_profiles').update({ is_default: true })
+        .eq('owner_user_id', uid).in('id', defaults.map(d => d.id));
+      throw error;
+    }
+  });
+
   router.post('/api/v1/model-credentials', async (c: Call) => {
     const p = PROVIDER_MAP.get(c.body?.provider_key);
     if (!p) throw new AppError('VALIDATION_ERROR', '未知的模型供应商。');
     const key = String(c.body?.api_key ?? '').trim();
     if (!key) throw new AppError('VALIDATION_ERROR', 'API Key 不能为空。');
-    let baseUrl = String(c.body?.base_url ?? p.default_base_url ?? '').trim();
-    if (c.body?.provider_key === 'openai_compatible') baseUrl = assertSafeUrl(baseUrl);
+    const baseUrl = providerUrl(p, c.body?.base_url);
     const r = one(await c.db.from('model_credentials').insert({
       id: newId('mcred'), owner_user_id: c.user!.id, provider_key: p.key,
       name: String(c.body?.name ?? p.name).slice(0, 120),
@@ -170,23 +244,37 @@ export function register(router: Router) {
   router.patch('/api/v1/model-credentials/:id', async (c: Call) => {
     const r = await ownCredential(c, c.params.id);
     const patch: any = {};
+    const key = String(c.body?.api_key ?? '').trim();
+    const status = c.body?.status ?? r.status;
+    if (!['active', 'revoked', 'disabled'].includes(status)) throw new AppError('VALIDATION_ERROR', '凭据状态非法。');
+    const provider = PROVIDER_MAP.get(r.provider_key);
+    if (!provider) throw new AppError('NOT_FOUND', '供应商不存在。');
+    if (c.body?.base_url !== undefined) {
+      patch.base_url = providerUrl(provider, c.body.base_url);
+      if (patch.base_url !== (r.base_url || provider.default_base_url) && !key) {
+        throw new AppError('VALIDATION_ERROR', '更换服务地址时须重新提供 API 密钥。');
+      }
+    }
+    if (status !== 'revoked' && r.status === 'revoked' && !key) {
+      throw new AppError('VALIDATION_ERROR', '重新启用已吊销凭据时须提供 API 密钥。');
+    }
     if (c.body?.name !== undefined) patch.name = String(c.body.name).slice(0, 120);
-    if (c.body?.api_key) {
-      const key = String(c.body.api_key).trim();
+    patch.status = status;
+    if (status === 'revoked') {
+      patch.key_ciphertext = '';
+      patch.key_hint = '';
+    } else if (key) {
       patch.key_ciphertext = await encryptSecret(key, modelKey(c));
       patch.key_hint = maskKey(key);
-    }
-    if (c.body?.base_url !== undefined) patch.base_url = assertSafeUrl(String(c.body.base_url));
-    if (c.body?.status !== undefined) {
-      if (!['active', 'revoked', 'disabled'].includes(c.body.status)) throw new AppError('VALIDATION_ERROR', '凭据状态非法。');
-      patch.status = c.body.status;
     }
     const updated = one(await c.db.from('model_credentials').update(patch).eq('id', r.id).select('*'));
     return credentialView(updated);
   });
   router.delete('/api/v1/model-credentials/:id', async (c: Call) => {
     const r = await ownCredential(c, c.params.id);
-    await c.db.from('model_credentials').update({ status: 'revoked' }).eq('id', r.id);
+    rows(await c.db.from('model_credentials').update({
+      status: 'revoked', key_ciphertext: '', key_hint: '',
+    }).eq('id', r.id).select('id'));
     return { revoked: true, id: r.id };
   });
   router.delete('/api/v1/model-credentials/:id/purge', async (c: Call) => {
@@ -197,6 +285,7 @@ export function register(router: Router) {
 
   router.post('/api/v1/model-credentials/:id/test', async (c: Call) => {
     const cred = await ownCredential(c, c.params.id);
+    requireActive(cred);
     const p = PROVIDER_MAP.get(cred.provider_key);
     if (!p) throw new AppError('NOT_FOUND', '供应商不存在。');
     let model = String(c.q.get('model_id') ?? '');
@@ -206,8 +295,7 @@ export function register(router: Router) {
       model = profile?.model_id ?? p.default_models[0] ?? '';
     }
     if (!model) throw new AppError('VALIDATION_ERROR', '请提供要测试的模型名称。');
-    const baseUrl = cred.base_url || p.default_base_url;
-    if (cred.provider_key === 'openai_compatible') assertSafeUrl(baseUrl);
+    const baseUrl = providerUrl(p, cred.base_url);
     const apiKey = await decryptSecret(cred.key_ciphertext, modelKey(c));
     const result = await realTest(cred.provider_key, baseUrl, apiKey, model, p.protocol);
     await c.db.from('model_credentials').update({
@@ -218,10 +306,10 @@ export function register(router: Router) {
 
   router.post('/api/v1/model-credentials/:id/models', async (c: Call) => {
     const cred = await ownCredential(c, c.params.id);
+    requireActive(cred);
     const p = PROVIDER_MAP.get(cred.provider_key);
     if (!p) throw new AppError('NOT_FOUND', '供应商不存在。');
-    const baseUrl = cred.base_url || p.default_base_url;
-    if (cred.provider_key === 'openai_compatible') assertSafeUrl(baseUrl);
+    const baseUrl = providerUrl(p, cred.base_url);
     const apiKey = await decryptSecret(cred.key_ciphertext, modelKey(c));
     const headers: Record<string, string> = p.protocol === 'gemini_generate'
       ? { 'x-goog-api-key': apiKey } : p.protocol === 'anthropic_messages'
@@ -284,11 +372,12 @@ export function register(router: Router) {
     const profile = await ownProfile(c, c.params.id);
     if (!profile.credential_id) throw new AppError('NOT_FOUND', '该模型未关联 API 凭据。');
     const cred = await ownCredential(c, profile.credential_id);
+    requireActive(cred);
     const p = PROVIDER_MAP.get(profile.provider_key);
     if (!p) throw new AppError('NOT_FOUND', '供应商不存在。');
     const apiKey = await decryptSecret(cred.key_ciphertext, modelKey(c));
-    const baseUrl = cred.base_url || p.default_base_url;
-    if (profile.provider_key === 'openai_compatible') assertSafeUrl(baseUrl);
+    if (cred.provider_key !== profile.provider_key) throw new AppError('VALIDATION_ERROR', '凭据与模型供应商不一致。');
+    const baseUrl = providerUrl(p, cred.base_url);
     return await realTest(profile.provider_key, baseUrl, apiKey, profile.model_id, p.protocol);
   });
 

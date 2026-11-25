@@ -3,7 +3,7 @@
 // 明确抛 DEMO_LIMIT 或 LLM_KEY_NOT_CONFIGURED，绝不伪造结果；所有只读与纯 DB 变更忠实移植。
 import {
   AppError, newId, nowIso, num, parseJson, rows, one, intParam, nextIntId,
-  orgRole, projectRole, projectContext,
+  orgRole, projectRole, projectContext, requirePermission,
 } from "./core.ts";
 import type { Router, Deps, Call, Db, UserRow } from "./core.ts";
 
@@ -1760,13 +1760,21 @@ async function listFacts(c: Call): Promise<Record<string, any>> {
   return { items, total: items.length };
 }
 
+async function factByPublicId(db: Db, id: string) {
+  const row = one(await db.from("extracted_facts").select("*").eq("fact_id", id).limit(1));
+  if (row || !/^(0|[1-9]\d{0,9})$/.test(id) || Number(id) > 2147483647) return row;
+  const legacy = one(await db.from("extracted_facts").select("*").eq("id", Number(id)).limit(1));
+  return legacy && !legacy.fact_id ? legacy : null;
+}
+
 async function patchFact(c: Call): Promise<Record<string, any>> {
   const { db, user, params } = c;
   const data = bodyObj(c);
   forbidExtra(data, ["field_key", "field_label", "raw_value", "normalized_value", "note"]);
-  const fact = one(await db.from("extracted_facts").select("*").eq("fact_id", params.fact_id).limit(1));
+  const fact = await factByPublicId(db, params.fact_id);
   if (!fact) throw new AppError("NOT_FOUND", "事实不存在。");
-  await projectContext(db, fact.project_id, user!);
+  const { role } = await projectContext(db, fact.project_id, user!);
+  await requirePermission(db, role, "fact.revise");
   const changes: [string, any, any][] = [];
   const patch: Record<string, any> = {};
   for (const field of ["field_key", "field_label", "raw_value", "normalized_value"]) {
@@ -1775,11 +1783,10 @@ async function patchFact(c: Call): Promise<Record<string, any>> {
     if (fact[field] !== nv) {
       changes.push([field, fact[field], nv]);
       patch[field] = nv;
-      fact[field] = nv;
     }
   }
   if (changes.length) {
-    // 镜像后端：首次人工修订保存快照（后端在赋值后快照），后续修订不覆盖
+    // 首次人工修订保留修改前的模型取值。
     if (fact.parser_source === "model") {
       patch.ai_original_json = dumps({
         field_key: fact.field_key, field_label: fact.field_label,
@@ -1800,6 +1807,7 @@ async function patchFact(c: Call): Promise<Record<string, any>> {
       }).select("*"));
     }
     rows(await db.from("extracted_facts").update(patch).eq("id", fact.id).select("*"));
+    Object.assign(fact, patch);
   }
   const ev = await loadEvidence(db, params.fact_id);
   return legacyFactView(fact, ev, fact.revision_count || 0);
@@ -1807,8 +1815,9 @@ async function patchFact(c: Call): Promise<Record<string, any>> {
 
 async function factRevisions(c: Call): Promise<Record<string, any>> {
   const { db, user, params } = c;
-  const fact = one(await db.from("extracted_facts").select("project_id").eq("fact_id", params.fact_id).limit(1));
-  if (fact) await projectContext(db, fact.project_id, user!);
+  const fact = await factByPublicId(db, params.fact_id);
+  if (!fact) throw new AppError("NOT_FOUND", "事实不存在。");
+  await projectContext(db, fact.project_id, user!);
   const list = await softRows(db.from("fact_revisions").select("*").eq("fact_id", params.fact_id)
     .order("created_at", { ascending: true }).limit(1000));
   const items = list.map(r => ({
@@ -2117,7 +2126,15 @@ async function listPlans(c: Call): Promise<Record<string, any>> {
   await projectContext(db, projectId, user!);
   const list = rows(await db.from("reproduction_plans").select("*").eq("project_id", projectId)
     .order("created_at", { ascending: false }).limit(1000));
-  const items = list.map(planView);
+  const tasks = rows(await db.from("reproduction_tasks").select("*").eq("project_id", projectId)
+    .order("task_key", { ascending: true }).limit(5000));
+  const byPlan = new Map<string, ReturnType<typeof reproTaskView>[]>();
+  for (const task of tasks) {
+    const match = byPlan.get(task.plan_id) ?? [];
+    match.push(reproTaskView(task));
+    byPlan.set(task.plan_id, match);
+  }
+  const items = list.map(plan => ({ ...planView(plan), tasks: byPlan.get(plan.id) ?? [] }));
   return { items, total: items.length };
 }
 async function createPlan(c: Call): Promise<Record<string, any>> {
@@ -2414,19 +2431,17 @@ async function reviewRemediation(c: Call): Promise<Record<string, any>> {
   if (!["approve", "reject", "modify"].includes(decision)) {
     throw new AppError("VALIDATION_ERROR", "审核决定必须是 approve/reject/modify。");
   }
-  if (typeof data.reviewer !== "string" || !data.reviewer) {
-    throw new AppError("VALIDATION_ERROR", "字段 reviewer 必填且长度不超过 500。");
-  }
   const proposal = one(await db.from("remediation_proposals").select("*").eq("id", params.proposal_id).limit(1));
   if (!proposal) throw new AppError("NOT_FOUND", "修复建议不存在。");
-  await projectContext(db, proposal.project_id, user!);
+  const { role } = await projectContext(db, proposal.project_id, user!);
+  await requirePermission(db, role, "review.decide");
   let note = String(data.note ?? "");
   if (proposal.changes_research_conditions && decision === "approve") {
     note = (note + "；注意：该修改可能改变原始研究条件，不能称为严格复现").replace(/^；+/, "").replace(/；+$/, "");
   }
   const review = {
     id: id14("rev"), proposal_id: params.proposal_id,
-    decision, reviewer: data.reviewer, note,
+    decision, reviewer: user!.display_name || user!.email, reviewer_user_id: user!.id, note,
     modified_value: data.modified_value ?? null, original_preserved: true,
     created_at: nowIso(),
   };

@@ -224,7 +224,7 @@ async def test_gateway_resolves_user_binding_validates_and_logs(session_fixture,
     monkeypatch.setattr(settings, "model_credential_key", "gw-test-key")
     cred = ModelCredential(id="mc-1", owner_user_id="u1", provider_key="qwen", name="q",
                            key_ciphertext=encrypt_credential("sk-real-secret"),
-                           key_hint=mask_key("sk-real-secret"), base_url="https://mock.local/v1")
+                           key_hint=mask_key("sk-real-secret"))
     profile = ModelProfile(id="mp-1", owner_user_id="u1", provider_key="qwen",
                            credential_id="mc-1", model_id="mock-model", is_default=True)
     binding = TaskModelBinding(id="mb-1", owner_user_id="u1", task_key="fact_extraction",
@@ -280,9 +280,15 @@ async def test_gateway_falls_back_only_to_authorized_profile(session_fixture, mo
         payload = {"model": "good-model",
                    "choices": [{"message": {"content": "fallback-ok"}, "finish_reason": "stop"}],
                    "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}}
+        handler = _json_handler(payload, status=status)
+
+        def assert_model(request):
+            assert json.loads(request.content)["model"] == ("bad-model" if status == 500 else "good-model")
+            return handler(request)
+
         return OpenAICompatibleAdapter(base_url=base_url, api_key=api_key,
                                        client=httpx.AsyncClient(transport=httpx.MockTransport(
-                                           _json_handler(payload, status=status))))
+                                           assert_model)))
     monkeypatch.setattr("app.modelhub.gateway.build_adapter", build)
     tokens = set_current("u2", None)
     try:

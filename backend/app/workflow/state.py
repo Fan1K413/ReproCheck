@@ -146,24 +146,25 @@ def ready_nodes(
         if node["status"] in NODE_TERMINAL or node["status"] == NODE_AWAITING_CONFIRMATION:
             continue
         deps = node.get("depends_on") or []
-        dep_failed = False
+        waiting_for_dependency = False
         for dep in deps:
             dep_node = by_key.get(dep)
             if dep_node is None:
-                continue
-            if _dep_blocked(dep_node["status"]):
-                dep_failed = True
+                reasons.setdefault(key, []).append(f"前置任务 {dep} 不存在")
+            elif _dep_blocked(dep_node["status"]):
                 reasons.setdefault(key, []).append(
                     f"前置任务 {dep} 未成功完成（{dep_node['status']}）"
                 )
-        if dep_failed:
+            elif dep_node["status"] != NODE_COMPLETED:
+                waiting_for_dependency = True
+        if key in reasons or waiting_for_dependency:
             continue
 
         unmet = evaluate_preconditions(node, context)
         if unmet:
             reasons[key] = reasons.get(key, []) + unmet
             continue
-        if node["status"] in (NODE_PENDING, NODE_READY):
+        if node["status"] in (NODE_PENDING, NODE_READY, NODE_BLOCKED):
             ready.append(node)
 
     ready.sort(key=lambda n: (-int(n.get("priority") or 5), topo.index(n["node_key"])))

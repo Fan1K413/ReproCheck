@@ -74,6 +74,7 @@ export type PlanView = {
   ai_available?: boolean
   prompt_version?: string | null
   source?: string
+  tasks?: ReproTaskView[]
 }
 
 export type PlanDetail = PlanView & {
@@ -328,14 +329,14 @@ export type CreateDiagnosticRequest = {
 
 export type ReviewRemediationRequest = {
   decision: RemediationDecision
-  reviewer: string
   note?: string
   modified_value?: string
 }
 
 export type ReviewRemediationResult = {
   review_id: string
-  status: string
+  decision: RemediationDecision
+  reviewer: string
   original_preserved: boolean
   [key: string]: unknown
 }

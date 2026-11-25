@@ -50,5 +50,5 @@ export function ProjectWorkbenchPage() {
   if (view === 'loom') {
     return <EvidenceLoom data={data} />
   }
-  return <BloomWorkbench projectId={projectId} data={data} />
+  return <BloomWorkbench key={projectId} projectId={projectId} data={data} />
 }

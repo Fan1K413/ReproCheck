@@ -43,6 +43,7 @@ async def analyze(db: AsyncSession, user: User, project_id: str) -> dict[str, An
     ).where(
         RepositoryConnection.user_id == user.id,
         RepositorySnapshot.project_id == project_id,
+        RepositorySnapshot.commit_sha != "",
     ).order_by(RepositorySnapshot.fetched_at.desc()))).scalars().all()
     synced = [s for s in rows if _json(s.version_diff_json, {}).get("status") == "synced"]
     if len(synced) < 2:
@@ -81,7 +82,7 @@ async def analyze(db: AsyncSession, user: User, project_id: str) -> dict[str, An
     tokens = {f["path"].rsplit("/", 1)[-1].lower() for f in changed}
     affected_facts = []
     for fact in facts:
-        text = f"{fact.field_key or ''} {fact.raw_value or ''} {fact.source_ref or ''}".lower()
+        text = f"{fact.field_key or ''} {fact.raw_value or ''} {fact.source_name or ''}".lower()
         hit = next((t for t in tokens if t and t in text), None)
         if hit:
             affected_facts.append({"id": fact.id, "field": fact.field_key,

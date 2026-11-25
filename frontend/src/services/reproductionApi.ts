@@ -1,4 +1,5 @@
-import { ApiError } from './api'
+import { ApiError, downloadFilename, invalidateExpiredSession, request } from './api'
+import { useAuthStore } from '../stores/authStore'
 import type { ApiResponse } from '../types/api'
 import type {
   BenchmarkMetricsResult,
@@ -59,48 +60,6 @@ async function readError(response: Response): Promise<ApiError> {
     error?.details ?? null,
     payload?.request_id ?? 'frontend',
   )
-}
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  let response: Response
-  // 第六阶段：与 api.ts 一致注入登录令牌（仅读取本地会话，密钥仍由后端管理）。
-  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('rc_token') : null
-  try {
-    response = await fetch(`${V1}${path}`, {
-      ...init,
-      headers: {
-        Accept: 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(init?.headers ?? {}),
-      },
-    })
-  } catch {
-    throw new ApiError('NETWORK_ERROR', '无法连接到服务，请检查后端是否已启动。', null, 'frontend')
-  }
-
-  let payload: ApiResponse<T>
-  try {
-    payload = (await response.json()) as ApiResponse<T>
-  } catch {
-    throw new ApiError(
-      'INVALID_FORMAT',
-      `服务返回了无法解析的响应（HTTP ${response.status}）。`,
-      null,
-      'frontend',
-    )
-  }
-
-  if (!response.ok || !payload || payload.success !== true || payload.data == null) {
-    const error = payload?.error
-    throw new ApiError(
-      error?.code ?? 'UNKNOWN_ERROR',
-      error?.message ?? `请求失败（HTTP ${response.status}）。`,
-      error?.details ?? null,
-      payload?.request_id ?? 'frontend',
-    )
-  }
-  return payload.data
 }
 
 const qs = (params: Record<string, string | undefined>) =>
@@ -212,7 +171,7 @@ export const reproductionApi = {
   /** HTML 导出：返回文本，由页面用 Blob URL 在新窗口打开；错误含后端 error.code。 */
   getReportHtmlText: async (reportId: string): Promise<string> => {
     let response: Response
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('rc_token') : null
+    const token = useAuthStore.getState().token
     try {
       response = await fetch(
         `${V1}/reproductions/reports/${encodeURIComponent(reportId)}/html`,
@@ -221,6 +180,7 @@ export const reproductionApi = {
     } catch {
       throw new ApiError('NETWORK_ERROR', '无法连接到服务，HTML 导出未开始。', null, 'frontend')
     }
+    invalidateExpiredSession(response, token)
     if (!response.ok) throw await readError(response)
     return response.text()
   },
@@ -228,7 +188,7 @@ export const reproductionApi = {
   /** PDF 下载：二进制流；501 时抛出含 PDF_UNAVAILABLE 的 ApiError。 */
   downloadReportPdf: async (reportId: string, filename?: string): Promise<void> => {
     let response: Response
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('rc_token') : null
+    const token = useAuthStore.getState().token
     try {
       response = await fetch(
         `${V1}/reproductions/reports/${encodeURIComponent(reportId)}/pdf`,
@@ -237,14 +197,11 @@ export const reproductionApi = {
     } catch {
       throw new ApiError('NETWORK_ERROR', '无法连接到服务，PDF 下载未开始。', null, 'frontend')
     }
+    invalidateExpiredSession(response, token)
     if (!response.ok) throw await readError(response)
 
     const blob = await response.blob()
-    const disposition = response.headers.get('Content-Disposition') ?? ''
-    const match = /filename\*?=(?:UTF-8'')?([^;]+)/i.exec(disposition)
-    const name = match
-      ? decodeURIComponent(match[1].trim().replace(/^"|"$/g, ''))
-      : filename || `report-${reportId}.pdf`
+    const name = downloadFilename(response, filename || `report-${reportId}.pdf`)
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url

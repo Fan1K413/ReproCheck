@@ -139,8 +139,7 @@ export function deriveWeave(params: {
   push('facts', 'evidence', 'support', (n) => `${n} 条事实绑定原文位置`, supportEvidence)
 
   // 3) 材料 → 规划：来自每个 plan 下 task 的 required_materials。
-  const planTasks = (plans as Array<PlanView & { tasks?: { required_materials?: string[]; evidence_refs?: string[] }[] }>)
-    .flatMap((plan) => plan.tasks ?? [])
+  const planTasks = plans.flatMap((plan) => plan.tasks ?? [])
   const tasksByMaterial = new Map<string, number>()
   planTasks.forEach((task) => {
     ;(task.required_materials ?? []).forEach((mid) => {
@@ -156,7 +155,7 @@ export function deriveWeave(params: {
   push('materials', 'plan', 'compose', (n) => `${n} 份材料被任务直接引用`, composeEvidence)
 
   // 4) 数据集 → 规划：材料里的 data 类型同时被任务引用。
-  const dataMaterials = materials.filter((m) => String(m.material_type).toLowerCase().includes('data'))
+  const dataMaterials = materials.filter((m) => ['csv', 'xlsx'].includes(m.material_type))
   const dataRefs = dataMaterials.filter((m) => tasksByMaterial.has(m.material_id))
   push('dataset', 'plan', 'supply', (n) => `${n} 个数据文件进入任务步骤`, dataRefs.map((m) => ({ id: m.material_id, label: m.filename })))
 
@@ -174,12 +173,16 @@ export function deriveWeave(params: {
   })
   push('environment', 'runs', 'execute', (n) => `${n} 个运行在锁定环境中执行`, envEvidence)
 
-  // 7) 数据集 → 环境：env 若声明了 material_id 且该材料是数据。
-  const envWithData = envs.filter((e) => {
-    const mid = (e as EnvironmentView & { material_id?: string }).material_id
-    return Boolean(mid && dataMaterials.some((m) => m.material_id === mid))
-  })
-  push('dataset', 'environment', 'supply', (n) => `${n} 个环境挂载了数据快照`, envWithData.map((e) => ({ id: e.environment_id, label: `${e.python_version ?? '环境'} · ${e.environment_id.slice(0, 10)}` })))
+  // 环境通过运行关联到引用数据材料的规划。
+  const dataIds = new Set(dataMaterials.map((m) => m.material_id))
+  const dataPlanIds = new Set(plans.filter((plan) => plan.tasks?.some((task) =>
+    task.required_materials?.some((id) => dataIds.has(id)),
+  )).map((plan) => plan.plan_id))
+  const dataEnvIds = new Set(runs.filter((run) => dataPlanIds.has(run.plan_id)).map((run) => run.environment_id))
+  const envWithData = envs.filter((env) => dataEnvIds.has(env.environment_id))
+  push('dataset', 'environment', 'supply', (n) => `${n} 个运行环境关联到引用数据的规划`, envWithData.map((e) => ({
+    id: e.environment_id, label: `${e.python_version ?? '环境'} · ${e.environment_id.slice(0, 10)}`,
+  })))
 
   // 8) 运行 → 验证：comparison.verdict 由复现指标产生，与 run 同项目。
   if (runs.length > 0 && comparisons.length > 0) {

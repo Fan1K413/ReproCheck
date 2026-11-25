@@ -31,6 +31,7 @@ class RepoConnectIn(BaseModel):
 class RepoSyncIn(BaseModel):
     repo_full_name: str
     ref: str = ""
+    project_id: str | None = None
 
 
 @router.post("/integrations/repositories")
@@ -51,7 +52,9 @@ async def revoke(conn_id: str, request: Request, db: AsyncSession = Depends(get_
 
 @router.post("/integrations/repositories/{conn_id}/sync")
 async def sync(conn_id: str, payload: RepoSyncIn, request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    return ok(await repository_service.sync_repository(db, user, conn_id, payload.repo_full_name, payload.ref, _rid(request)), _rid(request))
+    return ok(await repository_service.sync_repository(
+        db, user, conn_id, payload.repo_full_name, payload.ref, _rid(request), project_id=payload.project_id,
+    ), _rid(request))
 
 
 @router.get("/integrations/repositories/{conn_id}/snapshots")

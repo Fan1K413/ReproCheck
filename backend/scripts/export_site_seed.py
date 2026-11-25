@@ -1,6 +1,6 @@
 """导出站点种子数据与 PG schema（Qoder Sites function_backend 迁移用）。
 
-- seed_data.json：全表行快照，JSON 列解析为对象、DateTime 转 ISO-Z、Float 列转 text；
+- seed_data.json：站点演示数据，剔除登录凭据、邀请凭据及关联 API 日志；
 - schema.sql：仅使用迁移受支持子集（text/integer/bigint/boolean/timestamptz/jsonb）。
 Float 标量以 text 存储（迁移不支持 numeric/float），Function 侧负责解析。
 """
@@ -27,6 +27,24 @@ DB = ROOT / "backend" / "reprocheck.db"
 OUT_SEED = ROOT / "frontend" / "dev" / "seed_data.json"
 OUT_SEED_TS = ROOT / "frontend" / "functions" / "seed_data.ts"
 OUT_SCHEMA = ROOT / "frontend" / "dev" / "schema.sql"
+_NON_EXPORTABLE_TABLES = {
+    "api_tokens", "api_call_logs", "invitations",
+    "model_credentials", "model_profiles", "task_model_bindings",
+}
+_SECRET_COLUMNS = {"password_hash", "token_hash", "token_encrypted", "key_ciphertext"}
+
+
+def sanitize_seed_table(table: str, rows: list[dict]) -> list[dict]:
+    if table in _NON_EXPORTABLE_TABLES:
+        return []
+    sanitized = []
+    for row in rows:
+        clean = {key: val for key, val in row.items() if key not in _SECRET_COLUMNS}
+        if table == "users":
+            # 保留历史所有者引用，但禁止用来源库账号登录站点。
+            clean.update(password_hash="!", is_active=False)
+        sanitized.append(clean)
+    return sanitized
 
 
 def pg_type(col) -> str:
@@ -66,16 +84,16 @@ def convert(col, value):
 
 
 def main() -> None:
-    con = sqlite3.connect(DB)
+    con = sqlite3.connect(DB.resolve().as_uri() + "?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
     tables = Base.metadata.sorted_tables
     seed: dict[str, list[dict]] = {}
     for t in tables:
         cols = {c.name: c for c in t.columns}
         rows = con.execute(f'SELECT * FROM "{t.name}"').fetchall()
-        seed[t.name] = [
+        seed[t.name] = sanitize_seed_table(t.name, [
             {k: convert(cols[k], r[k]) for k in r.keys() if k in cols} for r in rows
-        ]
+        ])
     OUT_SEED.parent.mkdir(parents=True, exist_ok=True)
     payload = json.dumps(seed, ensure_ascii=False, separators=(",", ":"))
     OUT_SEED.write_text(payload, encoding="utf-8")

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import { useAuthStore } from './stores/authStore'
 // Design Token 必须最先引入：全站唯一色源（深色默认 + 浅色皮肤 + 旧变量别名）
 import './styles/tokens.css'
 import './styles/index.css'
@@ -21,6 +22,10 @@ const queryClient = new QueryClient({
       staleTime: 30_000,
     },
   },
+})
+
+useAuthStore.subscribe((state, previous) => {
+  if (state.token !== previous.token) queryClient.clear()
 })
 
 const rootElement = document.getElementById('root')

@@ -126,6 +126,8 @@ async def _visible_docs(db: AsyncSession, user: User) -> list[KnowledgeDocument]
 
 async def add_document(db: AsyncSession, user: User, source_type: str, source_ref: str,
                        title: str, content: str, is_public: bool, request_id: str = "") -> dict:
+    if is_public and not user.is_platform_admin:
+        raise AppError("FORBIDDEN", "仅平台管理员可添加公开知识文档。")
     org_id = await _can_manage_knowledge(db, user)
     if source_type not in SOURCE_TYPES:
         raise AppError("VALIDATION_ERROR", f"source_type 须为 {sorted(SOURCE_TYPES)}。")

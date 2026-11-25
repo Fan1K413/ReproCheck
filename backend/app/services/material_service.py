@@ -14,21 +14,32 @@ import uuid
 from pathlib import Path
 from urllib.parse import urlparse
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.config import BACKEND_DIR, BACKEND_STORAGE
 from app.core.errors import AppError
 from app.models import ExtractedFact, Material, Project, SourceChunk
-from app.models.stage2 import EvidenceItem
+from app.models.stage2 import EvidenceItem, FactRevision, MaterialParseRun, ParseTask
+from app.models.stage6 import NotebookCell
 from app.parsers.limits import (
     ALLOWED_EXTENSIONS,
     MAX_PROJECT_MATERIALS,
+    MAX_SINGLE_FILE_BYTES,
     ParserError,
     safe_resolve_within,
 )
 
-STORAGE_ROOT = Path(settings.database_url and "./storage/materials" or "./storage/materials").resolve()
+STORAGE_ROOT = (BACKEND_STORAGE / "materials").resolve()
+_LEGACY_STORAGE_ROOT = (BACKEND_DIR.parent / "storage" / "materials").resolve()
+
+
+def _resolve_stored_path(stored_path: str) -> Path:
+    path = Path(stored_path)
+    try:
+        return safe_resolve_within(STORAGE_ROOT, path)
+    except ParserError:
+        return safe_resolve_within(_LEGACY_STORAGE_ROOT, path)
 
 
 def _safe_filename(name: str) -> str:
@@ -53,6 +64,8 @@ class MaterialService:
         self.db = db
 
     async def upload(self, project_id: str, filename: str, data: bytes) -> Material:
+        if len(data) > MAX_SINGLE_FILE_BYTES:
+            raise AppError("VALIDATION_ERROR", "单个材料文件超过 20 MiB。", status_code=413)
         # 项目存在性
         project = (await self.db.execute(
             select(Project).where(Project.id == project_id)
@@ -166,42 +179,37 @@ class MaterialService:
     async def path_of(self, material: Material) -> Path:
         if not material.stored_path:
             raise AppError("NOT_FOUND", "材料文件未存储。")
-        p = safe_resolve_within(STORAGE_ROOT, Path(material.stored_path))
+        p = _resolve_stored_path(material.stored_path)
         if not p.exists():
             raise AppError("NOT_FOUND", "材料文件已丢失。")
         return p
 
-    async def delete(self, material_id: str) -> dict:
+    async def delete(self, material_id: str, *, commit: bool = True) -> dict:
         material = await self.get(material_id)
-        chunks = (await self.db.execute(
-            select(SourceChunk.id).where(SourceChunk.material_id == material_id)
-        )).all()
-        facts = (await self.db.execute(
-            select(ExtractedFact.id).where(ExtractedFact.material_id == material_id)
-        )).all()
-        evs = (await self.db.execute(
-            select(EvidenceItem.id).where(EvidenceItem.material_id == material_id)
-        )).all()
-
-        # SQLite 外键级联会删除 chunks/facts；evidence_items 显式清理避免孤立记录
-        for ev in evs:
-            row = (await self.db.execute(
-                select(EvidenceItem).where(EvidenceItem.id == ev[0])
-            )).scalar_one_or_none()
-            if row:
-                await self.db.delete(row)
-        await self.db.delete(material)
-        await self.db.commit()
-
-        # 删除物理文件（失败只记日志，不影响 DB 一致性）
-        if material.stored_path:
-            try:
-                p = safe_resolve_within(STORAGE_ROOT, Path(material.stored_path))
-                if p.exists():
-                    p.unlink()
-            except Exception:  # noqa: BLE001
-                pass
+        stored_path = material.stored_path
+        fact_ids = select(ExtractedFact.fact_id).where(ExtractedFact.material_id == material_id)
+        await self.db.execute(delete(FactRevision).where(FactRevision.fact_id.in_(fact_ids)))
+        evidence = await self.db.execute(delete(EvidenceItem).where(
+            (EvidenceItem.material_id == material_id) | EvidenceItem.fact_id.in_(fact_ids),
+        ))
+        facts = await self.db.execute(delete(ExtractedFact).where(ExtractedFact.material_id == material_id))
+        chunks = await self.db.execute(delete(SourceChunk).where(SourceChunk.material_id == material_id))
+        for model in (ParseTask, MaterialParseRun, NotebookCell):
+            await self.db.execute(delete(model).where(model.material_id == material_id))
+        await self.db.execute(delete(Material).where(Material.id == material_id))
+        if commit:
+            await self.db.commit()
+            self.remove_file(stored_path)
         return {
             "deleted": True,
-            "cascaded": {"chunks": len(chunks), "facts": len(facts), "evidence": len(evs)},
+            "cascaded": {"chunks": chunks.rowcount, "facts": facts.rowcount, "evidence": evidence.rowcount},
         }
+
+    @staticmethod
+    def remove_file(stored_path: str | None) -> None:
+        if stored_path:
+            try:
+                p = _resolve_stored_path(stored_path)
+                p.unlink(missing_ok=True)
+            except (OSError, ParserError):
+                pass

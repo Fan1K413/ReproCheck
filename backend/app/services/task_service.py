@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from asyncio import to_thread
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import and_, delete, or_, select
@@ -16,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.errors import AppError, EvidenceValidationError
 from app.core.logging import logger
+from app.modelhub.gateway import model_gateway
 from app.models import Material, SourceChunk
 from app.models.stage2 import MaterialParseRun, ParseTask
 from app.parsers.limits import ParserError
@@ -183,8 +185,9 @@ class TaskService:
 
             path = await self.materials.path_of(material)
             # 确定性解析（不使用模型）
-            parse_result: ParseResult = parse_file(
-                path, material_id=material.id, project_id=material.project_id
+            parse_result: ParseResult = await to_thread(
+                parse_file, path, material_id=material.id, project_id=material.project_id,
+                source_name=material.original_filename or material.source_name,
             )
             await self._check_controls(task)
             if task.cancel_requested:
@@ -247,7 +250,8 @@ class TaskService:
 
             # AI 抽取（无 LLM Key 时优雅降级，保留确定性解析结果）
             current_stage = "extracting"
-            llm_available = settings.is_llm_configured
+            model_task = "pdf_extraction" if parse_result.material_type == "pdf" else "fact_extraction"
+            llm_available = await model_gateway.is_configured(self.db, model_task, material.project_id)
             llm_skip_reason = None  # 记录跳过原因（用于治理门阻断）
             if llm_available:
                 # 治理门：开启 require_ai_consent 时，调用外部模型前必须有有效授权
@@ -332,10 +336,10 @@ class TaskService:
 
             # 无论是否执行了 LLM 抽取，确定性程序事实始终补充（不依赖模型）
             try:
-                await self.extraction.add_program_facts(
-                    material=material, parse_result=parse_result,
-                    project_id=material.project_id,
-                )
+                async with self.db.begin_nested():
+                    await self.extraction.add_program_facts(
+                        material=material, parse_result=parse_result, project_id=material.project_id,
+                    )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("program_facts_failed material=%s err=%s", material.id, str(exc)[:200])
 

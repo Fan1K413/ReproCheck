@@ -21,7 +21,6 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import user_has_permission
 from app.core.errors import AppError
 from app.core.security import new_id
 from app.models.stage6 import (
@@ -43,20 +42,11 @@ _RISK_LEVELS = {"low", "medium", "high", "critical"}
 # 权限 / 工具
 
 async def resolve_rule_org(db: AsyncSession, user: User) -> str | None:
-    """规则管理是 org 级权限。返回用户具备 rule.manage 的任一组织 id。
-
-    平台管理员直接放行；否则遍历其组织成员身份，任一组织授予 rule.manage 即可。
-    没有任何组织授予该权限 -> 403。规则表本身是平台全局的（无 org_id 列），
-    但「谁能管理」由 org 级 rule.manage 把关。
-    """
-    if user.is_platform_admin:
-        m = (await db.execute(select(OrgMember).where(OrgMember.user_id == user.id))).scalars().first()
-        return m.org_id if m else None
-    memberships = (await db.execute(select(OrgMember).where(OrgMember.user_id == user.id))).scalars().all()
-    for m in memberships:
-        if await user_has_permission(db, user, "rule.manage", org_id=m.org_id):
-            return m.org_id
-    raise AppError("FORBIDDEN", "缺少权限：rule.manage（需要组织管理员）。")
+    """规则表全局共享，只有平台管理员可以管理。"""
+    if not user.is_platform_admin:
+        raise AppError("FORBIDDEN", "仅平台管理员可管理全局审计规则。")
+    member = await db.scalar(select(OrgMember).where(OrgMember.user_id == user.id).limit(1))
+    return member.org_id if member else None
 
 
 def _loads(text: str | None, default: Any = None) -> Any:

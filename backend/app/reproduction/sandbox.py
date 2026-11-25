@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 import re
 import uuid
+import zipfile
+from asyncio import to_thread
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -22,6 +24,8 @@ from app.core.config import settings
 from app.core.errors import AppError
 from app.models import Material
 from app.models.stage4 import ExecutionEnvironment, ReproductionRun
+from app.parsers.limits import MAX_SINGLE_FILE_BYTES, MAX_ZIP_ENTRIES, MAX_ZIP_TOTAL_UNCOMPRESSED, ParserError
+from app.services.material_service import MaterialService
 
 # 安全扫描规则（程序规则，不由 AI 决定阻断）
 DANGEROUS_PATTERNS: list[tuple[str, str]] = [
@@ -55,6 +59,65 @@ ENV_FILE_HINTS = {
     "setup.py": "setup_py",
     "setup.cfg": "setup_cfg",
 }
+
+_TEXT_SUFFIXES = {
+    ".py", ".ipynb", ".sh", ".ps1", ".cmd", ".bat", ".r", ".jl", ".js", ".ts",
+    ".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".txt", ".md", ".markdown",
+    ".requirements",
+}
+
+def _source_text(data: bytes, name: str) -> str:
+    text = data.decode("utf-8-sig", errors="replace")
+    if name.lower().endswith(".ipynb"):
+        notebook = json.loads(text)
+        if not isinstance(notebook, dict) or not isinstance(notebook.get("cells"), list):
+            raise ValueError("Notebook 格式无效。")
+        code = []
+        for cell in notebook["cells"]:
+            if not isinstance(cell, dict):
+                raise ValueError("Notebook 单元格格式无效。")
+            if cell.get("cell_type") == "code":
+                code.append("".join(cell.get("source") or ""))
+        return "\n".join(code)
+    return text
+
+
+def _stored_texts(path: Path, name: str):
+    if path.stat().st_size > MAX_SINGLE_FILE_BYTES:
+        raise ValueError("材料超过预检大小限制。")
+    if path.suffix.lower() != ".zip":
+        yield name, _source_text(path.read_bytes(), name)
+        return
+    with zipfile.ZipFile(path) as archive:
+        entries = archive.infolist()
+        if len(entries) > MAX_ZIP_ENTRIES or sum(e.file_size for e in entries) > MAX_ZIP_TOTAL_UNCOMPRESSED:
+            raise ValueError("压缩包超过安全预检限制。")
+        for entry in entries:
+            inner = Path(entry.filename)
+            if entry.is_dir() or (
+                inner.suffix.lower() not in _TEXT_SUFFIXES and inner.name.lower() not in ENV_FILE_HINTS
+            ):
+                continue
+            if entry.file_size > MAX_SINGLE_FILE_BYTES:
+                raise ValueError("压缩包中的源文件超过预检大小限制。")
+            with archive.open(entry) as member:
+                data = member.read(MAX_SINGLE_FILE_BYTES + 1)
+            if len(data) > MAX_SINGLE_FILE_BYTES:
+                raise ValueError("压缩包中的源文件超过预检大小限制。")
+            yield f"{name}/{entry.filename}", _source_text(data, entry.filename)
+
+
+def _scan_stored(preflight: SecurityPreflight, path: Path, name: str):
+    findings = []
+    samples = {}
+    sample_chars = 0
+    for source, text in _stored_texts(path, name):
+        findings.extend(preflight.scan_text(text, source))
+        sample = text[:min(8192, max(0, 262144 - sample_chars))]
+        if sample:
+            samples[source] = sample
+            sample_chars += len(sample)
+    return findings, samples
 
 
 class SecurityPreflight:
@@ -170,8 +233,21 @@ class ExecutionSandbox:
         )).scalars().all()
         texts: dict[str, str] = {}
         findings: list[dict[str, Any]] = []
+        material_service = MaterialService(self.db)
         for m in materials:
-            if m.raw_text:
+            suffix = Path(m.source_name or "").suffix.lower()
+            if m.stored_path and suffix in _TEXT_SUFFIXES | {".zip"}:
+                try:
+                    path = await material_service.path_of(m)
+                    scanned, samples = await to_thread(_scan_stored, self.preflight, path, m.source_name)
+                    findings.extend(scanned)
+                    texts.update(samples)
+                except (AppError, ParserError, OSError, ValueError, TypeError, RuntimeError, zipfile.BadZipFile):
+                    findings.append({
+                        "code": "MATERIAL_NOT_SCANNED", "source": m.source_name,
+                        "reason": "无法完整读取材料进行安全预检", "severity": "high",
+                    })
+            elif m.raw_text:
                 texts[m.source_name] = m.raw_text
                 findings.extend(self.preflight.scan_material(m, m.raw_text))
 

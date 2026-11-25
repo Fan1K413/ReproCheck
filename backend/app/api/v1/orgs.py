@@ -131,7 +131,7 @@ async def add_team_member(team_id: str, payload: TeamMemberIn, request: Request,
 
 @router.get("/teams/{team_id}/members")
 async def list_team_members(team_id: str, request: Request, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
-    items = await svc.list_team_members(db, team_id)
+    items = await svc.list_team_members(db, user, team_id)
     return ok({"items": items, "total": len(items)}, _rid(request))
 
 

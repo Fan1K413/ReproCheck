@@ -7,6 +7,8 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.api import api_router
 from app.api.open_v1 import open_router
@@ -15,6 +17,8 @@ from app.core.errors import AppError, app_error_handler, fail
 from app.core.logging import configure_logging, logger
 from app.db import init_db
 from app.modelhub.context import set_current, reset_current
+from app.parsers.limits import MAX_SINGLE_FILE_BYTES
+from app.services.handoff_service import MAX_BUNDLE_BYTES
 
 configure_logging()
 
@@ -24,15 +28,72 @@ app = FastAPI(
     version="1.0.0-stage1",
 )
 
+app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
+
+_MULTIPART_OVERHEAD = 1024 * 1024
+
+
+class RequestTooLarge(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(413, "请求体过大。")
+
+
+@app.exception_handler(RequestTooLarge)
+async def request_too_large_handler(request: Request, exc: RequestTooLarge):
+    return JSONResponse(
+        status_code=413,
+        content=fail("VALIDATION_ERROR", exc.detail, getattr(request.state, "request_id", "-")),
+    )
+
+
+class RequestBodyLimit:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        request = Request(scope)
+        limit = settings.max_request_bytes
+        if request.method == "POST":
+            path = request.url.path.rstrip("/")
+            if path in ("/api/v1/materials/upload", "/api/open/v1/materials"):
+                limit = MAX_SINGLE_FILE_BYTES + _MULTIPART_OVERHEAD
+            elif path.startswith("/api/v1/projects/") and path.endswith("/handoff/validate"):
+                limit = MAX_BUNDLE_BYTES + _MULTIPART_OVERHEAD
+
+        length = request.headers.get("content-length", "")
+        if length.isascii() and length.isdecimal() and (
+            len(length.lstrip("0")) > len(str(limit)) or int(length.lstrip("0") or "0") > limit
+        ):
+            response = await request_too_large_handler(request, RequestTooLarge())
+            await response(scope, receive, send)
+            return
+
+        consumed = 0
+
+        async def receive_limited():
+            nonlocal consumed
+            message = await receive()
+            if message["type"] == "http.request":
+                consumed += len(message.get("body", b""))
+                if consumed > limit:
+                    raise RequestTooLarge()
+            return message
+
+        await self.app(scope, receive_limited, send)
+
+
+app.add_middleware(RequestBodyLimit)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,  # 开发期默认放行；生产在配置中收敛为前端域名
+    allow_origins=settings.cors_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
-
-app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
 
 
 @app.exception_handler(RequestValidationError)
@@ -59,13 +120,6 @@ async def generic_error_handler(request: Request, exc: Exception):
 @app.middleware("http")
 async def request_context(request: Request, call_next):
     request.state.request_id = f"req-{uuid.uuid4().hex[:12]}"
-    # 请求体大小限制
-    length = request.headers.get("content-length")
-    if length and length.isdigit() and int(length) > settings.max_request_bytes:
-        return JSONResponse(
-            status_code=413,
-            content=fail("VALIDATION_ERROR", "请求体过大。", request.state.request_id),
-        )
     # 第十一阶段：把当前用户注入模型网关上下文（仅用于凭据归属解析；鉴权仍在路由层）。
     tokens = [set_current(None, None)]
     auth = request.headers.get("authorization", "")
@@ -87,16 +141,15 @@ async def request_context(request: Request, call_next):
 
 @app.on_event("startup")
 async def on_startup() -> None:
-    await init_db()
-    logger.info("reprocheck_started llm_configured=%s", settings.is_llm_configured)
     # 生产安全自检：只告警不强制失败，避免破坏本地开发/测试；部署方须按清单收敛配置。
     # 设置 STRICT_PRODUCTION=1 时可让不安全配置直接阻止启动。
-    import os
     issues = settings.strict_production_check()
     if issues:
         logger.warning("production_security_check issues=%s", " | ".join(issues))
-        if os.getenv("STRICT_PRODUCTION", "").strip() in ("1", "true", "True"):
+        if settings.strict_production:
             raise RuntimeError("生产安全配置未通过，拒绝启动：" + " | ".join(issues))
+    await init_db()
+    logger.info("reprocheck_started llm_configured=%s", settings.is_llm_configured)
 
 
 app.include_router(api_router)

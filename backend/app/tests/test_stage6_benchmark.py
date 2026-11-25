@@ -46,11 +46,18 @@ def _strict_auth(monkeypatch):
     monkeypatch.setattr(settings, "allow_unauth_test_endpoints", False)
 
 
-async def _register(client, email, name="测试用户"):
+async def _register(client, email, name="测试用户", *, platform_admin=False):
     r = await client.post("/api/v1/auth/register",
                           json={"email": email, "password": "password123", "display_name": name})
     assert r.status_code == 200, r.text
-    return r.json()["data"]
+    data = r.json()["data"]
+    if platform_admin:
+        from app.models.stage6 import User
+        async with _db() as db:
+            user = await db.get(User, data["user"]["id"])
+            user.is_platform_admin = True
+            await db.commit()
+    return data
 
 
 def _auth(token):
@@ -274,7 +281,7 @@ async def test_fact_normalization_and_field_schema(client):
 
 @pytest.mark.asyncio
 async def test_case_visibility_isolation(client):
-    a = await _register(client, "iso-a@example.com", "甲方")
+    a = await _register(client, "iso-a@example.com", "甲方", platform_admin=True)
     b = await _register(client, "iso-b@example.com", "乙方")
     private = await _create_case(client, a["token"])
     await _add_fact(client, a["token"], private["id"], "lr", "0.01")
@@ -508,14 +515,15 @@ async def test_verification_validation_and_permissions(client):
 
 @pytest.mark.asyncio
 async def test_search_match_basis_and_visibility(client):
+    publisher = await _register(client, "search-publisher@example.com", platform_admin=True)
     a = await _register(client, "search-a@example.com")
     b = await _register(client, "search-b@example.com")
-    public = await _create_case(client, a["token"], is_public=True)
+    public = await _create_case(client, publisher["token"], is_public=True)
     private_a = await _create_case(client, a["token"], title="CIFAR-100 上的 ResNet 私有基准",
                                    dataset_name="cifar-100")
     private_b = await _create_case(client, b["token"], title="乙方私有 CIFAR-10 基准")
-    await _add_fact(client, a["token"], public["id"], "lr", "0.1")
-    await _verify(client, a["token"], public["id"], "execution", "pass", _ENV, "执行通过")
+    await _add_fact(client, publisher["token"], public["id"], "lr", "0.1")
+    await _verify(client, publisher["token"], public["id"], "execution", "pass", _ENV, "执行通过")
 
     r = await client.post("/api/v1/cases/search",
                           json={"query": "CIFAR-10 image classification learning rate batch size ResNet",

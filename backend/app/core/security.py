@@ -61,10 +61,14 @@ def decode_access_token(token: str) -> dict:
 def _fernet() -> Fernet:
     if settings.encryption_key:
         key = settings.encryption_key.encode("utf-8")
+        try:
+            return Fernet(key)
+        except ValueError:
+            key = b"reprocheck:integration-credential:" + key
     else:
-        digest = hashlib.sha256(settings.jwt_secret.encode("utf-8")).digest()
-        key = base64.urlsafe_b64encode(digest)
-    return Fernet(key)
+        # 保持已有开发环境密文可读。
+        key = settings.jwt_secret.encode("utf-8")
+    return Fernet(base64.urlsafe_b64encode(hashlib.sha256(key).digest()))
 
 
 def encrypt_secret(plaintext: str) -> str:

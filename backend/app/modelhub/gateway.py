@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from typing import Any, TypeVar
@@ -20,6 +21,7 @@ from app.core.errors import (
     RateLimitError, TimeoutError_,
 )
 from app.core.logging import logger
+from app.core.config import settings
 from app.llm import LLMResponse, _extract_json, llm_service
 from app.modelhub.base import ModelRequest, ModelResponse
 from app.modelhub.capabilities import Capability
@@ -29,7 +31,7 @@ from app.modelhub.errors import (
     ModelNotFoundError, RouteDisabledError,
 )
 from app.modelhub.registry import build_adapter, get_provider
-from app.modelhub.security import decrypt_credential, redact_secrets, validate_base_url
+from app.modelhub.security import decrypt_credential, redact_secrets, resolve_model_endpoint
 from app.models.modelhub import (
     ModelCallLog, ModelCredential, ModelProfile, ModelRoute, TaskModelBinding,
 )
@@ -50,6 +52,15 @@ def _load_json(value: str | None, default: Any) -> Any:
 
 class ModelGateway:
     """业务任务调用模型的唯一入口。"""
+
+    async def is_configured(self, db: AsyncSession, task_key: str, project_id: str) -> bool:
+        if settings.is_llm_configured:
+            return True
+        uid = current_user_id.get()
+        if not uid:
+            return False
+        binding = await self._resolve_binding(db, uid, task_key, project_id)
+        return bool(binding and binding.enabled and binding.primary_profile_id)
 
     async def chat(
         self,
@@ -80,7 +91,12 @@ class ModelGateway:
             )
         finally:
             if own_session:
-                await session.close()
+                try:
+                    await session.commit()
+                except Exception as exc:  # noqa: BLE001 - 日志失败不影响模型结果
+                    logger.warning("model_gateway_log_failed type=%s", type(exc).__name__)
+                finally:
+                    await session.close()
 
     async def _chat_resolved(
         self,
@@ -115,28 +131,9 @@ class ModelGateway:
         else:
             chosen = primary
 
-        if binding.auto_route:
-            await self._record_route(db, uid, task_key, chosen.id, {
-                "binding": "user_explicit" if not binding.auto_route else "auto_route",
-                "primary_profile_id": primary.id,
-                "task_key": task_key,
-            })
-
         fallback = await self._get_profile(db, binding.fallback_profile_id, uid)
-        profile_params = _load_json(chosen.params_json, {})
-        merged_params = {**profile_params, **_load_json(binding.params_json, {})}
+        binding_params = _load_json(binding.params_json, {})
         want_json = response_schema is not None
-
-        req = ModelRequest(
-            model=chosen.model_id,
-            messages=messages,
-            temperature=float(merged_params.get("temperature", 0.0)),
-            max_tokens=max_tokens or chosen.max_tokens,
-            response_format={"type": "json_object"} if want_json else None,
-            extra=merged_params.get("extra") or {},
-            timeout=float(chosen.timeout_s or 60.0),
-            max_retries=int(chosen.max_retries if chosen.max_retries is not None else 1),
-        )
 
         started = time.perf_counter()
         last_error: AppError | None = None
@@ -149,6 +146,16 @@ class ModelGateway:
         parsed: Any = None
         fallback_error: AppError | None = None
         for idx, profile in enumerate(candidates):
+            params = {**_load_json(profile.params_json, {}), **binding_params}
+            req = ModelRequest(
+                model=profile.model_id, messages=messages,
+                temperature=float(params.get("temperature", 0.0)),
+                max_tokens=max_tokens or profile.max_tokens,
+                response_format={"type": "json_object"} if want_json else None,
+                extra=params.get("extra") or {},
+                timeout=float(profile.timeout_s or 60.0),
+                max_retries=int(profile.max_retries if profile.max_retries is not None else 1),
+            )
             try:
                 adapter = await self._build_adapter(db, profile, uid)
                 if want_json:
@@ -172,10 +179,14 @@ class ModelGateway:
                 last_error = InvalidModelFormatError(details={"error": str(exc)[:200]})
                 break
 
+        if binding.auto_route:
+            await self._record_route(db, uid, task_key, chosen.id, {
+                "binding": "auto_route", "primary_profile_id": primary.id, "task_key": task_key,
+            })
         if response is None or last_error is not None:
             code = last_error.code if last_error else "LLM_PROVIDER_ERROR"
             await self._log_call(db, uid, oid, task_key, req, success=False, error_code=code,
-                                 provider_key=candidates[0].provider_key if candidates else "",
+                                 provider_key=profile.provider_key,
                                  duration_ms=int((time.perf_counter() - started) * 1000))
             raise last_error or AppError("LLM_PROVIDER_ERROR", "模型调用失败。")
 
@@ -253,15 +264,10 @@ class ModelGateway:
 
     async def _record_route(self, db: AsyncSession, uid: str, task_key: str,
                             profile_id: str, reason: dict) -> None:
-        try:
-            db.add(ModelRoute(id=f"mroute-{time.time_ns():x}", owner_user_id=uid,
-                              task_key=task_key, chosen_profile_id=profile_id,
-                              reason_json=json.dumps(reason, ensure_ascii=False),
-                              auto_route=True))
-            await db.commit()
-        except Exception as exc:  # noqa: BLE001 - 记录失败不阻断调用
-            await db.rollback()
-            logger.warning("model_route_log_failed type=%s", type(exc).__name__)
+        db.add(ModelRoute(id=f"mroute-{time.time_ns():x}", owner_user_id=uid,
+                          task_key=task_key, chosen_profile_id=profile_id,
+                          reason_json=json.dumps(reason, ensure_ascii=False),
+                          auto_route=True))
 
     async def _build_adapter(self, db: AsyncSession, profile: ModelProfile,
                              uid: str):
@@ -271,24 +277,25 @@ class ModelGateway:
         ))).scalar_one_or_none() if profile.credential_id else None
         if cred is None or profile.credential_id is None:
             raise CredentialNotFoundError()
-        if cred.status == "revoked":
+        adapter, _ = await self._credential_adapter(cred)
+        return adapter
+
+    async def _credential_adapter(self, credential):
+        if getattr(credential, "status", "active") != "active":
             raise CredentialRevokedError()
-        spec = get_provider(cred.provider_key)
+        spec = get_provider(credential.provider_key)
         if spec is None:
-            raise ModelNotFoundError(cred.provider_key)
-        base_url = cred.base_url or spec.default_base_url
+            raise ModelNotFoundError(credential.provider_key)
+        base_url = credential.base_url or spec.default_base_url
         if not base_url:
             raise AppError("VALIDATION_ERROR", "该供应商需要在凭据中配置 Base URL。")
-        if cred.provider_key == "openai_compatible":
-            # 保存时已做完整 DNS/网段校验；调用时做结构化复核，防篡改
-            if not base_url.startswith("https://") or "@" in base_url:
-                from app.modelhub.errors import SSRFBlockedError
-                raise SSRFBlockedError("自定义地址必须为 HTTPS 且不含 userinfo")
-        try:
-            api_key = decrypt_credential(cred.key_ciphertext)
-        except AppError:
-            raise
-        return build_adapter(cred.provider_key, base_url, api_key)
+        pinned_ip = None
+        if credential.provider_key == "openai_compatible" or base_url != spec.default_base_url:
+            base_url, pinned_ip = await asyncio.to_thread(resolve_model_endpoint, base_url)
+        api_key = getattr(credential, "key_plaintext", None) or decrypt_credential(credential.key_ciphertext)
+        adapter = build_adapter(credential.provider_key, base_url, api_key)
+        adapter.pinned_ip = pinned_ip
+        return adapter, api_key
 
     async def _log_call(self, db: AsyncSession, uid: str, oid: str | None, task_key: str,
                         req: ModelRequest, *, success: bool, error_code: str | None,
@@ -296,24 +303,18 @@ class ModelGateway:
                         usage: TokenUsage | None = None,
                         fallback_reason: str | None = None,
                         model_id: str | None = None) -> None:
-        # 使用调用方 session，保证日志与业务写入同一数据库/事务可见性；
-        # 日志失败绝不阻断业务结果。
-        try:
-            db.add(ModelCallLog(
-                id=f"mcall-{time.time_ns():x}", request_id=req.request_id,
-                owner_user_id=uid, org_id=oid, task_key=task_key,
-                provider_key=provider_key,
-                model_id=model_id or req.model, success=success, error_code=error_code,
-                prompt_tokens=usage.prompt_tokens if usage else 0,
-                completion_tokens=usage.completion_tokens if usage else 0,
-                total_tokens=usage.total_tokens if usage else 0,
-                duration_ms=duration_ms, fallback_reason=fallback_reason,
-                cost_estimate="unavailable",
-            ))
-            await db.commit()
-        except Exception as exc:  # noqa: BLE001 - 日志失败不影响业务结果
-            await db.rollback()
-            logger.warning("model_call_log_failed type=%s", type(exc).__name__)
+        # 由创建会话的一方负责事务边界。
+        db.add(ModelCallLog(
+            id=f"mcall-{time.time_ns():x}", request_id=req.request_id,
+            owner_user_id=uid, org_id=oid, task_key=task_key,
+            provider_key=provider_key,
+            model_id=(model_id or req.model)[:160], success=success, error_code=error_code,
+            prompt_tokens=usage.prompt_tokens if usage else 0,
+            completion_tokens=usage.completion_tokens if usage else 0,
+            total_tokens=usage.total_tokens if usage else 0,
+            duration_ms=duration_ms, fallback_reason=fallback_reason,
+            cost_estimate="unavailable",
+        ))
 
     # 连接测试 / 模型列表（真实调用目标 API）
 
@@ -321,11 +322,7 @@ class ModelGateway:
         spec = get_provider(credential.provider_key)
         if spec is None:
             raise ModelNotFoundError(credential.provider_key)
-        base_url = credential.base_url or spec.default_base_url
-        if credential.provider_key == "openai_compatible":
-            validate_base_url(base_url)
-        api_key = getattr(credential, "key_plaintext", None) or decrypt_credential(credential.key_ciphertext)
-        adapter = build_adapter(credential.provider_key, base_url, api_key)
+        adapter, api_key = await self._credential_adapter(credential)
         model = profile.model_id if profile else (spec.default_models[0] if spec.default_models else "")
         if not model:
             raise AppError("VALIDATION_ERROR", "请提供要测试的模型名称。")
@@ -365,14 +362,7 @@ class ModelGateway:
         }.get(code, "provider_error")
 
     async def list_models(self, credential) -> list[dict[str, Any]]:
-        spec = get_provider(credential.provider_key)
-        if spec is None:
-            raise ModelNotFoundError(credential.provider_key)
-        base_url = credential.base_url or spec.default_base_url
-        if credential.provider_key == "openai_compatible":
-            validate_base_url(base_url)
-        adapter = build_adapter(credential.provider_key, base_url,
-                                decrypt_credential(credential.key_ciphertext))
+        adapter, _ = await self._credential_adapter(credential)
         return await adapter.list_models()
 
 

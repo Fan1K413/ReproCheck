@@ -59,6 +59,14 @@ def test_dep_failure_blocks_successor():
     assert "A" in reasons["B"][0]
 
 
+def test_unfinished_dependency_keeps_successor_pending():
+    for status in (state.NODE_PENDING, state.NODE_RUNNING, state.NODE_AWAITING_CONFIRMATION):
+        nodes = [_node("A", status=status), _node("B", ["A"])]
+        ready, reasons = state.ready_nodes(nodes, ["A", "B"], {})
+        assert all(node["node_key"] != "B" for node in ready)
+        assert "B" not in reasons
+
+
 def test_aggregate_failed_when_any_failed():
     nodes = [_node("A", status=state.NODE_COMPLETED), _node("B", status=state.NODE_FAILED)]
     assert state.aggregate_status(nodes, cancel_requested=False) == state.WF_FAILED

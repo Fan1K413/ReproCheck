@@ -155,6 +155,8 @@ async def accept_invitation(db: AsyncSession, user: User, token: str, request_id
         raise AppError("NOT_FOUND", "邀请链接无效。")
     if inv.status != "pending":
         raise AppError("CONFLICT", f"邀请已{inv.status}，无法接受。")
+    if user.email.strip().casefold() != inv.email.strip().casefold():
+        raise AppError("FORBIDDEN", "请使用受邀邮箱对应的账号接受邀请。")
     now = datetime.now(timezone.utc)
     expires = inv.expires_at
     if expires.tzinfo is None:
@@ -223,7 +225,17 @@ async def add_team_member(db: AsyncSession, actor: User, team_id: str, user_id: 
     return {"team_id": team_id, "user_id": user_id, "role_in_team": role_in_team}
 
 
-async def list_team_members(db: AsyncSession, team_id: str) -> list[dict]:
+async def list_team_members(db: AsyncSession, actor: User, team_id: str) -> list[dict]:
+    team = await db.get(Team, team_id)
+    if team is None:
+        raise AppError("NOT_FOUND", "团队不存在。")
+    _, role = await ensure_org_member(db, actor, team.org_id)
+    if not actor.is_platform_admin and role != "org_admin":
+        membership = await db.scalar(select(TeamMember.id).where(
+            TeamMember.team_id == team_id, TeamMember.user_id == actor.id,
+        ))
+        if membership is None:
+            raise AppError("NOT_FOUND", "团队不存在或无权访问。")
     rows = (await db.execute(select(TeamMember).where(TeamMember.team_id == team_id))).scalars().all()
     out = []
     for tm in rows:

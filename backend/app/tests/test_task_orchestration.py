@@ -214,7 +214,7 @@ async def test_api_pause_resume_exposes_orchestration_fields(client, session_fix
         select(Project).where(Project.id == task.project_id))).scalar_one()
     proj.owner_user_id = uid
     session_fixture.add(ProjectMember(
-        id="pm-flow", project_id=task.project_id, user_id=uid, role_key="owner"))
+        id="pm-flow", project_id=task.project_id, user_id=uid, role_key="project_lead"))
     await session_fixture.commit()
 
     paused = await client.post(f"/api/v1/parse-tasks/{task.id}/pause", headers=headers)
@@ -246,7 +246,7 @@ async def test_api_recover_stale_is_static_route(client, session_fixture):
     uid = reg.json()["data"]["user"]["id"]
     headers = {"Authorization": f"Bearer {reg.json()['data']['token']}"}
     session_fixture.add(ProjectMember(
-        id="pm-stale", project_id=task.project_id, user_id=uid, role_key="owner"))
+        id="pm-stale", project_id=task.project_id, user_id=uid, role_key="project_lead"))
     await session_fixture.commit()
     # 非平台管理员必须限定 project_id；这里传任务所属项目。
     response = await client.post("/api/v1/parse-tasks/recover-stale",

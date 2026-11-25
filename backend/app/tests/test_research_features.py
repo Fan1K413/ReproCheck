@@ -94,12 +94,12 @@ async def test_change_monitor_docs_only_does_not_force_rerun(client, session_fix
                                              provider="github", status="connected"))
     session_fixture.add(RepositorySnapshot(
         id="s-old", connection_id="conn-m", project_id=pid, repo_full_name="lab/repro",
-        commit_sha="old1",
+        commit_sha="old1", fetched_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
         version_diff_json=json.dumps({"status": "synced", "files": [
             {"path": "src/train.py", "status": "modified"}]})))
     session_fixture.add(RepositorySnapshot(
         id="s-new", connection_id="conn-m", project_id=pid, repo_full_name="lab/repro",
-        commit_sha="new1",
+        commit_sha="new1", fetched_at=datetime(2025, 1, 2, tzinfo=timezone.utc),
         version_diff_json=json.dumps({"status": "synced", "files": [
             {"path": "README.md", "status": "modified"}]})))
     session_fixture.add(ReproductionRun(id="run-m", project_id=pid, plan_id="p",
@@ -128,11 +128,11 @@ async def test_change_monitor_code_change_and_confirmed_plan(client, session_fix
                                              provider="github", status="connected"))
     session_fixture.add(RepositorySnapshot(
         id="s-old2", connection_id="conn-m2", project_id=pid, repo_full_name="lab/repro",
-        commit_sha="old2",
+        commit_sha="old2", fetched_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
         version_diff_json=json.dumps({"status": "synced", "files": []})))
     session_fixture.add(RepositorySnapshot(
         id="s-new2", connection_id="conn-m2", project_id=pid, repo_full_name="lab/repro",
-        commit_sha="new2",
+        commit_sha="new2", fetched_at=datetime(2025, 1, 2, tzinfo=timezone.utc),
         version_diff_json=json.dumps({"status": "synced", "message": "fix lr", "files": [
             {"path": "configs/train.yaml", "status": "modified"}]})))
     await session_fixture.commit()

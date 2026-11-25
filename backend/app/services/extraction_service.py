@@ -13,7 +13,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -86,9 +86,10 @@ class ExtractionService:
             prompt_version=prompt_version_for(parse_result.material_type),
         )
         # 任务级绑定：PDF 论文解析与通用事实抽取可配置不同模型
-        if hasattr(self.llm, "task_key"):
+        if isinstance(self.llm, TaskLLM):
             self.llm.task_key = ("pdf_extraction" if parse_result.material_type == "pdf"
                                  else "fact_extraction")
+            self.llm.project_id = project_id
         import time
         t0 = time.perf_counter()
 
@@ -136,7 +137,7 @@ class ExtractionService:
             prompt_version=result.prompt_version,
         )
         self.db.add(ai_run)
-        await self.db.flush()
+        await self.db.commit()
 
         try:
             resp = await self.llm.chat(messages, response_schema=FactsExtractionV2)
@@ -273,22 +274,35 @@ class ExtractionService:
         只对能明确定位的字段生成，避免把整段文本当作事实。
         """
         created = 0
+        previous_facts = select(ExtractedFact.fact_id).where(
+            ExtractedFact.material_id == material.id, ExtractedFact.parser_source == "program",
+        )
+        await self.db.execute(delete(EvidenceItem).where(EvidenceItem.fact_id.in_(previous_facts)))
+        await self.db.execute(delete(ExtractedFact).where(
+            ExtractedFact.material_id == material.id, ExtractedFact.parser_source == "program",
+        ))
+        revised_chunks = set((await self.db.scalars(select(ExtractedFact.chunk_id).where(
+            ExtractedFact.material_id == material.id, ExtractedFact.parser_source == "human",
+            ExtractedFact.extraction_run_id.startswith("program-"),
+        ))).all())
         for sc in parse_result.chunks:
             loc = sc.source_locator or {}
             field_path = loc.get("field_path") or loc.get("symbol") or ""
             original_key = loc.get("original_key") or ""
             raw = sc.content.strip()
-            if not field_path or not raw:
+            if not field_path or not raw or sc.chunk_id in revised_chunks:
                 continue
             # 只处理看起来像“键: 值”的短片段，避免把长代码/长文本当事实
-            if len(raw) > 160 or ":" not in raw and "=" not in raw:
+            assignment = re.fullmatch(r"\s*([^:=]+?)\s*[:=]\s*(.+)", raw)
+            if not assignment or len(raw) > 160:
                 continue
+            value = assignment[2].strip()
             fact_id = f"fact-{uuid.uuid4().hex[:14]}"
             self.db.add(ExtractedFact(
                 run_id=f"program-{parse_result.parser_version}", project_id=project_id,
                 material_id=material.id, chunk_id=sc.chunk_id,
                 field_key=field_path.split("@")[0].split(".")[-1],
-                raw_value=raw[:200], normalized_value=None, unit=None, confidence=1.0,
+                raw_value=value.strip(), normalized_value=value.strip(), unit=None, confidence=1.0,
                 fact_id=fact_id, fact_type="training_parameter",
                 field_label=original_key or field_path,
                 assertion_type="explicit", extraction_status="supported",

@@ -829,7 +829,7 @@ function crc32(bytes: Uint8Array): number {
   for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
-function zipStore(files: { name: string; data: Uint8Array }[]): Uint8Array {
+function zipStore(files: { name: string; data: Uint8Array }[]): Uint8Array<ArrayBuffer> {
   const enc = new TextEncoder();
   const now = new Date();
   const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);

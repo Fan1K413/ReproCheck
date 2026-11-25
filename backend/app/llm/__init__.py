@@ -114,6 +114,9 @@ class LLMService:
         except httpx.HTTPError as exc:
             logger.warning("llm_network_error request_id=%s type=%s", request_id, type(exc).__name__)
             raise NetworkError()
+        finally:
+            if self._client is None:
+                await client.aclose()
 
         if resp.status_code in (401, 403):
             logger.warning("llm_auth_failed request_id=%s status=%s", request_id, resp.status_code)

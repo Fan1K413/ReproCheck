@@ -34,12 +34,14 @@ async def test_repository_connect_encrypts_and_hides_token(client, monkeypatch):
     from app.main import app
     from app.db import get_db
     from app.models.stage6 import RepositoryConnection
-    from sqlalchemy import select
     factory = app.dependency_overrides[get_db]
-    async for db in factory():
-        conn = (await db.execute(select(RepositoryConnection).where(RepositoryConnection.id == data["connection_id"]))).scalar_one()
+    db_context = factory()
+    try:
+        db = await anext(db_context)
+        conn = await db.get(RepositoryConnection, data["connection_id"])
         assert conn.token_encrypted and "ghp_secret_xyz" not in conn.token_encrypted
-        break
+    finally:
+        await db_context.aclose()
 
 
 @pytest.mark.asyncio

@@ -49,13 +49,13 @@ def detect_material_type(filename: str) -> str:
     return "unknown"
 
 
-def parse_file(path: Path, *, material_id: str, project_id: str) -> ParseResult:
+def parse_file(path: Path, *, material_id: str, project_id: str, source_name: str | None = None) -> ParseResult:
     """统一解析入口。延迟 import 具体解析器，避免循环依赖与可选依赖缺失。"""
-    name = path.name
+    name = source_name or path.name
     ext = path.suffix.lower()
     mtype = detect_material_type(name)
 
-    if ext not in ALLOWED_EXTENSIONS and mtype == "unknown":
+    if ext not in ALLOWED_EXTENSIONS:
         raise UnsupportedFormatError(ext)
 
     if not path.exists() or not path.is_file():

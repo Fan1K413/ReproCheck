@@ -92,6 +92,10 @@ def _ip_blocked(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
 
 
 def validate_base_url(url: str, *, allow_local: bool | None = None) -> str:
+    return resolve_model_endpoint(url, allow_local=allow_local)[0]
+
+
+def resolve_model_endpoint(url: str, *, allow_local: bool | None = None) -> tuple[str, str]:
     """校验并规范化自定义模型 Base URL；失败抛 SSRFBlockedError。
 
     返回去掉尾部斜杠的 URL。仅在显式允许时使用 http://localhost。
@@ -101,6 +105,7 @@ def validate_base_url(url: str, *, allow_local: bool | None = None) -> str:
         raise SSRFBlockedError("地址不能为空")
     try:
         parts = urlsplit(raw)
+        port = parts.port
     except ValueError as exc:
         raise SSRFBlockedError("地址格式非法") from exc
 
@@ -114,11 +119,10 @@ def validate_base_url(url: str, *, allow_local: bool | None = None) -> str:
         raise SSRFBlockedError("缺少主机名")
     if host in _BLOCKED_HOSTNAMES or host.endswith(".metadata") or host.endswith(".internal"):
         raise SSRFBlockedError("目标主机属于内部元数据服务")
-    if scheme != "https":
-        local_ok = settings.allow_local_model_endpoint if allow_local is None else allow_local
-        loopback = host in {"localhost", "127.0.0.1", "::1"}
-        if not (local_ok and loopback and scheme == "http"):
-            raise SSRFBlockedError("仅允许 HTTPS（本地回环需显式开启）")
+    local_ok = settings.allow_local_model_endpoint if allow_local is None else allow_local
+    local_endpoint = local_ok and host in {"localhost", "127.0.0.1", "::1"}
+    if scheme != "https" and not (local_endpoint and scheme == "http"):
+        raise SSRFBlockedError("仅允许 HTTPS（本地回环需显式开启）")
     # 路径必须是根或 /v1 /api 等前缀；不接受指向任意管理路径
     path = parts.path or ""
     if ".." in path or "//" in path:
@@ -126,17 +130,24 @@ def validate_base_url(url: str, *, allow_local: bool | None = None) -> str:
 
     # DNS 解析后检查全部记录，防止域名指向内网
     try:
-        infos = socket.getaddrinfo(host, parts.port or (443 if scheme == "https" else 80),
+        infos = socket.getaddrinfo(host, port or (443 if scheme == "https" else 80),
                                    type=socket.SOCK_STREAM)
     except socket.gaierror as exc:
         logger.warning("model_url_dns_failure host=%s", host)
         raise SSRFBlockedError("域名无法解析") from exc
+    addresses = []
     for info in infos:
         addr = info[4][0]
         try:
             ip = ipaddress.ip_address(addr.split("%")[0])
         except ValueError:
             raise SSRFBlockedError("域名解析结果非法")
-        if _ip_blocked(ip):
+        checked_ip = (ip.ipv4_mapped or ip) if isinstance(ip, ipaddress.IPv6Address) else ip
+        if not (local_endpoint and checked_ip.is_loopback) and (
+            local_endpoint or not checked_ip.is_global or _ip_blocked(checked_ip)
+        ):
             raise SSRFBlockedError("目标地址指向内网或保留网段")
-    return raw
+        addresses.append(str(ip))
+    if not addresses:
+        raise SSRFBlockedError("域名无法解析")
+    return raw, addresses[0]

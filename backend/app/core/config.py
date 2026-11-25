@@ -2,10 +2,15 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+BACKEND_STORAGE = BACKEND_DIR / "storage"
+_DEFAULT_SQLITE_PATH = (BACKEND_DIR / "reprocheck.db").as_posix()
 
 
 class Settings(BaseSettings):
@@ -15,6 +20,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        populate_by_name=True,
     )
 
     # LLM
@@ -26,12 +32,13 @@ class Settings(BaseSettings):
     llm_max_retries: int = Field(default=1, ge=0, le=5)
 
     # DB
-    database_url: str = "sqlite+aiosqlite:///./reprocheck.db"
-    sync_database_url: str = "sqlite:///./reprocheck.db"
+    database_url: str = f"sqlite+aiosqlite:///{_DEFAULT_SQLITE_PATH}"
+    sync_database_url: str = f"sqlite:///{_DEFAULT_SQLITE_PATH}"
 
     # Auth
     admin_token: str = ""
-    allow_unauth_test_endpoints: bool = True
+    allow_unauth_test_endpoints: bool = False
+    strict_production: bool = False
 
     # Stage6 身份与凭据安全
     jwt_secret: str = "dev-insecure-change-me"
@@ -57,10 +64,13 @@ class Settings(BaseSettings):
     # CORS：默认放行以支持本地前端；生产须在部署配置中收敛为具体域名。
     # 用字符串承载，避免 pydantic-settings 对 list 字段强制 JSON 解码；
     # 通过 cors_origins 属性提供 list，支持 JSON 数组与逗号分隔两种写法。
-    cors_allow_origins_raw: str = "*"
+    cors_allow_origins_raw: str = Field(
+        default="*",
+        validation_alias=AliasChoices("CORS_ALLOW_ORIGINS_RAW", "CORS_ALLOW_ORIGINS"),
+    )
 
-    # 单次请求体上限：1MB，防止超大材料滥用
-    max_request_bytes: int = 1024 * 1024
+    # 普通请求上限。上传按材料和交接包各自的限制处理。
+    max_request_bytes: int = Field(default=1024 * 1024, gt=0)
 
     # 第四阶段：安全隔离执行（默认关闭；无安全容器时绝不执行用户代码）
     enable_code_execution: bool = False

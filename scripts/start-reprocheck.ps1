@@ -14,6 +14,9 @@ $AppUrl = 'http://127.0.0.1:5173/'
 $CmdExe = Join-Path $env:SystemRoot 'System32\cmd.exe'
 
 function Find-NodeExecutable {
+  $nodeCommand = Get-Command node.exe -CommandType Application -ErrorAction SilentlyContinue
+  if ($nodeCommand) { return $nodeCommand.Source }
+
   $runtimeRoot = Join-Path $env:LOCALAPPDATA 'Doubao\User Data\sandbox_runtime\bases'
   if (Test-Path -LiteralPath $runtimeRoot) {
     $runtimeNode = Get-ChildItem -LiteralPath $runtimeRoot -Directory |
@@ -82,8 +85,15 @@ Write-Host '  ReproCheck 科研复现审计官 · 一键启动' -ForegroundColor
 Write-Host '============================================' -ForegroundColor DarkCyan
 Write-Host ''
 
-if (-not (Test-Path -LiteralPath (Join-Path $BackendDir '.venv\Scripts\python.exe'))) {
+$PythonExe = Join-Path $BackendDir '.venv\Scripts\python.exe'
+if (-not (Test-Path -LiteralPath $PythonExe)) {
   throw '缺少后端虚拟环境：backend\.venv\Scripts\python.exe。请先按 README 安装后端依赖。'
+}
+try {
+  & $PythonExe -c 'import fastapi, uvicorn' 2>$null
+  if ($LASTEXITCODE -ne 0) { throw 'backend/.venv 中的 Python 或依赖不可用' }
+} catch {
+  throw '后端虚拟环境无法运行。请检查 backend/.venv 的解释器路径，并按 README 重建环境。'
 }
 if (-not (Test-Path -LiteralPath (Join-Path $FrontendDir 'node_modules\vite\bin\vite.js'))) {
   throw '缺少前端依赖：frontend\node_modules。请先在 frontend 目录执行 npm install。'

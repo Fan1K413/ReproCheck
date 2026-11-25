@@ -1,4 +1,5 @@
-import { ApiError, request } from './api'
+import { ApiError, invalidateExpiredSession, request } from './api'
+import { useAuthStore } from '../stores/authStore'
 import type {
   ActivityData,
   AiConsent,
@@ -212,7 +213,7 @@ export const stage6Api = {
   }) => post<RepositoryConnection>('/integrations/repositories', body),
   revokeRepository: (connId: string) =>
     post<RepositoryConnection>(`/integrations/repositories/${enc(connId)}/revoke`),
-  syncRepository: (connId: string, body: { repo_full_name: string; ref?: string }) =>
+  syncRepository: (connId: string, body: { repo_full_name: string; ref?: string; project_id?: string }) =>
     post<RepoSnapshot>(`/integrations/repositories/${enc(connId)}/sync`, body),
   listSnapshots: (connId: string) =>
     request<Items<RepoSnapshot>>(`/integrations/repositories/${enc(connId)}/snapshots`),
@@ -241,7 +242,7 @@ export const stage6Api = {
 /** 下载本人数据导出 zip（二进制流，带登录令牌）。 */
 export async function downloadExport(exportId: string): Promise<void> {
   const base = ((import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api').replace(/\/$/, '')
-  const token = localStorage.getItem('rc_token')
+  const token = useAuthStore.getState().token
   let response: Response
   try {
     response = await fetch(`${base}/v1/governance/export/${enc(exportId)}/download`, {
@@ -250,6 +251,7 @@ export async function downloadExport(exportId: string): Promise<void> {
   } catch {
     throw new ApiError('NETWORK_ERROR', '无法连接到服务，下载未开始。', null, 'frontend')
   }
+  invalidateExpiredSession(response, token)
   if (!response.ok) {
     throw new ApiError('DOWNLOAD_FAILED', `下载失败（HTTP ${response.status}）。`, null, 'frontend')
   }

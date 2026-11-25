@@ -124,6 +124,10 @@ function PossibleCauseCard({
 
 export default function ReproductionDiagnosticsPage() {
   const pid = useParams().pid ?? ''
+  return <Diagnostics key={pid} pid={pid} />
+}
+
+function Diagnostics({ pid }: { pid: string }) {
   useTrackProject(pid)
 
   const runsQuery = useQuery({
@@ -145,7 +149,6 @@ export default function ReproductionDiagnosticsPage() {
 
   const [proposalId, setProposalId] = useState('')
   const [decision, setDecision] = useState<RemediationDecision>('approve')
-  const [reviewer, setReviewer] = useState('')
   const [note, setNote] = useState('')
   const [modifiedValue, setModifiedValue] = useState('')
 
@@ -160,7 +163,6 @@ export default function ReproductionDiagnosticsPage() {
     mutationFn: () =>
       reproductionApi.reviewRemediation(proposalId, {
         decision,
-        reviewer: reviewer.trim() || '未署名',
         note: note.trim() || undefined,
         modified_value: decision === 'modify' ? modifiedValue : undefined,
       }),
@@ -491,18 +493,6 @@ export default function ReproductionDiagnosticsPage() {
                     诊断结果若附带提案会自动填入；否则请填写后端记录中的 proposal_id。
                   </p>
                 </div>
-                <div>
-                  <label className="field-label" htmlFor="reviewer">
-                    审核人
-                  </label>
-                  <input
-                    id="reviewer"
-                    className="field-input"
-                    value={reviewer}
-                    onChange={(event) => setReviewer(event.target.value)}
-                    placeholder="reviewer 姓名"
-                  />
-                </div>
                 {decision === 'modify' && (
                   <div>
                     <label className="field-label" htmlFor="modified-value">
@@ -578,7 +568,7 @@ export default function ReproductionDiagnosticsPage() {
                     审核已记录
                   </p>
                   <p className="rc-wa-pick__id" style={{ marginTop: 4, color: 'var(--rc-text-muted)', overflowWrap: 'anywhere' }}>
-                    review_id: {reviewMutation.data.review_id} · status: {reviewMutation.data.status} ·
+                    审核决定：{DECISION_LABEL[reviewMutation.data.decision]} · 审核人：{reviewMutation.data.reviewer} ·
                     原始建议保留：{reviewMutation.data.original_preserved ? '是' : '否'}
                   </p>
                 </div>

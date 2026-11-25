@@ -74,7 +74,7 @@ export async function nextIntId(db: Db, table: string): Promise<number> {
 }
 
 const enc = new TextEncoder();
-const hex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+const hex = (buf: ArrayBufferLike) => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 const b64url = (bytes: Uint8Array) => {
   let s = '';
   for (const b of bytes) s += String.fromCharCode(b);
@@ -95,7 +95,7 @@ const PBKDF2_ITERATIONS = 200_000;
 async function pbkdf2(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, 256);
+    { name: 'PBKDF2', hash: 'SHA-256', salt: new Uint8Array(salt), iterations }, key, 256);
   return new Uint8Array(bits);
 }
 export async function hashPassword(password: string): Promise<string> {
@@ -370,7 +370,8 @@ export function makeHandler(router: Router, deps: Deps, pre?: () => Promise<void
         ? await currentUser(db, request, secret)
         : await optionalUser(db, request, secret);
       const body = (request.headers.get('content-type') ?? '').startsWith('application/json')
-        ? await readJson(request)
+        ? await readJson(request, request.method === 'POST' && /^\/api\/v1\/projects\/[^/]+\/data-audits$/.test(path)
+          ? 1024 * 1024 : undefined)
         : null;
       const data = await hit.route.handler({
         request, rid, q: new URL(request.url).searchParams, params: hit.params,

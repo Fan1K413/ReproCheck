@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -15,6 +16,17 @@ engine = create_async_engine(
     connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
 )
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+if engine.dialect.name == "sqlite":
+    @event.listens_for(engine.sync_engine, "connect")
+    def _configure_sqlite(connection, _record) -> None:
+        cursor = connection.cursor()
+        try:
+            cursor.execute("PRAGMA busy_timeout=15000")
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.execute("PRAGMA journal_mode=WAL")
+        finally:
+            cursor.close()
 
 
 class Base(DeclarativeBase):
@@ -42,7 +54,7 @@ async def init_db() -> None:
         await conn.run_sync(Base.metadata.create_all)
 
     from app.db.migrate import migrate_stage2
-    await migrate_stage2()
+    await migrate_stage2(engine)
 
     from app.db.migrate_stage6 import migrate_stage6
     await migrate_stage6()

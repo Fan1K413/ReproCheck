@@ -1,3 +1,4 @@
+import { useAuthStore } from '../stores/authStore'
 import type {
   ApiResponse,
   AuditResult,
@@ -37,6 +38,7 @@ import type {
  * - 不读取、不缓存任何密钥，密钥仅由后端管理。
  */
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api'
+export const IS_SITE_API = API_BASE.includes('/functions/v1/')
 const V1 = `${API_BASE.replace(/\/$/, '')}/v1`
 
 export class ApiError extends Error {
@@ -53,12 +55,30 @@ export class ApiError extends Error {
   }
 }
 
+export function invalidateExpiredSession(response: Response, token: string | null) {
+  const session = useAuthStore.getState()
+  if (response.status === 401 && token && session.token === token) session.logout()
+}
+
+export function downloadFilename(response: Response, fallback: string): string {
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1]
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded.trim())
+    } catch {
+      // 使用普通 filename，或回退到调用方提供的文件名。
+    }
+  }
+  return /filename\s*=\s*(?:"([^"]*)"|([^;]+))/i.exec(disposition)?.slice(1).find(Boolean)?.trim() || fallback
+}
+
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
   // multipart 上传不能手工设置 Content-Type，否则浏览器无法自动补全 boundary。
   const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData
   // 第六阶段：注入登录令牌（仅读取本地会话，密钥仍由后端管理）。
-  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('rc_token') : null
+  const token = useAuthStore.getState().token
   try {
     response = await fetch(`${V1}${path}`, {
       ...init,
@@ -78,6 +98,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     )
   }
 
+  if (path !== '/auth/login' && path !== '/auth/register') invalidateExpiredSession(response, token)
   let payload: ApiResponse<T>
   try {
     payload = (await response.json()) as ApiResponse<T>
@@ -178,7 +199,7 @@ export const api = {
   downloadMaterial: async (materialId: string): Promise<void> => {
     let response: Response
     // 二进制下载端点同样需要 Bearer；否则登录后会 401。
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('rc_token') : null
+    const token = useAuthStore.getState().token
     try {
       response = await fetch(`${V1}/materials/${encodeURIComponent(materialId)}/download`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -186,6 +207,7 @@ export const api = {
     } catch {
       throw new ApiError('NETWORK_ERROR', '无法连接到服务，下载未开始。', null, 'frontend')
     }
+    invalidateExpiredSession(response, token)
     if (!response.ok) {
       throw new ApiError(
         'DOWNLOAD_FAILED',
@@ -195,11 +217,7 @@ export const api = {
       )
     }
     const blob = await response.blob()
-    const disposition = response.headers.get('Content-Disposition') ?? ''
-    const match = /filename\*?=(?:UTF-8'')?([^;]+)/i.exec(disposition)
-    const filename = match
-      ? decodeURIComponent(match[1].trim().replace(/^"|"$/g, ''))
-      : `material-${materialId}`
+    const filename = downloadFilename(response, `material-${materialId}`)
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
@@ -280,7 +298,7 @@ export const api = {
   /** 交接包导出：POST 返回二进制 ZIP，复用 downloadMaterial 的 Bearer + Blob 下载模式。 */
   exportHandoff: async (projectId: string): Promise<void> => {
     let response: Response
-    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('rc_token') : null
+    const token = useAuthStore.getState().token
     try {
       response = await fetch(
         `${V1}/projects/${encodeURIComponent(projectId)}/handoff/export`,
@@ -295,14 +313,11 @@ export const api = {
     } catch {
       throw new ApiError('NETWORK_ERROR', '无法连接到服务，交接包导出未开始。', null, 'frontend')
     }
+    invalidateExpiredSession(response, token)
     if (!response.ok) throw await binaryDownloadError(response, '交接包导出失败')
 
     const blob = await response.blob()
-    const disposition = response.headers.get('Content-Disposition') ?? ''
-    const match = /filename\*?=(?:UTF-8'')?([^;]+)/i.exec(disposition)
-    const filename = match
-      ? decodeURIComponent(match[1].trim().replace(/^"|"$/g, ''))
-      : `handoff-${projectId}.zip`
+    const filename = downloadFilename(response, `handoff-${projectId}.zip`)
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url

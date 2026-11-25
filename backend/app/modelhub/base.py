@@ -110,6 +110,7 @@ class ModelAdapter(abc.ABC):
         self.api_key = api_key
         self._client = client
         self._owns_client = client is None
+        self.pinned_ip: str | None = None
 
     def supports(self, capability: Capability) -> bool:
         return capability in self.capabilities
@@ -124,6 +125,11 @@ class ModelAdapter(abc.ABC):
     async def _get_client(self, timeout: float) -> httpx.AsyncClient:
         if self._client is not None:
             return self._client
+        if self.pinned_ip:
+            return httpx.AsyncClient(
+                timeout=httpx.Timeout(timeout), follow_redirects=False, trust_env=False,
+                transport=PinnedModelTransport(self.pinned_ip),
+            )
         return httpx.AsyncClient(timeout=httpx.Timeout(timeout), follow_redirects=False)
 
     async def _release(self, client: httpx.AsyncClient) -> None:
@@ -153,3 +159,19 @@ class ModelAdapter(abc.ABC):
 
     def __repr__(self) -> str:  # 防止密钥被日志打印
         return f"<{type(self).__name__} provider={self.provider_key} key=***>"
+
+
+class PinnedModelTransport(httpx.AsyncHTTPTransport):
+    """连接已经验证的 IP，并保留原域名用于 Host、TLS SNI 和证书验证。"""
+
+    def __init__(self, address: str) -> None:
+        super().__init__(trust_env=False)
+        self.address = address
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        pinned_request = httpx.Request(
+            request.method, request.url.copy_with(host=self.address),
+            headers=request.headers, stream=request.stream,
+            extensions={**request.extensions, "sni_hostname": request.url.host},
+        )
+        return await super().handle_async_request(pinned_request)

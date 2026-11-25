@@ -9,11 +9,11 @@ import html
 import json
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import BACKEND_STORAGE
 from app.core.logging import logger
 from app.models import ExtractedFact, Project
 from app.models.stage4 import (
@@ -185,7 +185,7 @@ class ReportGenerator:
         """使用可用库导出 PDF；不可用时返回 None。"""
         try:
             from weasyprint import HTML  # type: ignore
-            out = Path("./storage/reports")
+            out = BACKEND_STORAGE / "reports"
             out.mkdir(parents=True, exist_ok=True)
             path = out / f"report-{uuid.uuid4().hex[:12]}.pdf"
             HTML(string=html_text).write_pdf(str(path))
