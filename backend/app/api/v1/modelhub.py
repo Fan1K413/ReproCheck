@@ -18,7 +18,8 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -100,6 +101,7 @@ class GuidedModelSetupIn(BaseModel):
     max_tokens: int | None = None
     temperature: float | None = None
     is_default: bool = True
+    replace_existing: bool = False
     org_id: str | None = None
 
 
@@ -293,27 +295,48 @@ async def create_guided_model_setup(body: GuidedModelSetupIn,
             raise AppError("VALIDATION_ERROR", "温度参数应在 0 到 2 之间。")
         params["temperature"] = body.temperature
 
+    existing_profile = (await db.execute(select(ModelProfile).where(
+        ModelProfile.owner_user_id == user.id,
+        ModelProfile.provider_key == body.provider_key,
+        ModelProfile.model_id == model_id,
+    ))).scalar_one_or_none()
+    if existing_profile is not None and not body.replace_existing:
+        raise AppError("CONFLICT", f"模型「{model_id}」已有配置，请确认是否更新。")
     credential = ModelCredential(
         id=_new_id("mcred"), owner_user_id=user.id, org_id=body.org_id,
         provider_key=body.provider_key, name=(body.name or spec.name)[:120],
         key_ciphertext=encrypt_credential(api_key), key_hint=mask_key(api_key),
         base_url=base_url, status="active",
     )
-    profile = ModelProfile(
-        id=_new_id("mprof"), owner_user_id=user.id, org_id=body.org_id,
-        provider_key=body.provider_key, credential_id=credential.id,
-        model_id=model_id, display_name=body.display_name or model_id,
-        params_json=json.dumps(params, ensure_ascii=False),
-        timeout_s=body.timeout_s, max_retries=1, max_tokens=body.max_tokens,
-        enabled=True, is_default=False, is_fallback=False,
-    )
+    if existing_profile is not None:
+        profile = existing_profile
+        profile.org_id = body.org_id
+        profile.credential_id = credential.id
+        profile.display_name = body.display_name or model_id
+        profile.params_json = json.dumps(params, ensure_ascii=False)
+        profile.timeout_s = body.timeout_s
+        profile.max_tokens = body.max_tokens
+        profile.enabled = True
+    else:
+        profile = ModelProfile(
+            id=_new_id("mprof"), owner_user_id=user.id, org_id=body.org_id,
+            provider_key=body.provider_key, credential_id=credential.id,
+            model_id=model_id, display_name=body.display_name or model_id,
+            params_json=json.dumps(params, ensure_ascii=False),
+            timeout_s=body.timeout_s, max_retries=1, max_tokens=body.max_tokens,
+            enabled=True, is_default=False, is_fallback=False,
+        )
     try:
         if body.is_default:
             await _clear_flags(db, user.id, "is_default")
             profile.is_default = True
         db.add(credential)
-        db.add(profile)
+        if existing_profile is None:
+            db.add(profile)
         await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise AppError("CONFLICT", f"模型「{model_id}」已存在，请勿重复添加。") from exc
     except Exception:
         await db.rollback()
         raise
@@ -406,6 +429,13 @@ async def revoke_credential(cred_id: str, user: User = Depends(get_current_user)
 async def purge_credential(cred_id: str, user: User = Depends(get_current_user),
                            db: AsyncSession = Depends(get_db)):
     row = await _own_credential(db, cred_id, user.id)
+    orphan_profiles = (await db.execute(select(ModelProfile).where(
+        ModelProfile.owner_user_id == user.id,
+        ModelProfile.credential_id == cred_id,
+    ))).scalars().all()
+    await _clear_profile_bindings(db, user.id, {profile.id for profile in orphan_profiles})
+    for profile in orphan_profiles:
+        await db.delete(profile)
     await db.delete(row)
     await db.commit()
     return {"deleted": True, "id": cred_id}
@@ -464,24 +494,36 @@ async def create_profile(body: ProfileIn, user: User = Depends(get_current_user)
                          db: AsyncSession = Depends(get_db)):
     if get_provider(body.provider_key) is None:
         raise AppError("VALIDATION_ERROR", "未知的模型供应商。")
-    if not body.model_id.strip():
+    clean_model_id = body.model_id.strip()
+    if not clean_model_id:
         raise AppError("VALIDATION_ERROR", "模型名称不能为空。")
+    if body.timeout_s <= 0:
+        raise AppError("VALIDATION_ERROR", "请求超时时间必须大于 0。")
+    if body.max_tokens is not None and body.max_tokens <= 0:
+        raise AppError("VALIDATION_ERROR", "最大 Token 必须大于 0。")
     if body.credential_id:
-        await _own_credential(db, body.credential_id, user.id)
+        credential = await _own_credential(db, body.credential_id, user.id)
+        if credential.provider_key != body.provider_key:
+            raise AppError("VALIDATION_ERROR", "模型与凭据必须使用同一供应商。")
     if body.is_default:
         await _clear_flags(db, user.id, "is_default")
     if body.is_fallback:
         await _clear_flags(db, user.id, "is_fallback")
+
     row = ModelProfile(
         id=_new_id("mprof"), owner_user_id=user.id, org_id=body.org_id,
         provider_key=body.provider_key, credential_id=body.credential_id,
-        model_id=body.model_id.strip(), display_name=body.display_name or body.model_id,
+        model_id=clean_model_id, display_name=body.display_name or clean_model_id,
         params_json=json.dumps(body.params, ensure_ascii=False),
         timeout_s=body.timeout_s, max_retries=body.max_retries, max_tokens=body.max_tokens,
         enabled=body.enabled, is_default=body.is_default, is_fallback=body.is_fallback,
     )
     db.add(row)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise AppError("CONFLICT", f"模型「{clean_model_id}」已存在，请勿重复添加。") from exc
     return profile_view(row)
 
 
@@ -501,7 +543,9 @@ async def update_profile(pid: str, body: ProfileUpdate, user: User = Depends(get
         if key == "params":
             row.params_json = json.dumps(value or {}, ensure_ascii=False)
         elif key == "credential_id" and value:
-            await _own_credential(db, value, user.id)
+            credential = await _own_credential(db, value, user.id)
+            if credential.provider_key != row.provider_key:
+                raise AppError("VALIDATION_ERROR", "模型与凭据必须使用同一供应商。")
             row.credential_id = value
         elif key == "is_default" and value:
             await _clear_flags(db, user.id, "is_default")
@@ -519,6 +563,7 @@ async def update_profile(pid: str, body: ProfileUpdate, user: User = Depends(get
 async def delete_profile(pid: str, user: User = Depends(get_current_user),
                          db: AsyncSession = Depends(get_db)):
     row = await _own_profile(db, pid, user.id)
+    await _clear_profile_bindings(db, user.id, {pid})
     await db.delete(row)
     await db.commit()
     return {"deleted": True, "id": pid}
@@ -536,6 +581,20 @@ async def test_profile(pid: str, model_id: str | None = None,
 
 
 # 任务绑定
+
+async def _clear_profile_bindings(db: AsyncSession, uid: str, profile_ids: set[str]) -> None:
+    if not profile_ids:
+        return
+    bindings = (await db.execute(select(TaskModelBinding).where(
+        TaskModelBinding.owner_user_id == uid,
+        or_(TaskModelBinding.primary_profile_id.in_(profile_ids),
+            TaskModelBinding.fallback_profile_id.in_(profile_ids)),
+    ))).scalars().all()
+    for binding in bindings:
+        if binding.primary_profile_id in profile_ids:
+            binding.primary_profile_id = None
+        if binding.fallback_profile_id in profile_ids:
+            binding.fallback_profile_id = None
 
 @router.get("/task-model-bindings")
 async def list_bindings(project_id: str | None = None,

@@ -30,7 +30,7 @@ export const modelApi = {
     provider_key: string; api_key: string; model_id: string;
     display_name?: string; name?: string; base_url?: string;
     timeout_s?: number; max_tokens?: number | null; temperature?: number | null;
-    is_default?: boolean;
+    is_default?: boolean; replace_existing?: boolean;
   }) => request<{ credential: ModelCredential; profile: ModelProfile; note: string }>('/model-setup', {
     method: 'POST', body: JSON.stringify(body),
   }),

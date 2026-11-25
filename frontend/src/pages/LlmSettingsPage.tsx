@@ -7,7 +7,7 @@
  *         密钥字段绝不落盘 —— 页面底部提供实时自检。
  */
 import { useMemo } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Cpu, PlugZap, ShieldCheck, SlidersHorizontal } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ErrorState } from '../components/ErrorState'
@@ -62,8 +62,14 @@ function SpecRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 export default function LlmSettingsPage() {
+  const qc = useQueryClient()
   const statusQuery = useQuery({ queryKey: ['llm-status'], queryFn: api.getLlmStatus })
-  const testMutation = useMutation({ mutationFn: api.testLlm })
+  const testMutation = useMutation({
+    mutationFn: api.testLlm,
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ['llm-status'] })
+    },
+  })
   const status = statusQuery.data
   const testError = testMutation.error as ApiError | null
   const testData = testMutation.data
@@ -83,7 +89,7 @@ export default function LlmSettingsPage() {
           <p className="rc-we-lead">系统默认 AI 服务状态</p>
         </div>
         <div className="rc-we-actions">
-          <Link to="/settings/models?tab=setup" className="btn-primary">
+          <Link to="/settings/models?tab=providers" className="btn-primary">
             <Icon as={SlidersHorizontal} size="sm" />
             连接 AI 助手
           </Link>

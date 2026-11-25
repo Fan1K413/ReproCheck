@@ -6,10 +6,14 @@
 from __future__ import annotations
 
 import json
+import socket
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from typing import Any
 
 import httpx
 import pytest
+from cryptography.fernet import Fernet
 from pydantic import BaseModel
 
 from app.core.config import settings
@@ -79,7 +83,7 @@ def test_capability_matrix_rejects_unsupported_with_reason():
 
 # 加密 / 脱敏 / SSRF
 
-def test_credential_encryption_masking_and_missing_key(monkeypatch):
+def test_credential_encryption_masking_and_missing_key(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "model_credential_key", "unit-test-independent-key")
     secret = "sk-abcdefghijklmnop"
     cipher = encrypt_credential(secret)
@@ -88,31 +92,66 @@ def test_credential_encryption_masking_and_missing_key(monkeypatch):
     hint = mask_key(secret)
     assert hint.startswith("sk-a") and hint.endswith("op") and "bcdef" not in hint
     assert mask_key("short") == "****"
+
+    # 非严格生产模式下未配置环境变量时，自动生成并持久化本地独立密钥
     monkeypatch.setattr(settings, "model_credential_key", "")
+    monkeypatch.setattr(settings, "strict_production", False)
+    key_file = tmp_path / ".model_credential_key"
+    monkeypatch.setattr("app.modelhub.security._LOCAL_CREDENTIAL_KEY_FILE", key_file)
+    auto_cipher = encrypt_credential(secret)
+    assert key_file.is_file()
+    assert decrypt_credential(auto_cipher) == secret
+
+    # 严格生产模式下未配置环境变量仍拒绝加密保存
+    monkeypatch.setattr(settings, "strict_production", True)
     with pytest.raises(EncryptionUnavailableError):
         encrypt_credential(secret)
 
 
-def test_ssrf_blocks_private_metadata_and_userinfo(monkeypatch):
-    import socket
+def test_parallel_first_use_keeps_one_credential_key(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "model_credential_key", "")
+    monkeypatch.setattr(settings, "strict_production", False)
+    monkeypatch.setattr("app.modelhub.security._LOCAL_CREDENTIAL_KEY_FILE", tmp_path / ".model_credential_key")
+    first_use = Barrier(2, timeout=5)
+    generate = Fernet.generate_key
+
+    def generate_together():
+        first_use.wait()
+        return generate()
+
+    monkeypatch.setattr(Fernet, "generate_key", staticmethod(generate_together))
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        encrypted = list(pool.map(encrypt_credential, ["first", "second"]))
+    assert [decrypt_credential(value) for value in encrypted] == ["first", "second"]
+
+
+def test_ssrf_blocks_private_and_invalid_urls_by_default(monkeypatch):
+    monkeypatch.setattr(settings, "allow_local_model_endpoint", False)
+    for bad in ("file:///etc/passwd", "ftp://example.com/v1", "http://127.0.0.1:8000/v1",
+                "http://192.168.1.10:11434/v1",
+                "https://user:pass@example.com/v1", "https://example.com/v1?a=1",
+                "https://example.com/v1/../admin"):
+        with pytest.raises(SSRFBlockedError):
+            validate_base_url(bad)
+
     def fake_resolve(host, port, **kwargs):
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.5", port))]
     monkeypatch.setattr(socket, "getaddrinfo", fake_resolve)
     for bad in ("https://internal.example.com/v1", "http://example.com/v1",
-                "https://user:pass@example.com/v1", "https://metadata.google.internal/v1"):
+                "https://metadata.google.internal/v1"):
         with pytest.raises(SSRFBlockedError):
             validate_base_url(bad)
-    monkeypatch.setattr(settings, "allow_local_model_endpoint", True)
-    with pytest.raises(SSRFBlockedError):
-        validate_base_url("http://127.0.0.1:8000/v1")  # 必须 https，即使本地
 
 
 def test_ssrf_accepts_public_https(monkeypatch):
-    import socket
     def fake_resolve(host, port, **kwargs):
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port))]
     monkeypatch.setattr(socket, "getaddrinfo", fake_resolve)
     assert validate_base_url("https://api.example.com/v1/") == "https://api.example.com/v1"
+
+
+def test_ssrf_allows_loopback_only_when_explicitly_enabled():
+    assert validate_base_url("http://127.0.0.1:8000/v1/", allow_local=True) == "http://127.0.0.1:8000/v1"
 
 
 # 适配器协议级测试（MockTransport，非真实联调）
@@ -385,12 +424,26 @@ async def test_api_connection_test_is_real_and_reports_failure(client, monkeypat
 
 
 @pytest.mark.asyncio
-async def test_api_rejects_custom_ssrf_url_and_requires_key(client, monkeypatch):
+async def test_api_rejects_custom_ssrf_url_and_requires_key(client, monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "allow_unauth_test_endpoints", False)
+    monkeypatch.setattr(settings, "allow_local_model_endpoint", False)
+    monkeypatch.setattr(settings, "strict_production", False)
+    monkeypatch.setattr(settings, "model_credential_key", "")
+    monkeypatch.setattr("app.modelhub.security._LOCAL_CREDENTIAL_KEY_FILE", tmp_path / ".model_credential_key")
     user = await _register(client, "model-ssrf@example.com")
+    # 地址验证先于本地密钥初始化。
+    r = await client.post("/api/v1/model-credentials", headers=_auth(user["token"]), json={
+        "provider_key": "openai_compatible", "api_key": "sk-local-1234",
+        "base_url": "http://127.0.0.1:8000/v1"})
+    assert r.status_code == 422 and r.json()["error"]["code"] == "SSRF_BLOCKED"
+    assert not (tmp_path / ".model_credential_key").exists()
+    r = await client.post("/api/v1/model-credentials", headers=_auth(user["token"]), json={
+        "provider_key": "qwen", "api_key": "sk-local-1234"})
+    assert r.status_code == 200, r.text
+    # 非法协议与携带账密的 URL 仍拦截
     r = await client.post("/api/v1/model-credentials", headers=_auth(user["token"]), json={
         "provider_key": "openai_compatible", "api_key": "sk-x",
-        "base_url": "http://127.0.0.1:8000/v1"})
+        "base_url": "https://user:pass@example.com/v1"})
     assert r.status_code == 422 and r.json()["error"]["code"] == "SSRF_BLOCKED"
     r = await client.post("/api/v1/model-credentials", headers=_auth(user["token"]), json={
         "provider_key": "openai_compatible", "api_key": ""})
@@ -407,6 +460,13 @@ async def test_api_stats_and_binding_roundtrip(client, monkeypatch):
     prof = (await client.post("/api/v1/model-profiles", headers=_auth(user["token"]), json={
         "provider_key": "qwen", "credential_id": cred["id"], "model_id": "qwen-plus",
         "is_default": True})).json()["data"]
+    # 普通创建返回冲突，保留已保存参数。显式更新时保留模型 ID。
+    dup = await client.post("/api/v1/model-profiles", headers=_auth(user["token"]), json={
+        "provider_key": "qwen", "credential_id": cred["id"], "model_id": "qwen-plus",
+        "display_name": "千问 Plus", "max_tokens": 4096, "is_default": True})
+    assert dup.status_code == 409, dup.text
+    listed = (await client.get("/api/v1/model-profiles", headers=_auth(user["token"]))).json()["data"]
+    assert [(p["id"], p["max_tokens"]) for p in listed] == [(prof["id"], None)]
     r = await client.put("/api/v1/task-model-bindings", headers=_auth(user["token"]), json={
         "task_key": "rag_qa", "primary_profile_id": prof["id"], "auto_route": False})
     assert r.status_code == 200 and r.json()["data"]["task_key"] == "rag_qa"
@@ -415,3 +475,91 @@ async def test_api_stats_and_binding_roundtrip(client, monkeypatch):
     r = await client.get("/api/v1/model-stats", headers=_auth(user["token"]))
     assert r.json()["data"]["total_calls"] == 0
     assert "不编造费用" in r.json()["data"]["cost_note"]
+    # 彻底删除提供商时同步清理其关联的模型配置
+    del_resp = await client.delete(f"/api/v1/model-credentials/{cred['id']}/purge",
+                                   headers=_auth(user["token"]))
+    assert del_resp.status_code == 200 and del_resp.json()["data"]["deleted"] is True
+    left_profiles = (await client.get("/api/v1/model-profiles", headers=_auth(user["token"]))).json()["data"]
+    assert left_profiles == []
+    bindings = (await client.get("/api/v1/task-model-bindings", headers=_auth(user["token"]))).json()["data"]
+    assert bindings[0]["primary_profile_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_guided_setup_requires_confirmation_to_replace_model(client, monkeypatch):
+    monkeypatch.setattr(settings, "model_credential_key", "wizard-test-key")
+    user = await _register(client, "model-wizard@example.com")
+    headers = _auth(user["token"])
+    body = {"provider_key": "qwen", "api_key": "sk-original", "model_id": "qwen-plus"}
+    created = await client.post("/api/v1/model-setup", headers=headers, json=body)
+    assert created.status_code == 200, created.text
+    original = created.json()["data"]["profile"]
+
+    revised = {**body, "api_key": "sk-replacement", "max_tokens": 2048}
+    duplicate = await client.post("/api/v1/model-setup", headers=headers, json=revised)
+    assert duplicate.status_code == 409, duplicate.text
+    current = (await client.get("/api/v1/model-credentials", headers=headers)).json()["data"]
+    assert [row["id"] for row in current] == [original["credential_id"]]
+
+    updated = await client.post("/api/v1/model-setup", headers=headers, json={**revised, "replace_existing": True})
+    assert updated.status_code == 200, updated.text
+    profile = updated.json()["data"]["profile"]
+    assert profile["id"] == original["id"] and profile["credential_id"] != original["credential_id"]
+    assert profile["max_tokens"] == 2048
+
+
+@pytest.mark.asyncio
+async def test_llm_status_and_test_use_user_default_model(client, monkeypatch):
+    """用户配置默认模型后，/api/v1/llm/status 与 /api/v1/llm/test 自动反映并调用该默认模型。"""
+    monkeypatch.setattr(settings, "allow_unauth_test_endpoints", False)
+    monkeypatch.setattr(settings, "model_credential_key", "llm-status-key")
+    monkeypatch.setattr(settings, "llm_api_key", "")
+    user = await _register(client, "llm-default@example.com")
+
+    cred = (await client.post("/api/v1/model-credentials", headers=_auth(user["token"]), json={
+        "provider_key": "openai",
+        "name": "测试 OpenAI",
+        "api_key": "sk-model-test-1234",
+    })).json()["data"]
+    prof = (await client.post("/api/v1/model-profiles", headers=_auth(user["token"]), json={
+        "provider_key": "openai",
+        "credential_id": cred["id"],
+        "model_id": "gpt-6.2-sol",
+    })).json()["data"]
+    assert prof["model_id"] == "gpt-6.2-sol"
+
+    before = (await client.get("/api/v1/llm/status", headers=_auth(user["token"]))).json()["data"]
+    assert before["api_key_configured"] is False
+    selected = await client.patch(f"/api/v1/model-profiles/{prof['id']}", headers=_auth(user["token"]),
+                                  json={"is_default": True})
+    assert selected.status_code == 200, selected.text
+
+    st = await client.get("/api/v1/llm/status", headers=_auth(user["token"]))
+    assert st.status_code == 200, st.text
+    st_data = st.json()["data"]
+    assert st_data["provider"] == "测试 OpenAI"
+    assert st_data["model"] == "gpt-6.2-sol"
+    assert st_data["api_key_configured"] is True
+
+    def build(provider_key, base_url, api_key, client=None):
+        return OpenAICompatibleAdapter(
+            base_url=base_url, api_key=api_key,
+            client=httpx.AsyncClient(transport=httpx.MockTransport(_json_handler({
+                "model": "gpt-6.2-sol-versioned",
+                "choices": [{"message": {"content": "ReproCheck API 连接成功。"}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": 8, "completion_tokens": 6, "total_tokens": 14},
+            }))),
+        )
+    monkeypatch.setattr("app.modelhub.gateway.build_adapter", build)
+
+    test_resp = await client.post("/api/v1/llm/test", headers=_auth(user["token"]))
+    assert test_resp.status_code == 200, test_resp.text
+    test_data = test_resp.json()["data"]
+    assert test_data["success"] is True
+    assert test_data["model"] == "gpt-6.2-sol-versioned"
+    assert test_data["token_usage"]["total_tokens"] == 14
+
+    st2 = (await client.get("/api/v1/llm/status", headers=_auth(user["token"]))).json()["data"]
+    assert st2["connection_status"] == "ok"
+    assert st2["last_call_success"] is True
+    assert st2["last_token_usage"]["total_tokens"] == 14

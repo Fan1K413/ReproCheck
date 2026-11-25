@@ -1,28 +1,22 @@
 /**
- * 第十一阶段：模型管理中心（Wave E · /settings/models）
- * --------------------------------------------------------------------------
- * 设计：动态透视卡片 —— 多个模型配置沿透视轴层叠，切换时 400ms
- *      （--rc-dur-slow + --rc-ease-out）滑入滑出；3D 倾角 ≤4°，窄屏降级为纵向滑动。
- * 安全：配置过程全程在授权后端完成；API Key 用 password 输入框、提交后立即清空，
- *      且**永不写入 sessionStorage 草稿**（草稿采用非敏感字段白名单）。
+ * 模型管理中心（/settings/models）
+ * 统一工作流：先在「提供商」页添加自己的接口与密钥，再在「我的模型」中直接从已添加的提供商里选用模型。
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Activity,
   BarChart3,
-  BookMarked,
   CheckCircle2,
   CircleSlash2,
   Cpu,
+  Download,
   KeyRound,
   Link2,
-  RotateCcw,
   SlidersHorizontal,
-  Sparkles,
   XCircle,
 } from 'lucide-react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { ErrorState } from '../components/ErrorState'
 import { Icon } from '../components/Icon'
 import { LoadingState } from '../components/LoadingState'
@@ -34,38 +28,50 @@ import { modelApi } from '../services/modelApi'
 import { toast } from '../stores/toastStore'
 import GuidedModelSetup from '../ux/GuidedModelSetup'
 import '../styles/wave-e-model.css'
-import type { ModelProfile, TaskBinding, TestResult } from '../types/model'
+import type { ModelCredential, ModelProfile, RemoteModel, TaskBinding, TestResult } from '../types/model'
 
-type Section = 'setup' | 'providers' | 'credentials' | 'models' | 'default' | 'bindings' | 'logs' | 'stats'
+type Section = 'providers' | 'models' | 'bindings' | 'logs' | 'stats'
 
 const SECTIONS: { key: Section; label: string; icon: typeof Cpu; hint: string }[] = [
-  { key: 'setup', label: '连接 AI 助手', icon: Sparkles, hint: '五步向导，先测试再保存' },
-  { key: 'providers', label: '服务商详情', icon: BookMarked, hint: '查看真实适配器清单' },
-  { key: 'credentials', label: '密钥管理', icon: KeyRound, hint: '撤销或删除已有密钥' },
-  { key: 'models', label: '模型配置', icon: Cpu, hint: '高级参数与逐个测试' },
-  { key: 'default', label: '默认模型', icon: CheckCircle2, hint: '默认与备用策略' },
-  { key: 'bindings', label: '按任务分配', icon: SlidersHorizontal, hint: '高级：不同科研任务用不同模型' },
-  { key: 'logs', label: '调用记录', icon: Activity, hint: '真实调用元数据' },
+  { key: 'providers', label: '提供商', icon: KeyRound, hint: '添加接口、密钥与测试' },
+  { key: 'models', label: '我的模型', icon: Cpu, hint: '从已添加提供商选用模型' },
+  { key: 'bindings', label: '任务分配', icon: SlidersHorizontal, hint: '按科研任务指定模型' },
+  { key: 'logs', label: '调用记录', icon: Activity, hint: '真实调用与延迟' },
   { key: 'stats', label: '用量统计', icon: BarChart3, hint: '次数 / Token / 耗时' },
 ]
 
-const SECTION_KEYS = new Set<string>(SECTIONS.map((item) => item.key))
-
-const TASK_LABELS: Record<string, string> = {
-  pdf_extraction: 'PDF 论文解析', fact_extraction: '科研事实抽取',
-  diff_analysis: '论文与代码差异分析', failure_diagnosis: '失败原因分析',
-  rag_qa: 'RAG 问答', report_generation: '报告生成', summary: '科研材料总结',
+function normalizeSection(tab: string | null): Section {
+  if (tab === 'models' || tab === 'default') return 'models'
+  if (tab === 'bindings') return 'bindings'
+  if (tab === 'logs') return 'logs'
+  if (tab === 'stats') return 'stats'
+  return 'providers'
 }
 
-/** 凭据草稿槽位：只允许写入非敏感字段（白名单），api_key 永不落盘。 */
-const CRED_DRAFT_KEY = 'rc.draft.model-credential'
+const TASK_LABELS: Record<string, string> = {
+  pdf_extraction: 'PDF 论文解析',
+  fact_extraction: '科研事实抽取',
+  diff_analysis: '论文与代码差异分析',
+  failure_diagnosis: '失败原因分析',
+  rag_qa: 'RAG 问答',
+  report_generation: '报告生成',
+  summary: '科研材料总结',
+}
 
 function errMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback
 }
 
-function Panel({ title, icon, children, action }: {
-  title: string; icon?: ReactNode; children: ReactNode; action?: ReactNode
+function Panel({
+  title,
+  icon,
+  children,
+  action,
+}: {
+  title: string
+  icon?: ReactNode
+  children: ReactNode
+  action?: ReactNode
 }) {
   return (
     <section className="rc-we-card">
@@ -93,22 +99,19 @@ function TestResultView({ result }: { result: TestResult | null }) {
       <Icon as={ok ? CheckCircle2 : XCircle} size="md" className="rc-we-note__icon" />
       <div>
         <p className="rc-we-note__title" style={{ color: ok ? 'var(--rc-success)' : 'var(--rc-danger)' }}>
-          {ok ? '连接成功（真实调用）' : `连接失败：${result.status}`}
+          {ok ? '连接成功' : `连接失败：${result.status}`}
         </p>
         <p className="rc-we-mono" style={{ marginTop: 4 }}>
           {ok
             ? `${result.provider} / ${result.model} · ${result.latency_ms}ms · tokens ${result.prompt_tokens ?? 0}+${result.completion_tokens ?? 0}`
             : `${result.error_code ?? '-'} ${result.error_message ?? ''}`}
         </p>
-        {result.reply_preview && (
-          <p style={{ marginTop: 4 }}>回复预览：{result.reply_preview}</p>
-        )}
+        {result.reply_preview && <p style={{ marginTop: 4 }}>回复：{result.reply_preview}</p>}
       </div>
     </div>
   )
 }
 
-/** 透视卡组：当前选中卡在 depth 0，其余按循环次序退到后面。 */
 function deckDepth(index: number, active: number, total: number): number {
   if (total <= 0) return 0
   return (index - active + total) % total
@@ -117,84 +120,61 @@ function deckDepth(index: number, active: number, total: number): number {
 export default function ModelCenterPage() {
   const qc = useQueryClient()
   const [params, setParams] = useSearchParams()
-  const initialTab = params.get('tab')
-  const [section, setSection] = useState<Section>(
-    initialTab && SECTION_KEYS.has(initialTab) ? initialTab as Section : 'setup',
-  )
-  const [credOpen, setCredOpen] = useState(false)
+  const [section, setSection] = useState<Section>(() => normalizeSection(params.get('tab')))
   const [profileOpen, setProfileOpen] = useState(false)
   const [bindOpen, setBindOpen] = useState(false)
-  const [credForm, setCredForm] = useState({ provider_key: 'qwen', name: '', api_key: '', base_url: '' })
   const [profileForm, setProfileForm] = useState({
-    provider_key: 'qwen', credential_id: '', model_id: '', display_name: '',
-    temperature: 0, timeout_s: 60, max_retries: 1, max_tokens: 2048,
-    is_default: false, is_fallback: false,
+    credential_id: '',
+    model_id: '',
+    display_name: '',
+    temperature: 0,
+    timeout_s: 60,
+    max_retries: 1,
+    max_tokens: 2048,
+    is_default: false,
+    is_fallback: false,
   })
+  const [remoteModels, setRemoteModels] = useState<RemoteModel[]>([])
   const [bindForm, setBindForm] = useState({
-    task_key: 'fact_extraction', primary_profile_id: '', fallback_profile_id: '',
-    auto_route: false, cost_preference: 'balanced',
+    task_key: 'fact_extraction',
+    primary_profile_id: '',
+    fallback_profile_id: '',
+    auto_route: false,
+    cost_preference: 'balanced',
   })
   const [testResult, setTestResult] = useState<TestResult | null>(null)
-  const [credTestId, setCredTestId] = useState<string | null>(null)
+  const [testingCredId, setTestingCredId] = useState<string | null>(null)
   const [activeProfile, setActiveProfile] = useState(0)
   const [moving, setMoving] = useState(false)
   const firstRender = useRef(true)
 
   const providersQ = useQuery({ queryKey: ['model-providers'], queryFn: modelApi.providers })
-  const credsQ = useQuery({ queryKey: ['model-credentials'], queryFn: modelApi.credentials, enabled: section === 'credentials' || section === 'models' || section === 'default' })
-  const profilesQ = useQuery({ queryKey: ['model-profiles'], queryFn: modelApi.profiles, enabled: section === 'models' || section === 'default' || section === 'bindings' })
-  const bindsQ = useQuery({ queryKey: ['model-bindings'], queryFn: () => modelApi.bindings(), enabled: section === 'bindings' })
-  const logsQ = useQuery({ queryKey: ['model-logs'], queryFn: () => modelApi.callLogs(100), enabled: section === 'logs' })
-  const statsQ = useQuery({ queryKey: ['model-stats'], queryFn: modelApi.stats, enabled: section === 'stats' })
+  const credsQ = useQuery({ queryKey: ['model-credentials'], queryFn: modelApi.credentials })
+  const profilesQ = useQuery({ queryKey: ['model-profiles'], queryFn: modelApi.profiles })
+  const bindsQ = useQuery({
+    queryKey: ['model-bindings'],
+    queryFn: () => modelApi.bindings(),
+    enabled: section === 'bindings',
+  })
+  const logsQ = useQuery({
+    queryKey: ['model-logs'],
+    queryFn: () => modelApi.callLogs(100),
+    enabled: section === 'logs',
+  })
+  const statsQ = useQuery({
+    queryKey: ['model-stats'],
+    queryFn: modelApi.stats,
+    enabled: section === 'stats',
+  })
 
   const refresh = () => void qc.invalidateQueries()
 
-  /* ------------------------------------------------------------------------
-   * 凭据草稿：白名单写入 —— 供应商 / 名称 / 接口地址可恢复，
-   * api_key 明确排除，绝不进入 sessionStorage。
-   * ---------------------------------------------------------------------- */
   useEffect(() => {
-    try {
-      const raw = window.sessionStorage.getItem(CRED_DRAFT_KEY)
-      if (!raw) return
-      const parsed = JSON.parse(raw) as Record<string, unknown>
-      setCredForm((prev) => ({
-        ...prev,
-        provider_key: typeof parsed.provider_key === 'string' ? parsed.provider_key : prev.provider_key,
-        name: typeof parsed.name === 'string' ? parsed.name : prev.name,
-        base_url: typeof parsed.base_url === 'string' ? parsed.base_url : prev.base_url,
-      }))
-    } catch {
-      /* 草稿损坏或隐私模式受限：忽略即可 */
-    }
-  }, [])
+    const next = normalizeSection(params.get('tab'))
+    if (next !== section) setSection(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params])
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      try {
-        // 白名单：只有这三个非敏感字段会落盘，api_key 不在列表内。
-        const safeDraft = {
-          provider_key: credForm.provider_key,
-          name: credForm.name,
-          base_url: credForm.base_url,
-        }
-        window.sessionStorage.setItem(CRED_DRAFT_KEY, JSON.stringify(safeDraft))
-      } catch {
-        /* sessionStorage 不可用时静默跳过 */
-      }
-    }, 300)
-    return () => window.clearTimeout(timer)
-  }, [credForm.provider_key, credForm.name, credForm.base_url])
-
-  const clearCredDraft = () => {
-    try {
-      window.sessionStorage.removeItem(CRED_DRAFT_KEY)
-    } catch {
-      /* ignore */
-    }
-  }
-
-  /* 透视切换：活动期才挂 will-change，动画结束后自动摘掉 */
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false
@@ -205,24 +185,77 @@ export default function ModelCenterPage() {
     return () => window.clearTimeout(timer)
   }, [activeProfile])
 
-  const createCred = useMutation({
-    mutationFn: modelApi.createCredential,
-    onSuccess: (data) => {
-      setCredOpen(false)
-      setCredForm((f) => ({ ...f, api_key: '' })) // 立即清空明文
-      clearCredDraft()
-      toast.success('凭据已加密保存，创建后仅显示脱敏信息。')
-      refresh()
-      // 创建后自动发起一次真实连接测试，并在这里真正触发 mutation。
-      setCredTestId(data.id)
-      testCred.mutate(data.id)
-    },
-    onError: (e) => toast.error(errMessage(e, '凭据保存失败')),
-  })
+  const creds = credsQ.data ?? []
+  const activeCreds = useMemo(() => creds.filter((c) => c.status === 'active'), [creds])
+  const profiles = profilesQ.data ?? []
+  const providerMetaMap = useMemo(
+    () => new Map((providersQ.data ?? []).map((p) => [p.key, p])),
+    [providersQ.data],
+  )
+
+  const selectedCred: ModelCredential | null = useMemo(
+    () => activeCreds.find((c) => c.id === profileForm.credential_id) ?? null,
+    [activeCreds, profileForm.credential_id],
+  )
+
+  const suggestedModels = useMemo(() => {
+    if (remoteModels.length > 0) return remoteModels.map((m) => m.id).slice(0, 20)
+    if (!selectedCred) return []
+    return providerMetaMap.get(selectedCred.provider_key)?.default_models ?? []
+  }, [remoteModels, selectedCred, providerMetaMap])
+
+  const credName = (id: string | null) =>
+    creds.find((c) => c.id === id)?.name ?? (id ? '已删除提供商' : '—')
+
+  const safeActive = useMemo(
+    () => (profiles.length === 0 ? 0 : Math.min(activeProfile, profiles.length - 1)),
+    [activeProfile, profiles.length],
+  )
+
+  const changeSection = (next: Section) => {
+    setSection(next)
+    setTestResult(null)
+    const nextParams = new URLSearchParams(params)
+    nextParams.set('tab', next)
+    setParams(nextParams, { replace: true })
+  }
+
+  const openAddModel = (presetCredId?: string) => {
+    const chosenId = presetCredId || activeCreds[0]?.id || ''
+    setRemoteModels([])
+    setProfileForm({
+      credential_id: chosenId,
+      model_id: '',
+      display_name: '',
+      temperature: 0,
+      timeout_s: 60,
+      max_retries: 1,
+      max_tokens: 2048,
+      is_default: profiles.length === 0,
+      is_fallback: false,
+    })
+    setProfileOpen(true)
+  }
+
   const testCred = useMutation({
     mutationFn: (id: string) => modelApi.testCredential(id),
-    onSuccess: (r) => { setTestResult(r); setCredTestId(null) },
-    onError: (e) => { setTestResult({ status: 'provider_error', error_message: errMessage(e, '测试失败') }); setCredTestId(null) },
+    onSuccess: (r) => {
+      setTestResult(r)
+      setTestingCredId(null)
+    },
+    onError: (e) => {
+      setTestResult({ status: 'provider_error', error_message: errMessage(e, '测试失败') })
+      setTestingCredId(null)
+    },
+  })
+  const fetchRemoteModels = useMutation({
+    mutationFn: (credId: string) => modelApi.fetchModels(credId),
+    onSuccess: (data) => {
+      setRemoteModels(data.models)
+      if (data.models.length === 0) toast.info('该提供商未返回远端模型列表，可手动输入模型 ID')
+      else toast.success(`已拉取 ${data.models.length} 个远端模型`)
+    },
+    onError: (e) => toast.error(errMessage(e, '拉取模型列表失败')),
   })
   const testProfile = useMutation({
     mutationFn: (id: string) => modelApi.testProfile(id),
@@ -231,77 +264,84 @@ export default function ModelCenterPage() {
   })
   const revokeCred = useMutation({
     mutationFn: modelApi.revokeCredential,
-    onSuccess: () => { toast.success('凭据已撤销'); refresh() },
-    onError: (e) => toast.error(errMessage(e, '撤销失败')),
+    onSuccess: () => {
+      toast.success('提供商已停用')
+      refresh()
+    },
+    onError: (e) => toast.error(errMessage(e, '停用失败')),
   })
   const purgeCred = useMutation({
     mutationFn: modelApi.purgeCredential,
-    onSuccess: () => { toast.success('凭据已删除'); refresh() },
+    onSuccess: () => {
+      toast.success('提供商已删除')
+      refresh()
+    },
     onError: (e) => toast.error(errMessage(e, '删除失败')),
   })
   const createProfile = useMutation({
     mutationFn: modelApi.createProfile,
-    onSuccess: () => { setProfileOpen(false); toast.success('模型配置已保存'); refresh() },
-    onError: (e) => toast.error(errMessage(e, '模型配置保存失败')),
+    onSuccess: () => {
+      setProfileOpen(false)
+      toast.success('模型已保存')
+      refresh()
+    },
+    onError: (e) => toast.error(errMessage(e, '保存失败')),
   })
   const updateProfile = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: Partial<ModelProfile> }) => modelApi.updateProfile(id, body),
-    onSuccess: () => { toast.success('模型配置已更新'); refresh() },
+    mutationFn: ({ id, body }: { id: string; body: Partial<ModelProfile> }) =>
+      modelApi.updateProfile(id, body),
+    onSuccess: () => {
+      toast.success('模型已更新')
+      refresh()
+    },
     onError: (e) => toast.error(errMessage(e, '更新失败')),
   })
   const deleteProfile = useMutation({
     mutationFn: modelApi.deleteProfile,
-    onSuccess: () => { toast.success('模型配置已删除'); refresh() },
+    onSuccess: () => {
+      toast.success('模型已删除')
+      refresh()
+    },
     onError: (e) => toast.error(errMessage(e, '删除失败')),
   })
   const upsertBinding = useMutation({
     mutationFn: modelApi.upsertBinding,
-    onSuccess: () => { setBindOpen(false); toast.success('任务模型绑定已保存'); refresh() },
-    onError: (e) => toast.error(errMessage(e, '绑定保存失败')),
+    onSuccess: () => {
+      setBindOpen(false)
+      toast.success('绑定已保存')
+      refresh()
+    },
+    onError: (e) => toast.error(errMessage(e, '保存失败')),
   })
   const deleteBinding = useMutation({
     mutationFn: modelApi.deleteBinding,
-    onSuccess: () => { toast.success('绑定已删除'); refresh() },
+    onSuccess: () => {
+      toast.success('绑定已删除')
+      refresh()
+    },
     onError: (e) => toast.error(errMessage(e, '删除失败')),
   })
-
-  const creds = credsQ.data ?? []
-  const profiles = profilesQ.data ?? []
-  const providers = providersQ.data ?? []
-  const credName = (id: string | null) =>
-    creds.find((c) => c.id === id)?.name ?? (id ? '未关联凭据' : '—')
-
-  // 模型列表变化时保证选中项合法
-  const safeActive = useMemo(
-    () => (profiles.length === 0 ? 0 : Math.min(activeProfile, profiles.length - 1)),
-    [activeProfile, profiles.length],
-  )
-
-  useEffect(() => {
-    const tab = params.get('tab')
-    if (tab && SECTION_KEYS.has(tab) && tab !== section) setSection(tab as Section)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params])
-
-  const changeSection = (next: Section) => {
-    setSection(next)
-    const nextParams = new URLSearchParams(params)
-    nextParams.set('tab', next)
-    setParams(nextParams, { replace: true })
-  }
 
   return (
     <div className="rc-we-page">
       <header className="rc-we-head">
         <div className="rc-we-head__text">
-          <p className="rc-we-eyebrow">AI 模型服务 · 可按需配置</p>
-          <h1 className="rc-we-title">连接 AI 助手</h1>
-          <p className="rc-we-lead">配置并测试 AI 模型连接</p>
+          <p className="rc-we-eyebrow">AI 模型中心</p>
+          <h1 className="rc-we-title">模型与提供商</h1>
+          <p className="rc-we-lead">添加自己的模型提供商，并在已添加的提供商中选用模型</p>
         </div>
         <div className="rc-we-actions">
-          <Link to="/manual#api" className="btn-ghost">查看图文说明</Link>
-          <button type="button" className="btn-ghost" onClick={refresh} disabled={providersQ.isFetching}>
-            <Icon name="rotate" size="sm" className={providersQ.isFetching ? 'animate-spin' : ''} />
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={refresh}
+            disabled={credsQ.isFetching || profilesQ.isFetching}
+          >
+            <Icon
+              name="rotate"
+              size="sm"
+              className={credsQ.isFetching || profilesQ.isFetching ? 'animate-spin' : ''}
+            />
             刷新
           </button>
         </div>
@@ -315,7 +355,7 @@ export default function ModelCenterPage() {
               type="button"
               onClick={() => changeSection(key)}
               aria-current={section === key ? 'page' : undefined}
-              className={`rc-we-nav__item${key !== 'setup' && key !== 'providers' ? ' rc-we-nav__item--advanced' : ''}`}
+              className="rc-we-nav__item"
             >
               <Icon as={SectionIcon} size="sm" />
               <span style={{ minWidth: 0 }}>
@@ -324,118 +364,112 @@ export default function ModelCenterPage() {
               </span>
             </button>
           ))}
-          {section !== 'setup' && (
-            <button type="button" className="ux-model-back-simple" onClick={() => changeSection('setup')}>
-              返回简单配置
-            </button>
-          )}
         </nav>
 
         <div className="rc-we-stack">
-          {section === 'setup' && <GuidedModelSetup onDone={refresh} />}
-
-          {section !== 'setup' && section !== 'providers' && (
-            <div className="ux-advanced-banner">
-              <strong>高级模式</strong>
-              <span>用于凭据、模型参数与任务路由控制</span>
-              <button type="button" className="ux-text-link" onClick={() => changeSection('setup')}>返回向导</button>
-            </div>
-          )}
-
           {section === 'providers' && (
-            <Panel
-              title="服务商与适配器详情（高级）"
-              icon={<Icon as={BookMarked} size="md" tone="accent" />}
-            >
-              {providersQ.isPending ? <LoadingState message="读取供应商…" /> : providersQ.isError ? (
-                <ErrorState message="无法读取供应商列表" onRetry={() => void providersQ.refetch()} />
-              ) : providers.length === 0 ? (
-                <p className="rc-we-empty">后端未返回任何供应商。</p>
-              ) : (
-                <>
+            <>
+              <GuidedModelSetup onDone={refresh} />
+
+              <Panel
+                title={`已添加的提供商（${creds.length}）`}
+                icon={<Icon name="key" size="md" tone="accent" />}
+              >
+                {credsQ.isPending ? (
+                  <LoadingState message="读取提供商…" compact />
+                ) : creds.length === 0 ? (
+                  <p className="rc-we-empty">尚未添加提供商，请在上方填写接口地址与 API Key 后保存。</p>
+                ) : (
                   <div className="rc-we-scroll">
                     <table className="data-table data-table-dense">
-                      <thead><tr>
-                        <th>供应商</th><th>协议</th><th>默认端点</th><th>能力</th><th>联调状态</th>
-                      </tr></thead>
+                      <thead>
+                        <tr>
+                          <th>名称</th>
+                          <th>接口地址</th>
+                          <th>密钥</th>
+                          <th>状态</th>
+                          <th>操作</th>
+                        </tr>
+                      </thead>
                       <tbody>
-                        {providers.map((p) => (
-                          <tr key={p.key}>
-                            <td className="font-medium">{p.name}<div className="rc-we-mono text-[11px] text-ink-subtle">{p.key}</div></td>
-                            <td className="rc-we-mono text-xs">{p.protocol}</td>
-                            <td className="rc-we-mono max-w-[240px] truncate text-xs" title={p.default_base_url}>
-                              {p.default_base_url || '需用户填写'}
-                            </td>
-                            <td className="text-xs">{p.capabilities.length} 项</td>
-                            <td><StatusBadge tone={p.real_api_tested ? 'success' : 'neutral'}>
-                              {p.real_api_tested ? '已联调' : '未真实联调'}
-                            </StatusBadge></td>
-                          </tr>
-                        ))}
+                        {creds.map((c) => {
+                          const meta = providerMetaMap.get(c.provider_key)
+                          const endpoint = c.base_url || meta?.default_base_url || '—'
+                          return (
+                            <tr key={c.id}>
+                              <td className="font-medium">
+                                {c.name || meta?.name || c.provider_key}
+                              </td>
+                              <td className="rc-we-mono max-w-[240px] truncate text-xs" title={endpoint}>
+                                {endpoint}
+                              </td>
+                              <td className="rc-we-mono text-xs">{c.key_hint || '—'}</td>
+                              <td>
+                                <StatusBadge tone={c.status === 'active' ? 'success' : 'neutral'}>
+                                  {c.status === 'active' ? '可用' : c.status}
+                                </StatusBadge>
+                              </td>
+                              <td>
+                                <div className="flex flex-wrap gap-2">
+                                  {c.status === 'active' && (
+                                    <button
+                                      type="button"
+                                      className="btn-ghost"
+                                      onClick={() => openAddModel(c.id)}
+                                    >
+                                      <Icon name="plus" size="xs" /> 选模型
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="btn-ghost"
+                                    disabled={testingCredId === c.id}
+                                    onClick={() => {
+                                      setTestResult(null)
+                                      setTestingCredId(c.id)
+                                      testCred.mutate(c.id)
+                                    }}
+                                  >
+                                    {testingCredId === c.id ? (
+                                      <Icon name="loader" size="xs" className="animate-spin" />
+                                    ) : (
+                                      <Icon as={Link2} size="xs" />
+                                    )}{' '}
+                                    测试
+                                  </button>
+                                  {c.status === 'active' && (
+                                    <button
+                                      type="button"
+                                      className="btn-ghost"
+                                      onClick={() => revokeCred.mutate(c.id)}
+                                    >
+                                      <Icon as={CircleSlash2} size="xs" /> 停用
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="btn-ghost"
+                                    disabled={purgeCred.isPending}
+                                    onClick={() => {
+                                      if (window.confirm(`确定删除「${c.name || c.provider_key}」？关联的模型配置也会删除，任务分配中的引用会清除。`)) {
+                                        purgeCred.mutate(c.id)
+                                      }
+                                    }}
+                                  >
+                                    <Icon name="trash" size="xs" /> 删除
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
-                  <p style={{ marginTop: 'var(--rc-space-3)', fontSize: 'var(--rc-fs-caption)', color: 'var(--rc-text-muted)' }}>
-                    保存个人 API Key 后可发起真实连接测试。
-                  </p>
-                </>
-              )}
-            </Panel>
-          )}
-
-          {section === 'credentials' && (
-            <Panel
-              title="API 凭据"
-              icon={<Icon name="key" size="md" tone="accent" />}
-              action={
-                <button type="button" className="btn-primary" onClick={() => setCredOpen(true)}>
-                  <Icon name="plus" size="sm" /> 添加凭据
-                </button>
-              }
-            >
-              <div className="rc-we-note">
-                <Icon name="shield" size="md" className="rc-we-note__icon" />
-                <p>密钥加密存储于服务端，列表仅展示脱敏提示，明文不落盘。</p>
-              </div>
-              {credsQ.isPending ? <LoadingState message="读取凭据…" /> : creds.length === 0 ? (
-                <p className="rc-we-empty">还没有凭据。点击「添加凭据」配置自己的 API Key。</p>
-              ) : (
-                <div className="rc-we-scroll" style={{ marginTop: 'var(--rc-space-4)' }}>
-                  <table className="data-table data-table-dense">
-                    <thead><tr><th>名称</th><th>供应商</th><th>脱敏 Key</th><th>状态</th><th>操作</th></tr></thead>
-                    <tbody>
-                      {creds.map((c) => (
-                        <tr key={c.id}>
-                          <td className="font-medium">{c.name}</td>
-                          <td className="rc-we-mono text-xs">{c.provider_key}</td>
-                          <td className="rc-we-mono text-xs">{c.key_hint || '—'}</td>
-                          <td><StatusBadge tone={c.status === 'active' ? 'success' : 'neutral'}>{c.status}</StatusBadge></td>
-                          <td>
-                            <div className="flex flex-wrap gap-2">
-                              <button type="button" className="btn-ghost" disabled={testCred.isPending}
-                                onClick={() => { setTestResult(null); testCred.mutate(c.id) }}>
-                                {testCred.isPending
-                                  ? <Icon name="loader" size="xs" className="animate-spin" />
-                                  : <Icon as={Link2} size="xs" />} 测试
-                              </button>
-                              {c.status === 'active' && (
-                                <button type="button" className="btn-ghost" onClick={() => revokeCred.mutate(c.id)}>
-                                  <Icon as={CircleSlash2} size="xs" /> 撤销
-                                </button>
-                              )}
-                              <button type="button" className="btn-ghost" onClick={() => purgeCred.mutate(c.id)}>
-                                <Icon name="trash" size="xs" /> 删除
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <TestResultView result={testResult} />
-            </Panel>
+                )}
+                <TestResultView result={testResult} />
+              </Panel>
+            </>
           )}
 
           {section === 'models' && (
@@ -443,18 +477,29 @@ export default function ModelCenterPage() {
               title="我的模型"
               icon={<Icon as={Cpu} size="md" tone="accent" />}
               action={
-                <button type="button" className="btn-primary" onClick={() => setProfileOpen(true)}>
-                  <Icon name="plus" size="sm" /> 添加模型
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() =>
+                    activeCreds.length > 0 ? openAddModel() : changeSection('providers')
+                  }
+                >
+                  <Icon name="plus" size="sm" />
+                  {activeCreds.length > 0 ? '添加模型' : '先添加提供商'}
                 </button>
               }
             >
               {profilesQ.isPending ? (
-                <LoadingState message="读取模型…" />
+                <LoadingState message="读取模型…" compact />
               ) : profiles.length === 0 ? (
-                <p className="rc-we-empty">还没有模型配置。先添加凭据，再添加模型。</p>
+                <p className="rc-we-empty">
+                  {activeCreds.length > 0
+                    ? '尚未添加模型，点击右上角从已添加的提供商中选用。'
+                    : '尚未添加提供商，请先在「提供商」页添加接口与 API Key。'}
+                </p>
               ) : (
                 <div className="rc-we-deck">
-                  <div className="rc-we-deck__tabs" role="tablist" aria-label="模型透视切换">
+                  <div className="rc-we-deck__tabs" role="tablist" aria-label="模型切换">
                     {profiles.map((p, index) => (
                       <button
                         key={p.id}
@@ -487,11 +532,20 @@ export default function ModelCenterPage() {
                               <div style={{ minWidth: 0 }}>
                                 <p className="rc-we-deck__layer rc-we-deck__layer--front">
                                   <Icon as={Cpu} size="xs" />
-                                  {front ? '当前模型' : `层叠 ${depth}`}
+                                  {credName(p.credential_id)}
                                 </p>
-                                <h4 className="rc-we-deck__paneltitle">{p.display_name || p.model_id}</h4>
-                                <p className="rc-we-mono" style={{ marginTop: 4, fontSize: 'var(--rc-fs-mono)', color: 'var(--rc-text-subtle)' }}>
-                                  {p.provider_key} / {p.model_id}
+                                <h4 className="rc-we-deck__paneltitle">
+                                  {p.display_name || p.model_id}
+                                </h4>
+                                <p
+                                  className="rc-we-mono"
+                                  style={{
+                                    marginTop: 4,
+                                    fontSize: 'var(--rc-fs-mono)',
+                                    color: 'var(--rc-text-subtle)',
+                                  }}
+                                >
+                                  {p.model_id}
                                 </p>
                               </div>
                               <div className="rc-we-row">
@@ -506,7 +560,7 @@ export default function ModelCenterPage() {
                                 <>
                                   <div className="rc-we-deck__meta">
                                     <div>
-                                      <p className="rc-we-kpi__k">凭据</p>
+                                      <p className="rc-we-kpi__k">所属提供商</p>
                                       <p className="rc-we-kpi__v" style={{ fontSize: 'var(--rc-fs-body)' }}>
                                         {credName(p.credential_id)}
                                       </p>
@@ -520,7 +574,7 @@ export default function ModelCenterPage() {
                                       <p className="rc-we-kpi__v">{p.timeout_s}s</p>
                                     </div>
                                     <div>
-                                      <p className="rc-we-kpi__k">最大重试</p>
+                                      <p className="rc-we-kpi__k">重试</p>
                                       <p className="rc-we-kpi__v">{p.max_retries}</p>
                                     </div>
                                     <div>
@@ -535,23 +589,55 @@ export default function ModelCenterPage() {
                                     </div>
                                   </div>
                                   <div className="rc-we-row" style={{ marginTop: 'var(--rc-space-5)' }}>
-                                    <button type="button" className="btn-primary" onClick={() => { setTestResult(null); testProfile.mutate(p.id) }}>
-                                      {testProfile.isPending
-                                        ? <Icon name="loader" size="sm" className="animate-spin" />
-                                        : <Icon as={Link2} size="sm" />} 测试连接
+                                    <button
+                                      type="button"
+                                      className="btn-primary"
+                                      onClick={() => {
+                                        setTestResult(null)
+                                        testProfile.mutate(p.id)
+                                      }}
+                                    >
+                                      {testProfile.isPending ? (
+                                        <Icon name="loader" size="sm" className="animate-spin" />
+                                      ) : (
+                                        <Icon as={Link2} size="sm" />
+                                      )}{' '}
+                                      测试连接
                                     </button>
-                                    <button type="button" className="btn-ghost" onClick={() => updateProfile.mutate({ id: p.id, body: { enabled: !p.enabled } })}>
+                                    <button
+                                      type="button"
+                                      className="btn-ghost"
+                                      onClick={() =>
+                                        updateProfile.mutate({ id: p.id, body: { enabled: !p.enabled } })
+                                      }
+                                    >
                                       {p.enabled ? '禁用' : '启用'}
                                     </button>
-                                    <button type="button" className="btn-ghost" disabled={p.is_default}
-                                      onClick={() => updateProfile.mutate({ id: p.id, body: { is_default: true } })}>
+                                    <button
+                                      type="button"
+                                      className="btn-ghost"
+                                      disabled={p.is_default}
+                                      onClick={() =>
+                                        updateProfile.mutate({ id: p.id, body: { is_default: true } })
+                                      }
+                                    >
                                       设为默认
                                     </button>
-                                    <button type="button" className="btn-ghost" disabled={p.is_fallback}
-                                      onClick={() => updateProfile.mutate({ id: p.id, body: { is_fallback: true } })}>
+                                    <button
+                                      type="button"
+                                      className="btn-ghost"
+                                      disabled={p.is_fallback}
+                                      onClick={() =>
+                                        updateProfile.mutate({ id: p.id, body: { is_fallback: true } })
+                                      }
+                                    >
                                       设为备用
                                     </button>
-                                    <button type="button" className="btn-ghost" onClick={() => deleteProfile.mutate(p.id)}>
+                                    <button
+                                      type="button"
+                                      className="btn-ghost"
+                                      onClick={() => deleteProfile.mutate(p.id)}
+                                    >
                                       <Icon name="trash" size="sm" /> 删除
                                     </button>
                                   </div>
@@ -559,7 +645,8 @@ export default function ModelCenterPage() {
                                 </>
                               ) : (
                                 <p style={{ fontSize: 'var(--rc-fs-caption)', color: 'var(--rc-text-subtle)' }}>
-                                  {p.enabled ? '启用中' : '已禁用'} · T={String(p.params?.temperature ?? 0)} · {p.timeout_s}s · retry {p.max_retries}
+                                  {p.enabled ? '启用中' : '已禁用'} · T={String(p.params?.temperature ?? 0)} ·{' '}
+                                  {p.timeout_s}s
                                 </p>
                               )}
                             </div>
@@ -573,73 +660,63 @@ export default function ModelCenterPage() {
             </Panel>
           )}
 
-          {section === 'default' && (
-            <Panel title="默认与备用模型" icon={<Icon name="badgeCheck" size="md" tone="accent" />}>
-              {profiles.length === 0 ? <p className="rc-we-empty">请先添加模型。</p> : (
-                <div className="rc-we-grid rc-we-grid--2">
-                  {profiles.map((p) => (
-                    <div key={p.id} className="rc-we-card" style={{ boxShadow: 'none' }}>
-                      <div className="rc-we-card__body rc-we-card__body--tight">
-                        <div className="rc-we-row-between">
-                          <span style={{ fontWeight: 'var(--rc-fw-m)' }}>{p.display_name || p.model_id}</span>
-                          <div className="rc-we-row" style={{ gap: 'var(--rc-space-1)' }}>
-                            {p.is_default && <StatusBadge tone="accent">默认</StatusBadge>}
-                            {p.is_fallback && <StatusBadge tone="warning">备用</StatusBadge>}
-                          </div>
-                        </div>
-                        <p className="rc-we-mono" style={{ marginTop: 4, fontSize: 'var(--rc-fs-mono)', color: 'var(--rc-text-muted)' }}>
-                          {p.provider_key} / {p.model_id}
-                        </p>
-                        <div className="rc-we-row" style={{ marginTop: 'var(--rc-space-3)' }}>
-                          <button type="button" className="btn-ghost" disabled={p.is_default}
-                            onClick={() => updateProfile.mutate({ id: p.id, body: { is_default: true } })}>
-                            设为默认
-                          </button>
-                          <button type="button" className="btn-ghost" disabled={p.is_fallback}
-                            onClick={() => updateProfile.mutate({ id: p.id, body: { is_fallback: true } })}>
-                            设为备用
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p style={{ marginTop: 'var(--rc-space-3)', fontSize: 'var(--rc-fs-caption)', color: 'var(--rc-text-muted)' }}>
-                仅使用已显式设置的备用模型，不静默切换供应商。
-              </p>
-            </Panel>
-          )}
-
           {section === 'bindings' && (
             <Panel
-              title="科研任务模型分配"
+              title="按任务分配模型"
               icon={<Icon as={SlidersHorizontal} size="md" tone="accent" />}
               action={
-                <button type="button" className="btn-primary" onClick={() => setBindOpen(true)}>
-                  <Icon name="plus" size="sm" /> 添加绑定
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => setBindOpen(true)}
+                  disabled={profiles.length === 0}
+                >
+                  <Icon name="plus" size="sm" /> 添加分配
                 </button>
               }
             >
-              <p style={{ marginBottom: 'var(--rc-space-3)', fontSize: 'var(--rc-fs-caption)', color: 'var(--rc-text-muted)' }}>
-                未绑定任务使用系统默认配置；绑定后按指定模型执行。
-              </p>
-              {bindsQ.isPending ? <LoadingState message="读取绑定…" /> : (bindsQ.data ?? []).length === 0 ? (
-                <p className="rc-we-empty">尚未配置任务级绑定。</p>
+              {bindsQ.isPending ? (
+                <LoadingState message="读取任务分配…" compact />
+              ) : (bindsQ.data ?? []).length === 0 ? (
+                <p className="rc-we-empty">
+                  {profiles.length === 0 ? '请先添加模型，再按任务分配。' : '尚未配置任务级分配，当前均使用默认模型。'}
+                </p>
               ) : (
                 <div className="rc-we-scroll">
                   <table className="data-table data-table-dense">
-                    <thead><tr><th>科研任务</th><th>主模型</th><th>备用模型</th><th>自动路由</th><th>操作</th></tr></thead>
+                    <thead>
+                      <tr>
+                        <th>科研任务</th>
+                        <th>主模型</th>
+                        <th>备用模型</th>
+                        <th>自动路由</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {(bindsQ.data ?? []).map((b: TaskBinding) => (
                         <tr key={b.id}>
                           <td className="font-medium">{TASK_LABELS[b.task_key] ?? b.task_key}</td>
-                          <td className="rc-we-mono text-xs">{profiles.find((p) => p.id === b.primary_profile_id)?.model_id ?? '—'}</td>
-                          <td className="rc-we-mono text-xs">{profiles.find((p) => p.id === b.fallback_profile_id)?.model_id ?? '—'}</td>
-                          <td><StatusBadge tone={b.auto_route ? 'accent' : 'neutral'}>{b.auto_route ? '开启' : '关闭'}</StatusBadge></td>
-                          <td><button type="button" className="btn-ghost" onClick={() => deleteBinding.mutate(b.id)}>
-                            <Icon name="trash" size="xs" /> 删除
-                          </button></td>
+                          <td className="rc-we-mono text-xs">
+                            {profiles.find((p) => p.id === b.primary_profile_id)?.model_id ?? '—'}
+                          </td>
+                          <td className="rc-we-mono text-xs">
+                            {profiles.find((p) => p.id === b.fallback_profile_id)?.model_id ?? '—'}
+                          </td>
+                          <td>
+                            <StatusBadge tone={b.auto_route ? 'accent' : 'neutral'}>
+                              {b.auto_route ? '开启' : '关闭'}
+                            </StatusBadge>
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="btn-ghost"
+                              onClick={() => deleteBinding.mutate(b.id)}
+                            >
+                              <Icon name="trash" size="xs" /> 删除
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -650,23 +727,38 @@ export default function ModelCenterPage() {
           )}
 
           {section === 'logs' && (
-            <Panel title="最近调用记录" icon={<Icon as={Activity} size="md" tone="accent" />}>
-              {logsQ.isPending ? <LoadingState message="读取调用记录…" /> : (logsQ.data ?? []).length === 0 ? (
+            <Panel title="调用记录" icon={<Icon as={Activity} size="md" tone="accent" />}>
+              {logsQ.isPending ? (
+                <LoadingState message="读取调用记录…" compact />
+              ) : (logsQ.data ?? []).length === 0 ? (
                 <p className="rc-we-empty">暂无模型调用记录。</p>
               ) : (
                 <div className="rc-we-scroll">
                   <table className="data-table data-table-dense">
-                    <thead><tr><th>时间</th><th>任务</th><th>模型</th><th>结果</th><th>Token</th><th>耗时</th></tr></thead>
+                    <thead>
+                      <tr>
+                        <th>时间</th>
+                        <th>任务</th>
+                        <th>模型</th>
+                        <th>结果</th>
+                        <th>Token</th>
+                        <th>耗时</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {(logsQ.data ?? []).map((l) => (
                         <tr key={l.id}>
                           <td className="rc-we-mono text-xs">{formatDateTime(l.created_at)}</td>
                           <td className="text-xs">{TASK_LABELS[l.task_key] || l.task_key || '—'}</td>
                           <td className="rc-we-mono text-xs">{l.model_id}</td>
-                          <td><StatusBadge tone={l.success ? 'success' : 'danger'}>
-                            {l.success ? '成功' : (l.error_code ?? '失败')}
-                          </StatusBadge></td>
-                          <td className="rc-we-mono text-xs">{l.prompt_tokens}+{l.completion_tokens}</td>
+                          <td>
+                            <StatusBadge tone={l.success ? 'success' : 'danger'}>
+                              {l.success ? '成功' : l.error_code ?? '失败'}
+                            </StatusBadge>
+                          </td>
+                          <td className="rc-we-mono text-xs">
+                            {l.prompt_tokens}+{l.completion_tokens}
+                          </td>
                           <td className="rc-we-mono text-xs">{l.duration_ms}ms</td>
                         </tr>
                       ))}
@@ -678,17 +770,23 @@ export default function ModelCenterPage() {
           )}
 
           {section === 'stats' && (
-            <Panel title="使用统计" icon={<Icon as={BarChart3} size="md" tone="accent" />}>
-              {statsQ.isPending ? <LoadingState message="统计中…" /> : statsQ.isError || !statsQ.data ? (
+            <Panel title="用量统计" icon={<Icon as={BarChart3} size="md" tone="accent" />}>
+              {statsQ.isPending ? (
+                <LoadingState message="统计中…" compact />
+              ) : statsQ.isError || !statsQ.data ? (
                 <ErrorState message="无法读取统计" onRetry={() => void statsQ.refetch()} />
               ) : (
                 <>
-                  <div className="rc-we-grid rc-we-grid--4">
+                  <div className="rc-we-grid rc-we-grid--4 rc-stagger">
                     {[
-                      ['总调用', statsQ.data.total_calls], ['成功', statsQ.data.success_calls],
-                      ['失败', statsQ.data.failed_calls], ['P95 耗时', `${statsQ.data.p95_duration_ms}ms`],
-                      ['输入 Token', statsQ.data.prompt_tokens], ['输出 Token', statsQ.data.completion_tokens],
-                      ['平均耗时', `${statsQ.data.avg_duration_ms}ms`], ['按任务分组', Object.keys(statsQ.data.by_task).length],
+                      ['总调用', statsQ.data.total_calls],
+                      ['成功', statsQ.data.success_calls],
+                      ['失败', statsQ.data.failed_calls],
+                      ['P95 耗时', `${statsQ.data.p95_duration_ms}ms`],
+                      ['输入 Token', statsQ.data.prompt_tokens],
+                      ['输出 Token', statsQ.data.completion_tokens],
+                      ['平均耗时', `${statsQ.data.avg_duration_ms}ms`],
+                      ['任务数', Object.keys(statsQ.data.by_task).length],
                     ].map(([label, value]) => (
                       <div key={String(label)} className="rc-we-kpi">
                         <div className="rc-we-kpi__k">{label}</div>
@@ -696,9 +794,17 @@ export default function ModelCenterPage() {
                       </div>
                     ))}
                   </div>
-                  <p style={{ marginTop: 'var(--rc-space-4)', fontSize: 'var(--rc-fs-caption)', color: 'var(--rc-text-muted)' }}>
-                    {statsQ.data.cost_note}
-                  </p>
+                  {statsQ.data.cost_note && (
+                    <p
+                      style={{
+                        marginTop: 'var(--rc-space-4)',
+                        fontSize: 'var(--rc-fs-caption)',
+                        color: 'var(--rc-text-muted)',
+                      }}
+                    >
+                      {statsQ.data.cost_note}
+                    </p>
+                  )}
                 </>
               )}
             </Panel>
@@ -706,178 +812,269 @@ export default function ModelCenterPage() {
         </div>
       </div>
 
-      <Modal open={credOpen} title="添加 API 凭据" description="提交后仅显示脱敏信息；Key 以独立密钥加密，绝不写入浏览器存储。"
-        onClose={() => { setCredOpen(false); setCredForm((f) => ({ ...f, api_key: '' })) }}
-        footer={<>
-          <button type="button" className="btn-ghost" onClick={() => setCredOpen(false)}>取消</button>
-          <button type="button" className="btn-primary" disabled={createCred.isPending || !credForm.api_key}
-            onClick={() => createCred.mutate({
-              provider_key: credForm.provider_key, name: credForm.name,
-              api_key: credForm.api_key, base_url: credForm.base_url || undefined,
-            })}>
-            {createCred.isPending ? <Icon name="loader" size="sm" className="animate-spin" /> : <Icon name="key" size="sm" />} 保存凭据
-          </button>
-        </>}>
-        <div className="rc-we-stack-tight">
-          <label className="block">
-            <span className="field-label">供应商</span>
-            <select className="field-input" value={credForm.provider_key}
-              onChange={(e) => setCredForm({ ...credForm, provider_key: e.target.value })}>
-              {providers.map((p) => <option key={p.key} value={p.key}>{p.name}</option>)}
-            </select>
-          </label>
-          <label className="block">
-            <span className="field-label">名称（可选）</span>
-            <input className="field-input" value={credForm.name}
-              onChange={(e) => setCredForm({ ...credForm, name: e.target.value })} placeholder="例如：课题组千问" />
-          </label>
-          <label className="block">
-            <span className="field-label">API Key</span>
-            <input className="field-input mono" type="password" autoComplete="off" value={credForm.api_key}
-              onChange={(e) => setCredForm({ ...credForm, api_key: e.target.value })}
-              placeholder="仅提交到授权后端，前端不保存" />
-            <span className="mt-1 block text-xs text-ink-muted">
-              密码框内容不进入浏览器草稿：刷新页面后需要重新输入。
-            </span>
-          </label>
-          {(credForm.provider_key === 'openai_compatible' || credForm.base_url) && (
-            <label className="block">
-              <span className="field-label">Base URL（自定义接口必填）</span>
-              <input className="field-input mono" value={credForm.base_url}
-                onChange={(e) => setCredForm({ ...credForm, base_url: e.target.value })}
-                placeholder="https://model.lab.example.edu/v1" />
-              <span className="mt-1 block text-xs text-ink-muted">仅 HTTPS；内网地址会被安全策略拒绝。</span>
-            </label>
-          )}
-        </div>
-      </Modal>
-
-      <Modal open={profileOpen} title="添加模型" description="模型名按供应商控制台实际可用值填写；结构化任务会检查 JSON 能力。"
+      {/* 添加模型：只从用户已添加的提供商中选择 */}
+      <Modal
+        open={profileOpen}
+        title="添加模型"
         onClose={() => setProfileOpen(false)}
-        footer={<>
-          <button type="button" className="btn-ghost" onClick={() => setProfileOpen(false)}>取消</button>
-          <button type="button" className="btn-primary" disabled={createProfile.isPending || !profileForm.model_id}
-            onClick={() => createProfile.mutate({
-              provider_key: profileForm.provider_key, model_id: profileForm.model_id,
-              credential_id: profileForm.credential_id || undefined,
-              display_name: profileForm.display_name || undefined,
-              params: { temperature: profileForm.temperature },
-              timeout_s: profileForm.timeout_s, max_retries: profileForm.max_retries,
-              max_tokens: profileForm.max_tokens, is_default: profileForm.is_default,
-              is_fallback: profileForm.is_fallback,
-            })}>
-            {createProfile.isPending ? <Icon name="loader" size="sm" className="animate-spin" /> : <Icon name="plus" size="sm" />} 保存模型
-          </button>
-        </>}>
+        footer={
+          <>
+            <button type="button" className="btn-ghost" onClick={() => setProfileOpen(false)}>
+              取消
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={createProfile.isPending || !selectedCred || !profileForm.model_id.trim()}
+              onClick={() => {
+                if (!selectedCred) return
+                createProfile.mutate({
+                  provider_key: selectedCred.provider_key,
+                  credential_id: selectedCred.id,
+                  model_id: profileForm.model_id.trim(),
+                  display_name: profileForm.display_name.trim() || undefined,
+                  params: { temperature: profileForm.temperature },
+                  timeout_s: profileForm.timeout_s,
+                  max_retries: profileForm.max_retries,
+                  max_tokens: profileForm.max_tokens,
+                  is_default: profileForm.is_default,
+                  is_fallback: profileForm.is_fallback,
+                })
+              }}
+            >
+              {createProfile.isPending ? (
+                <Icon name="loader" size="sm" className="animate-spin" />
+              ) : (
+                <Icon name="plus" size="sm" />
+              )}{' '}
+              保存模型
+            </button>
+          </>
+        }
+      >
         <div className="rc-we-stack-tight">
-          <label className="block"><span className="field-label">供应商</span>
-            <select className="field-input" value={profileForm.provider_key}
-              onChange={(e) => setProfileForm({ ...profileForm, provider_key: e.target.value })}>
-              {providers.map((p) => <option key={p.key} value={p.key}>{p.name}</option>)}
+          <div className="block">
+            <div className="ux-model-label-row">
+              <label htmlFor="rc-pick-cred" className="field-label mb-0">
+                已添加的提供商
+              </label>
+              {selectedCred && (
+                <button
+                  type="button"
+                  className="ux-text-link text-[11px]"
+                  disabled={fetchRemoteModels.isPending}
+                  onClick={() => fetchRemoteModels.mutate(selectedCred.id)}
+                >
+                  {fetchRemoteModels.isPending ? (
+                    <Icon name="loader" size="xs" className="animate-spin" />
+                  ) : (
+                    <Download size={11} />
+                  )}
+                  拉取远端模型
+                </button>
+              )}
+            </div>
+            <select
+              id="rc-pick-cred"
+              className="field-input"
+              value={profileForm.credential_id}
+              onChange={(e) => {
+                setRemoteModels([])
+                setProfileForm({ ...profileForm, credential_id: e.target.value })
+              }}
+            >
+              {activeCreds.length === 0 ? (
+                <option value="">暂无可用提供商</option>
+              ) : (
+                activeCreds.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.key_hint || c.provider_key})
+                  </option>
+                ))
+              )}
             </select>
-          </label>
-          <label className="block"><span className="field-label">API 凭据</span>
-            <select className="field-input" value={profileForm.credential_id}
-              onChange={(e) => setProfileForm({ ...profileForm, credential_id: e.target.value })}>
-              <option value="">— 不关联（仅占位）—</option>
-              {creds.filter((c) => c.provider_key === profileForm.provider_key && c.status === 'active').map((c) => (
-                <option key={c.id} value={c.id}>{c.name} ({c.key_hint})</option>
-              ))}
-            </select>
-          </label>
-          <label className="block"><span className="field-label">模型 ID</span>
-            <input className="field-input mono" value={profileForm.model_id}
+          </div>
+
+          <label className="block">
+            <span className="field-label">模型 ID</span>
+            <input
+              className="field-input mono"
+              value={profileForm.model_id}
               onChange={(e) => setProfileForm({ ...profileForm, model_id: e.target.value })}
-              placeholder="例如 qwen-plus / deepseek-flash / gpt-4o-mini" />
+              placeholder="例如 qwen-plus / deepseek-chat / gpt-4o-mini"
+            />
           </label>
-          <label className="block"><span className="field-label">显示名称</span>
-            <input className="field-input" value={profileForm.display_name}
-              onChange={(e) => setProfileForm({ ...profileForm, display_name: e.target.value })} />
+
+          {suggestedModels.length > 0 && (
+            <div className="ux-model-options" aria-label="可选模型">
+              {suggestedModels.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`ux-model-option${profileForm.model_id === id ? ' is-selected' : ''}`}
+                  onClick={() => setProfileForm({ ...profileForm, model_id: id })}
+                >
+                  <strong>{id}</strong>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <label className="block">
+            <span className="field-label">显示名称（可选）</span>
+            <input
+              className="field-input"
+              value={profileForm.display_name}
+              onChange={(e) => setProfileForm({ ...profileForm, display_name: e.target.value })}
+              placeholder={profileForm.model_id || '留空则同模型 ID'}
+            />
           </label>
+
           <div className="grid grid-cols-2 gap-3">
-            {([
-              ['temperature', '温度', 'number'], ['timeout_s', '超时（秒）', 'number'],
-              ['max_retries', '最大重试', 'number'], ['max_tokens', '最大 Token', 'number'],
-            ] as const).map(([key, label]) => (
+            {(
+              [
+                ['temperature', '温度'],
+                ['timeout_s', '超时（秒）'],
+                ['max_retries', '最大重试'],
+                ['max_tokens', '最大 Token'],
+              ] as const
+            ).map(([key, label]) => (
               <label key={key} className="block">
                 <span className="field-label">{label}</span>
-                <input className="field-input mono" type="number" step={key === 'temperature' ? '0.1' : '1'}
+                <input
+                  className="field-input mono"
+                  type="number"
+                  step={key === 'temperature' ? '0.1' : '1'}
                   value={String(profileForm[key])}
-                  onChange={(e) => setProfileForm({ ...profileForm, [key]: Number(e.target.value) })} />
+                  onChange={(e) =>
+                    setProfileForm({ ...profileForm, [key]: Number(e.target.value) })
+                  }
+                />
               </label>
             ))}
           </div>
+
           <div className="flex gap-4 text-sm">
             <label className="flex items-center gap-2">
-              <input type="checkbox" checked={profileForm.is_default}
-                onChange={(e) => setProfileForm({ ...profileForm, is_default: e.target.checked })} /> 设为默认
+              <input
+                type="checkbox"
+                checked={profileForm.is_default}
+                onChange={(e) => setProfileForm({ ...profileForm, is_default: e.target.checked })}
+              />{' '}
+              设为默认
             </label>
             <label className="flex items-center gap-2">
-              <input type="checkbox" checked={profileForm.is_fallback}
-                onChange={(e) => setProfileForm({ ...profileForm, is_fallback: e.target.checked })} /> 设为备用
+              <input
+                type="checkbox"
+                checked={profileForm.is_fallback}
+                onChange={(e) => setProfileForm({ ...profileForm, is_fallback: e.target.checked })}
+              />{' '}
+              设为备用
             </label>
           </div>
         </div>
       </Modal>
 
-      <Modal open={bindOpen} title="绑定科研任务模型" description="严格使用所选模型；自动路由默认关闭，开启后也只在授权模型中选择。"
+      <Modal
+        open={bindOpen}
+        title="任务模型分配"
         onClose={() => setBindOpen(false)}
-        footer={<>
-          <button type="button" className="btn-ghost" onClick={() => setBindOpen(false)}>取消</button>
-          <button type="button" className="btn-primary" disabled={upsertBinding.isPending || !bindForm.primary_profile_id}
-            onClick={() => upsertBinding.mutate({
-              task_key: bindForm.task_key, primary_profile_id: bindForm.primary_profile_id,
-              fallback_profile_id: bindForm.fallback_profile_id || undefined,
-              auto_route: bindForm.auto_route, cost_preference: bindForm.cost_preference,
-            })}>
-            {upsertBinding.isPending ? <Icon name="loader" size="sm" className="animate-spin" /> : <Icon as={Link2} size="sm" />} 保存绑定
-          </button>
-        </>}>
+        footer={
+          <>
+            <button type="button" className="btn-ghost" onClick={() => setBindOpen(false)}>
+              取消
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={upsertBinding.isPending || !bindForm.primary_profile_id}
+              onClick={() =>
+                upsertBinding.mutate({
+                  task_key: bindForm.task_key,
+                  primary_profile_id: bindForm.primary_profile_id,
+                  fallback_profile_id: bindForm.fallback_profile_id || undefined,
+                  auto_route: bindForm.auto_route,
+                  cost_preference: bindForm.cost_preference,
+                })
+              }
+            >
+              {upsertBinding.isPending ? (
+                <Icon name="loader" size="sm" className="animate-spin" />
+              ) : (
+                <Icon as={Link2} size="sm" />
+              )}{' '}
+              保存分配
+            </button>
+          </>
+        }
+      >
         <div className="rc-we-stack-tight">
-          <label className="block"><span className="field-label">科研任务</span>
-            <select className="field-input" value={bindForm.task_key}
-              onChange={(e) => setBindForm({ ...bindForm, task_key: e.target.value })}>
-              {Object.entries(TASK_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          <label className="block">
+            <span className="field-label">科研任务</span>
+            <select
+              className="field-input"
+              value={bindForm.task_key}
+              onChange={(e) => setBindForm({ ...bindForm, task_key: e.target.value })}
+            >
+              {Object.entries(TASK_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
             </select>
           </label>
-          <label className="block"><span className="field-label">主模型</span>
-            <select className="field-input" value={bindForm.primary_profile_id}
-              onChange={(e) => setBindForm({ ...bindForm, primary_profile_id: e.target.value })}>
+          <label className="block">
+            <span className="field-label">主模型</span>
+            <select
+              className="field-input"
+              value={bindForm.primary_profile_id}
+              onChange={(e) => setBindForm({ ...bindForm, primary_profile_id: e.target.value })}
+            >
               <option value="">请选择</option>
-              {profiles.map((p) => <option key={p.id} value={p.id}>{p.display_name || p.model_id} · {p.model_id}</option>)}
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.display_name || p.model_id} · {credName(p.credential_id)}
+                </option>
+              ))}
             </select>
           </label>
-          <label className="block"><span className="field-label">备用模型（可选）</span>
-            <select className="field-input" value={bindForm.fallback_profile_id}
-              onChange={(e) => setBindForm({ ...bindForm, fallback_profile_id: e.target.value })}>
+          <label className="block">
+            <span className="field-label">备用模型（可选）</span>
+            <select
+              className="field-input"
+              value={bindForm.fallback_profile_id}
+              onChange={(e) => setBindForm({ ...bindForm, fallback_profile_id: e.target.value })}
+            >
               <option value="">— 不设置 —</option>
-              {profiles.map((p) => <option key={p.id} value={p.id}>{p.display_name || p.model_id} · {p.model_id}</option>)}
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.display_name || p.model_id} · {credName(p.credential_id)}
+                </option>
+              ))}
             </select>
           </label>
-          <label className="block"><span className="field-label">成本偏好</span>
-            <select className="field-input" value={bindForm.cost_preference}
-              onChange={(e) => setBindForm({ ...bindForm, cost_preference: e.target.value })}>
-              <option value="balanced">均衡</option><option value="quality">优先质量</option>
+          <label className="block">
+            <span className="field-label">成本偏好</span>
+            <select
+              className="field-input"
+              value={bindForm.cost_preference}
+              onChange={(e) => setBindForm({ ...bindForm, cost_preference: e.target.value })}
+            >
+              <option value="balanced">均衡</option>
+              <option value="quality">优先质量</option>
               <option value="cost">优先低成本</option>
             </select>
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={bindForm.auto_route}
-              onChange={(e) => setBindForm({ ...bindForm, auto_route: e.target.checked })} />
-            开启自动路由（默认关闭；仅记录决策原因，不静默换供应商）
+            <input
+              type="checkbox"
+              checked={bindForm.auto_route}
+              onChange={(e) => setBindForm({ ...bindForm, auto_route: e.target.checked })}
+            />
+            开启自动路由
           </label>
-          <p className="flex items-center gap-2 text-xs text-ink-muted">
-            <Icon as={RotateCcw} size="xs" /> 模型生成的推断不会直接写入已验证事实，关键结论仍需证据验证。
-          </p>
         </div>
       </Modal>
-
-      {credTestId && (
-        <div className="rc-we-row" style={{ fontSize: 'var(--rc-fs-caption)', color: 'var(--rc-text-muted)' }}>
-          <Icon name="loader" size="xs" className="animate-spin" />
-          正在对凭据 {credName(credTestId)} 发起真实连接测试…
-        </div>
-      )}
     </div>
   )
 }

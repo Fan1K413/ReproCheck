@@ -124,7 +124,12 @@ class AnthropicAdapter(ModelAdapter):
             await self._release(client)
         if resp.status_code >= 400:
             raise map_http_error(resp.status_code)
-        data = resp.json()
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            raise InvalidModelFormatError("Claude 模型列表响应不是合法 JSON。") from exc
         models = data.get("data") if isinstance(data, dict) else data
+        if not isinstance(models, list):
+            raise InvalidModelFormatError("Claude 响应缺少有效的模型列表。")
         return [{"id": str(m.get("id", "")), "owned_by": "anthropic"}
-                for m in (models or []) if isinstance(m, dict)]
+                for m in models if isinstance(m, dict)]

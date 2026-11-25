@@ -60,7 +60,36 @@ class ModelGateway:
         if not uid:
             return False
         binding = await self._resolve_binding(db, uid, task_key, project_id)
-        return bool(binding and binding.enabled and binding.primary_profile_id)
+        if binding and binding.primary_profile_id:
+            return True
+        return (await self.resolve_default_profile(db, uid)) is not None
+
+    async def resolve_default_profile(
+        self, db: AsyncSession, uid: str,
+    ) -> tuple[ModelProfile, ModelCredential] | None:
+        """返回用户明确设为默认并已启用的模型及其有效凭据。"""
+        result = (await db.execute(select(ModelProfile, ModelCredential).join(
+            ModelCredential, ModelCredential.id == ModelProfile.credential_id,
+        ).where(
+            ModelProfile.owner_user_id == uid,
+            ModelProfile.enabled.is_(True),
+            ModelProfile.is_default.is_(True),
+            ModelCredential.owner_user_id == uid,
+            ModelCredential.provider_key == ModelProfile.provider_key,
+            ModelCredential.status == "active",
+            ModelCredential.key_ciphertext != "",
+        ).order_by(ModelProfile.created_at.desc(), ModelProfile.id).limit(1))).first()
+        return (result[0], result[1]) if result is not None else None
+
+    async def _get_fallback_profile(
+        self, db: AsyncSession, uid: str, exclude_id: str,
+    ) -> ModelProfile | None:
+        return (await db.execute(select(ModelProfile).where(
+            ModelProfile.owner_user_id == uid,
+            ModelProfile.enabled.is_(True),
+            ModelProfile.is_fallback.is_(True),
+            ModelProfile.id != exclude_id,
+        ).order_by(ModelProfile.created_at.desc()))).scalars().first()
 
     async def chat(
         self,
@@ -110,19 +139,28 @@ class ModelGateway:
         project_id: str | None,
     ) -> LLMResponse:
         binding = await self._resolve_binding(db, uid, task_key, project_id)
-        if binding is None or not binding.enabled:
-            # 用户没有为该任务绑定模型 → 明确回落环境变量配置（不静默换供应商）
-            logger.info("model_gateway_fallback_env task=%s user=%s", task_key, uid)
-            return await llm_service.chat(messages, response_schema=response_schema,
-                                          max_tokens=max_tokens)
+        if binding is not None and binding.primary_profile_id:
+            primary = await self._get_profile(db, binding.primary_profile_id, uid)
+            if primary is None:
+                raise ModelNotFoundError(binding.primary_profile_id or "未配置")
+            if not primary.enabled:
+                raise ModelDisabledError(primary.model_id)
+            fallback = await self._get_profile(db, binding.fallback_profile_id, uid)
+            binding_params = _load_json(binding.params_json, {})
+            auto_route = bool(binding.auto_route)
+        else:
+            default_pair = await self.resolve_default_profile(db, uid)
+            if default_pair is None:
+                # 用户既无任务绑定也无默认模型 → 明确回落环境变量配置
+                logger.info("model_gateway_fallback_env task=%s user=%s", task_key, uid)
+                return await llm_service.chat(messages, response_schema=response_schema,
+                                              max_tokens=max_tokens)
+            primary = default_pair[0]
+            fallback = await self._get_fallback_profile(db, uid, primary.id)
+            binding_params = {}
+            auto_route = False
 
-        primary = await self._get_profile(db, binding.primary_profile_id, uid)
-        if primary is None:
-            raise ModelNotFoundError(binding.primary_profile_id or "未配置")
-        if not primary.enabled:
-            raise ModelDisabledError(primary.model_id)
-
-        if binding.auto_route and not primary.is_default:
+        if auto_route and not primary.is_default:
             # 自动路由开启时仅按能力/成本偏好校验，不静默切到未授权供应商
             chosen = await self._auto_route(db, uid, task_key, primary, response_schema)
             if chosen.id != primary.id:
@@ -131,8 +169,31 @@ class ModelGateway:
         else:
             chosen = primary
 
-        fallback = await self._get_profile(db, binding.fallback_profile_id, uid)
-        binding_params = _load_json(binding.params_json, {})
+        if auto_route:
+            await self._record_route(db, uid, task_key, chosen.id, {
+                "binding": "auto_route", "primary_profile_id": primary.id, "task_key": task_key,
+            })
+        return await self._call_profiles(
+            db, uid, oid, messages, task_key, response_schema, max_tokens,
+            chosen, fallback, binding_params,
+        )
+
+    async def test_default_model(
+        self, db: AsyncSession, profile: ModelProfile, credential: ModelCredential,
+    ) -> LLMResponse:
+        """只测试已选定的默认模型，跳过任务路由和故障切换。"""
+        return await self._call_profiles(
+            db, profile.owner_user_id, credential.org_id,
+            [{"role": "user", "content": "请简短回复：ReproCheck API 连接成功。"}],
+            "connection_test", None, 64, profile, None, {},
+        )
+
+    async def _call_profiles(
+        self, db: AsyncSession, uid: str, oid: str | None,
+        messages: list[dict[str, Any]], task_key: str, response_schema: type[T] | None,
+        max_tokens: int | None, chosen: ModelProfile, fallback: ModelProfile | None,
+        binding_params: dict[str, Any],
+    ) -> LLMResponse:
         want_json = response_schema is not None
 
         started = time.perf_counter()
@@ -179,10 +240,6 @@ class ModelGateway:
                 last_error = InvalidModelFormatError(details={"error": str(exc)[:200]})
                 break
 
-        if binding.auto_route:
-            await self._record_route(db, uid, task_key, chosen.id, {
-                "binding": "auto_route", "primary_profile_id": primary.id, "task_key": task_key,
-            })
         if response is None or last_error is not None:
             code = last_error.code if last_error else "LLM_PROVIDER_ERROR"
             await self._log_call(db, uid, oid, task_key, req, success=False, error_code=code,
@@ -192,11 +249,10 @@ class ModelGateway:
 
         duration_ms = int((time.perf_counter() - started) * 1000)
         await self._log_call(db, uid, oid, task_key, req, success=True, error_code=None,
-                             provider_key=response.provider, usage=response.usage,
+                             provider_key=profile.provider_key, usage=response.usage,
                              duration_ms=duration_ms,
                              fallback_reason=("主模型失败：" + fallback_error.code)
-                             if (used_fallback and fallback_error) else None,
-                             model_id=response.model)
+                             if (used_fallback and fallback_error) else None)
         return LLMResponse(
             content=response.content,
             model=response.model,
@@ -275,7 +331,7 @@ class ModelGateway:
             ModelCredential.id == profile.credential_id,
             ModelCredential.owner_user_id == uid,
         ))).scalar_one_or_none() if profile.credential_id else None
-        if cred is None or profile.credential_id is None:
+        if cred is None or cred.provider_key != profile.provider_key:
             raise CredentialNotFoundError()
         adapter, _ = await self._credential_adapter(cred)
         return adapter
@@ -301,14 +357,13 @@ class ModelGateway:
                         req: ModelRequest, *, success: bool, error_code: str | None,
                         duration_ms: int, provider_key: str = "",
                         usage: TokenUsage | None = None,
-                        fallback_reason: str | None = None,
-                        model_id: str | None = None) -> None:
+                        fallback_reason: str | None = None) -> None:
         # 由创建会话的一方负责事务边界。
         db.add(ModelCallLog(
             id=f"mcall-{time.time_ns():x}", request_id=req.request_id,
             owner_user_id=uid, org_id=oid, task_key=task_key,
             provider_key=provider_key,
-            model_id=(model_id or req.model)[:160], success=success, error_code=error_code,
+            model_id=req.model[:160], success=success, error_code=error_code,
             prompt_tokens=usage.prompt_tokens if usage else 0,
             completion_tokens=usage.completion_tokens if usage else 0,
             total_tokens=usage.total_tokens if usage else 0,
