@@ -29,6 +29,14 @@ PERMISSIONS: dict[str, tuple[str, str]] = {
     "api.manage": ("org", "管理开放 API Token"),
     "data.export": ("project", "导出本人/项目数据"),
     "data.manage": ("org", "数据治理与 AI 授权设置"),
+    # 第十二阶段：生命周期 / 知识库 / 交接 / 工作项
+    "lifecycle.manage": ("project", "推进项目阶段、维护研究问题/数据集/实验设计/稿件"),
+    "knowledge.write": ("project", "编写与修订本组织知识条目"),
+    "knowledge.review": ("org", "审核知识纠错、标记过时/撤回知识"),
+    "milestone.manage": ("project", "创建与管理项目里程碑"),
+    "task.assign": ("project", "分配科研工作项与负责人"),
+    "handoff.initiate": ("project", "发起项目人员交接"),
+    "handoff.confirm": ("project", "确认完成项目交接"),
 }
 
 # 角色键 -> (名称, 作用域, 说明, 权限键列表)
@@ -37,13 +45,15 @@ ROLES: dict[str, tuple[str, str, str, list[str]]] = {
     "project_lead": ("项目负责人", "project", "管理项目、分配任务、审核结果", [
         "project.manage", "material.upload", "material.delete", "audit.run", "fact.revise",
         "finding.review", "comment.write", "review.decide", "report.generate", "case.manage", "data.export",
+        "lifecycle.manage", "knowledge.write", "knowledge.review", "milestone.manage",
+        "task.assign", "handoff.initiate", "handoff.confirm",
     ]),
     "researcher": ("研究人员", "project", "上传材料、执行审计、开展复现任务", [
         "material.upload", "audit.run", "fact.revise", "comment.write", "report.generate",
-        "case.manage", "data.export",
+        "case.manage", "data.export", "lifecycle.manage", "knowledge.write",
     ]),
     "reviewer": ("审核人员", "project", "查看证据、审核问题、确认修复建议", [
-        "finding.review", "comment.write", "review.decide", "report.generate",
+        "finding.review", "comment.write", "review.decide", "report.generate", "knowledge.review",
     ]),
     "viewer": ("只读成员", "project", "查看项目、报告与历史，不能修改", []),
     "member": ("组织成员", "org", "组织内基础成员，可被分配项目角色", ["project.create"]),

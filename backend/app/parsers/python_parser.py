@@ -81,7 +81,7 @@ def parse_python_text(
     """从内存字符串解析 Python（ZIP 内文件与单文件共享此逻辑）。不执行代码。"""
     base = dict(material_id=material_id)
 
-    # 1) 先做语法解析；语法错误绝不伪造结果
+    # 1) 先做语法解析；语法错误直接失败
     try:
         tree = ast.parse(text, filename=file_path)
     except (SyntaxError, ValueError) as exc:  # ValueError 覆盖含 null 字节等情况

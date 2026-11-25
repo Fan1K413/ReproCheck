@@ -53,7 +53,7 @@ class NotConfiguredError(AppError):
 
 
 class InvalidKeyError(AppError):
-    def __init__(self, message: str = "API Key 无效或已过期，请检查后端 LLM_API_KEY。"):
+    def __init__(self, message: str = "API Key 无效或已过期，请检查该模型凭据的配置。"):
         super().__init__("LLM_INVALID_KEY", message)
 
 

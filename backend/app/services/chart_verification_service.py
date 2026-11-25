@@ -18,7 +18,7 @@ import json
 import re
 from typing import Any
 
-# ---- 表格行识别 ----
+# 表格行识别
 # 独立数字 token：左侧不能是字母/数字/点/连字符（避免把 ResNet-50 中的 50 当作数值），
 # 右侧必须是空白/结束/百分号/分隔符（避免把 0.912abc 误当数值）。
 _STANDALONE_NUMBER_RE = re.compile(
@@ -59,7 +59,7 @@ _METRIC_ALIASES: tuple[tuple[str, str], ...] = (
     ("acc", "accuracy"),
 )
 
-# ---- 绘图调用识别（AST 静态分析）----
+# 绘图调用识别（AST 静态分析）
 _PLOT_LIBS = {"matplotlib", "plotly", "seaborn", "pandas", "mpl_toolkits"}
 _PLOT_METHODS = {
     "plot", "bar", "barh", "hist", "scatter", "pie", "boxplot", "violinplot",
@@ -76,7 +76,7 @@ _STRONG_PLOT_METHODS = {
     "subplots",
 }
 
-# ---- 结果数值识别 ----
+# 结果数值识别
 _METRIC_KEY_TOKENS: tuple[tuple[str, str], ...] = (
     ("accuracy", "accuracy"), ("准确率", "accuracy"),
     ("f1", "f1"), ("precision", "precision"), ("精确率", "precision"),
@@ -151,7 +151,7 @@ def _parse_spaced_row(line: str) -> tuple[str, list[float]] | None:
 
 
 def extract_table_claims(chunks: list[str], locators: list[dict]) -> list[dict]:
-    """从论文文本块中提取表格行数值主张；无匹配返回空列表，绝不编造。"""
+    """从论文文本块中提取表格行数值主张；无匹配返回空列表。"""
     claims: list[dict] = []
     for chunk_index, raw_chunk in enumerate(chunks or []):
         if not isinstance(raw_chunk, str):

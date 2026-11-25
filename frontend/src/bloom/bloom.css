@@ -1,0 +1,3635 @@
+/* ==========================================================================
+   Bloom UI —— 舞台、瓣卡与工作区
+   只作用于 .bloom-* 命名空间，不影响既有 panel / data-table / 侧栏。
+
+   §1.11 作用域收敛：Bloom 舞台保持自带深色（不加 data-rc-skin="light"），
+   仅把 bloom 变量收敛到 --rc-* 体系 —— Shell 走 rc 语义层，
+   Data 走 rc 功能色，Glow 统一 rc 紫光。
+   ========================================================================== */
+
+.bloom-page {
+  --bloom-dur: 680ms;
+  --bloom-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ===== Shell：舞台底 / 纸面 / 描边 ===== */
+  --bloom-ink: var(--rc-ink);
+  --bloom-panel: var(--rc-surface);
+  --bloom-paper: var(--rc-glass);
+  --bloom-line: var(--rc-border);
+  --bloom-paper-ink: var(--rc-purple-deep);
+  --bloom-paper-muted: var(--rc-purple-dark);
+
+  /* ===== Data：节点 / 证据状态色 ===== */
+  --bloom-accent: var(--rc-violet);
+  --bloom-accent-deep: var(--rc-purple-deep);
+  --bloom-pass: var(--rc-success);
+  --bloom-fail: var(--rc-danger);
+  --bloom-pending: var(--rc-warning);
+  /* 纸面（浅底）上的状态墨色：与亮色功能色同源，向墨紫混合以保证对比度 */
+  --bloom-pass-ink: color-mix(in srgb, var(--rc-success) 42%, var(--rc-purple-deep));
+  --bloom-fail-ink: color-mix(in srgb, var(--rc-danger) 42%, var(--rc-purple-deep));
+  --bloom-pending-ink: color-mix(in srgb, var(--rc-warning) 42%, var(--rc-purple-deep));
+
+  /* ===== Glow：统一紫光 ===== */
+  --bloom-glow: var(--rc-glow-violet);
+
+  height: 100dvh;
+  min-height: 560px;
+}
+
+/* 沉浸式工作台：全局侧栏/顶栏隐藏，舞台独占视口 */
+.bloom-layout {
+  min-height: 100dvh;
+  background: var(--bloom-ink);
+}
+
+.bloom-shell {
+  position: relative;
+  height: 100%;
+  border-radius: 30px;
+  overflow: hidden;
+  background: var(--bloom-ink);
+  color: var(--rc-hi);
+  isolation: isolate;
+}
+
+/* 培养皿的底色：纯深墨，仅中心有一层极淡的绿光，不叠加彩虹渐变 */
+.bloom-shell__glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(58% 52% at 50% 46%, color-mix(in srgb, var(--bloom-accent) 7%, transparent), transparent 72%),
+    radial-gradient(120% 90% at 50% 120%, color-mix(in srgb, var(--rc-hi) 4%, transparent), transparent 62%);
+}
+
+/* ---------------- 顶栏 ---------------- */
+
+.bloom-topbar {
+  position: relative;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 66px;
+  padding: 0 22px 0 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--rc-hi) 8%, transparent);
+  background: color-mix(in srgb, var(--bloom-ink) 82%, transparent);
+}
+
+.bloom-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px 0 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 14%, transparent);
+  color: color-mix(in srgb, var(--rc-hi) 68%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+  white-space: nowrap;
+}
+
+.bloom-back:hover {
+  border-color: color-mix(in srgb, var(--bloom-accent) 60%, transparent);
+  color: var(--rc-lilac);
+  background: color-mix(in srgb, var(--bloom-accent) 8%, transparent);
+}
+
+.bloom-project {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bloom-project__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--bloom-accent) 55%, transparent);
+  color: var(--rc-lilac);
+  flex-shrink: 0;
+}
+
+.bloom-project__text {
+  min-width: 0;
+}
+
+.bloom-project__name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 380px;
+}
+
+.bloom-project__paper {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: color-mix(in srgb, var(--rc-hi) 50%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 380px;
+}
+
+/* 阶段脊：真实完成度驱动 */
+.bloom-ridge {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-left: auto;
+  padding: 0 8px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 10%, transparent);
+  background: color-mix(in srgb, var(--rc-hi) 2%, transparent);
+}
+
+.bloom-ridge__step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--rc-hi) 42%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: color 180ms ease, background-color 180ms ease;
+}
+
+.bloom-ridge__step:hover {
+  color: color-mix(in srgb, var(--rc-hi) 82%, transparent);
+  background: color-mix(in srgb, var(--rc-hi) 6%, transparent);
+}
+
+.bloom-ridge__step.is-on {
+  color: color-mix(in srgb, var(--rc-hi) 90%, transparent);
+}
+
+.bloom-ridge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 35%, transparent);
+  flex-shrink: 0;
+}
+
+.bloom-ridge__step.is-on .bloom-ridge__dot {
+  border-color: var(--bloom-accent);
+  background: var(--bloom-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bloom-accent) 12%, transparent);
+}
+
+.bloom-ridge__link {
+  width: 8px;
+  height: 1px;
+  background: color-mix(in srgb, var(--rc-hi) 12%, transparent);
+  flex-shrink: 0;
+}
+
+.bloom-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.bloom-avatars {
+  display: flex;
+  align-items: center;
+  padding-left: 6px;
+}
+
+.bloom-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-left: -6px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 70%, transparent);
+  background: var(--rc-lilac);
+  color: var(--bloom-paper-ink);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.bloom-link-out {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 14%, transparent);
+  color: color-mix(in srgb, var(--rc-hi) 78%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+  transition: border-color 160ms ease, color 160ms ease;
+  white-space: nowrap;
+}
+
+.bloom-link-out:hover {
+  border-color: color-mix(in srgb, var(--bloom-accent) 55%, transparent);
+  color: var(--rc-lilac);
+}
+
+/* ---------------- 舞台 ---------------- */
+
+.bloom-stage {
+  position: relative;
+  height: calc(100% - 66px);
+  min-height: 420px;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.bloom-stage__rails {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bloom-orbit {
+  position: absolute;
+  inset: 0;
+  transition: transform 420ms var(--bloom-ease);
+}
+
+/* will-change 只在拖动 / 视差活动期挂载，避免常驻占用 GPU 内存 */
+.bloom-orbit.is-dragging {
+  transition: none;
+  will-change: transform;
+}
+
+/* ---------------- 中心核 ---------------- */
+
+.bloom-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--rc-hi);
+  text-align: center;
+  transform: translate(-50%, -50%);
+  transition: opacity 460ms var(--bloom-ease), transform 620ms var(--bloom-ease);
+}
+
+.bloom-core__disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 16%, transparent);
+  background:
+    radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--bloom-accent) 13%, transparent), color-mix(in srgb, var(--bloom-ink) 60%, transparent) 64%),
+    var(--bloom-ink);
+}
+
+.bloom-core__disc::after {
+  content: '';
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  border: 1px dashed color-mix(in srgb, var(--rc-hi) 9%, transparent);
+}
+
+.bloom-core__tag {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--bloom-accent) 80%, transparent);
+}
+
+.bloom-core__name {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  max-width: 82%;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.bloom-core__paper {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  max-width: 78%;
+  font-size: 10px;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--rc-hi) 48%, transparent);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bloom-core__score {
+  position: relative;
+  z-index: 2;
+  margin-top: 3px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--rc-lilac);
+}
+
+.bloom-core__score small {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--rc-hi) 46%, transparent);
+}
+
+.bloom-core.is-dimmed {
+  opacity: 0.18;
+  transform: translate(-50%, -50%) scale(0.72);
+  pointer-events: none;
+}
+
+/* 中心核外围刻度：10 段对应 10 个单元 */
+.bloom-core__ticks {
+  position: absolute;
+  inset: -22px;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.bloom-core__tick {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 6px;
+  margin-left: -1px;
+  background: color-mix(in srgb, var(--rc-hi) 16%, transparent);
+  transform-origin: 50% 0;
+}
+
+/* ---------------- 瓣卡 ---------------- */
+
+.bloom-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 10;
+  display: block;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--bloom-ink);
+  text-align: left;
+  transform-origin: 50% 50%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition-property: transform, width, height, opacity;
+  transition-duration: var(--bloom-dur);
+  transition-timing-function: var(--bloom-ease);
+  transition-delay: var(--bloom-delay, 0ms);
+  filter: drop-shadow(0 16px 20px color-mix(in srgb, var(--rc-ink) 30%, transparent));
+}
+
+.bloom-card:focus {
+  outline: none;
+}
+
+.bloom-card:focus-visible .bloom-card__surface {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--bloom-accent) 90%, transparent);
+}
+
+.bloom-card.is-open {
+  cursor: default;
+  filter: none;
+}
+
+.bloom-card.is-side {
+  cursor: pointer;
+}
+
+/* 组合选择态：不改变轮廓，只在纸面内侧压一圈 accent */
+.bloom-card.is-selected .bloom-card__surface {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--bloom-accent) 90%, transparent),
+    var(--bloom-glow);
+}
+
+.bloom-card.is-dimmed {
+  opacity: 0.16 !important;
+  pointer-events: none;
+}
+
+.bloom-card__surface {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--bloom-paper);
+  color: var(--bloom-ink);
+  clip-path: var(--bloom-clip, polygon(0 0, 100% 0, 100% 100%, 0 100%));
+  transition: background-color 260ms ease;
+  transition-delay: var(--bloom-delay, 0ms);
+}
+
+/* will-change 只在形变活动期（入场 / 展开 / 收拢）挂载，动画结束即摘掉 */
+.bloom-card.is-entering .bloom-card__surface,
+.bloom-card.is-morphing .bloom-card__surface {
+  will-change: clip-path;
+}
+
+/* 纸面纤维纹理：极轻，只增加材质感，不抢文字 */
+.bloom-card__surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background: repeating-linear-gradient(
+    112deg,
+    color-mix(in srgb, var(--bloom-ink) 2%, transparent) 0,
+    color-mix(in srgb, var(--bloom-ink) 2%, transparent) 1px,
+    transparent 1px,
+    transparent 5px
+  );
+}
+
+.bloom-card__surface::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 10%, transparent);
+  clip-path: inherit;
+}
+
+.bloom-card.is-open .bloom-card__surface {
+  background: var(--rc-hi);
+}
+
+.bloom-card__tilt {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 160ms ease-out;
+}
+
+/* 指针悬停产生倾角时才提升图层 */
+.bloom-card:hover .bloom-card__tilt {
+  will-change: transform;
+}
+
+.bloom-card__body {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+}
+
+/* 收拢内容 */
+.bloom-compact {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  padding: 13px 30px 20px;
+  border: 0;
+  background: transparent;
+  color: var(--bloom-ink);
+  text-align: left;
+  opacity: 1;
+  transition: opacity 220ms ease;
+}
+
+.bloom-card.is-open .bloom-compact {
+  opacity: 0;
+  pointer-events: none;
+  transition-duration: 140ms;
+}.bloom-compact__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bloom-compact__index {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--bloom-ink) 44%, transparent);
+}
+
+.bloom-compact__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 12%, transparent);
+  color: var(--bloom-paper-ink);
+  transition: transform 240ms var(--bloom-ease), background-color 200ms ease;
+}
+
+.bloom-card:hover .bloom-compact__icon {
+  background: var(--rc-accent-wash);
+  transform: rotate(-8deg) scale(1.04);
+}
+
+.bloom-compact__title {
+  margin: 4px 0 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  display: block;
+  white-space: nowrap;
+}
+
+.bloom-compact__kicker {
+  margin: 2px 0 0;
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--bloom-ink) 42%, transparent);
+}
+
+.bloom-compact__hint {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 3px;
+  transition: opacity 160ms ease, transform 220ms var(--bloom-ease);
+}
+
+.bloom-compact__metric {
+  font-family: var(--font-mono);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.bloom-compact__metric-label {
+  margin-top: 2px;
+  margin-left: 5px;
+  font-size: 9.5px;
+  color: color-mix(in srgb, var(--bloom-ink) 50%, transparent);
+}
+
+.bloom-compact__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  font-size: 8.5px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--bloom-ink) 62%, transparent);
+  white-space: nowrap;
+}
+
+.bloom-card.is-narrow .bloom-compact {
+  padding: 10px 12px;
+  justify-content: center;
+}
+
+.bloom-card.is-narrow .bloom-compact__top,
+.bloom-card.is-narrow .bloom-compact__kicker,
+.bloom-card.is-narrow .bloom-compact__status,
+.bloom-card.is-narrow .bloom-compact__peek {
+  display: none;
+}
+
+.bloom-card.is-narrow .bloom-compact__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.bloom-card.is-narrow .bloom-compact__icon svg {
+  width: 10px;
+  height: 10px;
+}
+
+.bloom-card.is-narrow .bloom-compact__index {
+  font-size: 7px;
+}
+
+.bloom-card.is-narrow .bloom-compact__kicker {
+  margin-top: 1px;
+  font-size: 6px;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+}
+
+.bloom-card.is-narrow .bloom-compact__title {
+  margin-top: 0;
+  font-size: 11px;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.bloom-card.is-narrow .bloom-compact__hint {
+  margin-top: 3px;
+  align-items: center;
+  gap: 2px;
+}
+
+.bloom-card.is-narrow .bloom-compact__metric {
+  font-size: 13px;
+}
+
+.bloom-card.is-narrow .bloom-compact__metric-label {
+  margin-left: 3px;
+  font-size: 7.5px;
+}
+
+.bloom-card.is-narrow .bloom-dot {
+  width: 4px;
+  height: 4px;
+}
+
+.bloom-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--rc-neutral);
+  /* 浅底纸面上靠 1px 墨色描边保证可辨，不依赖颜色单一信号 */
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--bloom-paper-ink) 42%, transparent);
+  flex-shrink: 0;
+}
+
+.bloom-dot.tone-accent { background: var(--bloom-accent); }
+.bloom-dot.tone-success { background: var(--bloom-pass); }
+.bloom-dot.tone-warning { background: var(--bloom-pending); }
+.bloom-dot.tone-danger { background: var(--bloom-fail); }
+.bloom-dot.tone-neutral { background: var(--rc-neutral); }
+.bloom-dot.tone-navy { background: var(--bloom-accent-deep); }
+
+/* 边缘的微型读数尺：仅作材质细节，不伪造任何数据 */
+.bloom-compact__scale {
+  position: absolute;
+  right: 19px;
+  bottom: 17px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+.bloom-compact__scale span {
+  width: 2px;
+  background: currentColor;
+}
+
+.bloom-compact__scale span:nth-child(1) { height: 5px; }
+.bloom-compact__scale span:nth-child(2) { height: 8px; }
+.bloom-compact__scale span:nth-child(3) { height: 11px; }
+.bloom-compact__scale span:nth-child(4) { height: 7px; }
+.bloom-compact__scale span:nth-child(5) { height: 13px; }
+.bloom-compact__scale span:nth-child(6) { height: 9px; }
+.bloom-compact__scale span:nth-child(7) { height: 6px; }
+
+.bloom-card.is-narrow .bloom-compact__scale,
+.bloom-card.is-open .bloom-compact__scale {
+  display: none;
+}
+
+/* 悬停时露出的一行摘要 */
+.bloom-compact__peek {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 10px;
+  z-index: 3;
+  font-size: 10px;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--bloom-ink) 56%, transparent);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 180ms ease, transform 220ms var(--bloom-ease);
+  pointer-events: none;
+}
+
+.bloom-card:not(.is-open):hover .bloom-compact__peek {
+  opacity: 1;
+  transform: none;
+}
+
+/* 悬停时指标行让位给摘要；窄卡没有摘要，保留指标 */
+.bloom-card:not(.is-open):not(.is-narrow):hover .bloom-compact__hint {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+/* ---------------- 展开工作区 ---------------- */
+
+.bloom-detail {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.bloom-card.is-open.is-revealed .bloom-detail {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.bloom-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 420ms var(--bloom-ease), transform 520ms var(--bloom-ease);
+  transition-delay: 0ms;
+}
+
+.bloom-card.is-open.is-revealed .bloom-reveal {
+  opacity: 1;
+  transform: none;
+  transition-delay: calc(var(--reveal-delay, 0ms) + 260ms);
+}
+
+.bloom-detail__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 54px 86px 0;
+}
+
+.bloom-detail__heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.bloom-detail__kicker {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--bloom-ink) 44%, transparent);
+}
+
+.bloom-detail__title {
+  margin: 5px 0 0;
+  font-size: 27px;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+.bloom-detail__sub {
+  margin: 7px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--bloom-ink) 56%, transparent);
+  max-width: 640px;
+}
+
+.bloom-detail__tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.bloom-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 14%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--bloom-ink) 66%, transparent);
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+
+.bloom-icon-btn:hover {
+  border-color: color-mix(in srgb, var(--bloom-paper-ink) 50%, transparent);
+  background: var(--rc-accent-wash);
+  color: var(--bloom-paper-ink);
+}
+
+.bloom-detail__body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  margin-top: 17px;
+  border-top: 1px solid color-mix(in srgb, var(--bloom-ink) 9%, transparent);
+}
+
+.bloom-detail__more {
+  position: absolute;
+  right: 16px;
+  bottom: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border: 1px solid color-mix(in srgb, var(--bloom-paper-ink) 16%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bloom-paper) 82%, transparent);
+  color: color-mix(in srgb, var(--bloom-paper-ink) 50%, transparent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.bloom-detail__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--bloom-paper-ink) 32%, transparent) transparent;
+  padding: 20px 86px 34px;
+}
+
+.bloom-detail__scroll > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 180px;
+}
+
+.bloom-detail__scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.bloom-detail__scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bloom-paper-ink) 28%, transparent);
+}
+
+.bloom-detail__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 70px;
+  padding: 10px 100px 56px 46px;
+  border-top: 1px solid color-mix(in srgb, var(--bloom-ink) 9%, transparent);
+  background: color-mix(in srgb, var(--bloom-paper) 65%, transparent);
+}
+
+.bloom-detail__foot .btn-ghost,
+.bloom-detail__foot .btn-primary {
+  padding: 7px 14px;
+  font-size: 12px;
+}
+
+/* ---------------- 详情内部通用块 ---------------- */
+
+.bloom-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1px;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 10%, transparent);
+  border-radius: 18px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--bloom-ink) 8%, transparent);
+}
+
+.bloom-metric {
+  background: var(--rc-hi);
+  padding: 13px 15px;
+}
+
+.bloom-metric__label {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--bloom-ink) 48%, transparent);
+}
+
+.bloom-metric__value {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.bloom-metric__hint {
+  margin-top: 3px;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--bloom-ink) 42%, transparent);
+}
+
+.bloom-section {
+  margin-top: 20px;
+}
+
+.bloom-section:first-child {
+  margin-top: 0;
+}
+
+.bloom-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+
+.bloom-section__title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.bloom-section__note {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--bloom-ink) 42%, transparent);
+}
+
+.bloom-list {
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 10%, transparent);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--rc-hi);
+}
+
+.bloom-list__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--bloom-ink) 7%, transparent);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 150ms ease;
+}
+
+.bloom-list__row:hover {
+  background: color-mix(in srgb, var(--bloom-accent) 9%, transparent);
+}
+
+.bloom-list__row:last-child {
+  border-bottom: 0;
+}
+
+.bloom-list__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.bloom-list__title {
+  display: block;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bloom-list__meta {
+  display: block;
+  margin: 2px 0 0;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: color-mix(in srgb, var(--bloom-ink) 44%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bloom-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bloom-paper-ink) 6%, transparent);
+  color: var(--bloom-paper-muted);
+  font-size: 9.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bloom-chip.tone-accent { background: var(--rc-accent-wash); color: var(--rc-accent); }
+.bloom-chip.tone-success { background: var(--rc-success-wash); color: var(--bloom-pass-ink); }
+.bloom-chip.tone-warning { background: var(--rc-warning-wash); color: var(--bloom-pending-ink); }
+.bloom-chip.tone-danger { background: var(--rc-danger-wash); color: var(--bloom-fail-ink); }
+.bloom-chip.tone-neutral { background: color-mix(in srgb, var(--bloom-paper-ink) 6%, transparent); color: var(--bloom-paper-muted); }
+.bloom-chip.tone-navy { background: var(--rc-accent-wash); color: var(--rc-purple-dark); }
+
+.bloom-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bloom-bar-row {
+  display: grid;
+  grid-template-columns: 116px minmax(80px, 1fr) 48px;
+  align-items: center;
+  gap: 10px;
+}
+
+.bloom-bar-row__label {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--bloom-ink) 62%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bloom-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--rc-surface-3);
+  overflow: hidden;
+}
+
+.bloom-bar__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--bloom-accent);
+  transform-origin: left center;
+  transition: width 700ms var(--bloom-ease);
+}
+
+.bloom-bar__fill.is-warning { background: var(--bloom-pending); }
+.bloom-bar__fill.is-danger { background: var(--bloom-fail); }
+
+.bloom-bar-row__value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: right;
+  color: color-mix(in srgb, var(--bloom-ink) 62%, transparent);
+}
+
+.bloom-note {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bloom-paper-ink) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 12%, transparent);
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--bloom-ink) 56%, transparent);
+}
+
+.bloom-note.is-warning {
+  background: var(--rc-warning-wash);
+  border-color: color-mix(in srgb, var(--bloom-pending) 20%, transparent);
+  color: var(--bloom-paper-ink);
+}
+
+.bloom-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 16px;
+  border: 1px dashed color-mix(in srgb, var(--bloom-ink) 20%, transparent);
+  border-radius: 14px;
+  color: color-mix(in srgb, var(--bloom-ink) 50%, transparent);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.bloom-empty strong {
+  font-size: 12px;
+  color: var(--bloom-ink);
+}
+
+.bloom-kv {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 16px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 9%, transparent);
+  border-radius: 14px;
+  background: var(--rc-hi);
+}
+
+.bloom-kv__item {
+  min-width: 0;
+}
+
+.bloom-kv__key {
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--bloom-ink) 42%, transparent);
+  text-transform: uppercase;
+}
+
+.bloom-kv__value {
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--bloom-ink);
+  word-break: break-all;
+}
+
+/* 小型 DAG 缩略 */
+.bloom-dag {
+  position: relative;
+  height: 172px;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 9%, transparent);
+  border-radius: 16px;
+  background: var(--rc-hi);
+  overflow: hidden;
+}
+
+.bloom-dag__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.bloom-dag__node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  max-width: 112px;
+  padding: 6px 9px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 14%, transparent);
+  background: var(--bloom-paper);
+  font-size: 9.5px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--bloom-ink);
+}
+
+.bloom-dag__node.is-warning {
+  border-color: color-mix(in srgb, var(--bloom-pending) 45%, transparent);
+  background: var(--rc-warning-wash);
+  color: var(--bloom-paper-ink);
+}
+
+/* ---------------- 连线 ---------------- */
+
+.bloom-links {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  pointer-events: none;
+}
+
+.bloom-link {
+  fill: none;
+  stroke: color-mix(in srgb, var(--bloom-accent) 52%, transparent);
+  stroke-width: 1.2;
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  opacity: 0;
+  transition: stroke-dashoffset 700ms var(--bloom-ease), opacity 280ms ease;
+}
+
+.bloom-link.is-on {
+  stroke-dashoffset: 0;
+  opacity: 1;
+}
+
+/* ---------------- 底部状态条 ---------------- */
+
+.bloom-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 46px;
+  padding: 0 20px;
+  border-top: 1px solid color-mix(in srgb, var(--rc-hi) 7%, transparent);
+  background: linear-gradient(to top, color-mix(in srgb, var(--bloom-ink) 92%, transparent), color-mix(in srgb, var(--bloom-ink) 0%, transparent));
+  color: color-mix(in srgb, var(--rc-hi) 46%, transparent);
+  font-size: 10.5px;
+  letter-spacing: 0.01em;
+}
+
+.bloom-foot__hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: color-mix(in srgb, var(--rc-hi) 66%, transparent);
+  font-size: 11px;
+  font-weight: 550;
+}
+
+.bloom-foot__key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 18%, transparent);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: color-mix(in srgb, var(--rc-hi) 62%, transparent);
+}
+
+.bloom-foot__legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bloom-foot__legend-line {
+  width: 18px;
+  height: 1px;
+  background: color-mix(in srgb, var(--bloom-accent) 55%, transparent);
+}
+
+.bloom-foot__right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bloom-foot__refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 14%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--rc-hi) 60%, transparent);
+  font-size: 10px;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.bloom-foot__refresh:hover {
+  border-color: color-mix(in srgb, var(--bloom-accent) 50%, transparent);
+  color: var(--rc-lilac);
+}
+
+.bloom-foot__refresh:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------------- 组合槽 ---------------- */
+
+.bloom-combo {
+  position: absolute;
+  left: 50%;
+  bottom: 58px;
+  z-index: 58;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px 9px 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--bloom-accent) 42%, transparent);
+  background: color-mix(in srgb, var(--rc-ink) 94%, transparent);
+  color: var(--rc-lilac);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--rc-ink) 35%, transparent);
+  animation: bloom-combo-in 320ms var(--bloom-ease) both;
+}
+
+.bloom-combo__label {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bloom-combo__pair {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: color-mix(in srgb, var(--rc-hi) 60%, transparent);
+}
+
+.bloom-combo__slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 74px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px dashed color-mix(in srgb, var(--rc-hi) 22%, transparent);
+  font-size: 10px;
+  color: color-mix(in srgb, var(--rc-hi) 50%, transparent);
+}
+
+.bloom-combo__slot.is-filled {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--bloom-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--bloom-accent) 14%, transparent);
+  color: var(--rc-lilac);
+}
+
+.bloom-combo__cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 20%, transparent);
+  color: color-mix(in srgb, var(--rc-hi) 60%, transparent);
+  background: transparent;
+}
+
+@keyframes bloom-combo-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ---------------- 组合工作区 ---------------- */
+
+.bloom-combo-panel {
+  position: absolute;
+  z-index: 44;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--rc-hi);
+  color: var(--bloom-ink);
+  clip-path: var(--bloom-clip);
+  filter: drop-shadow(0 24px 48px color-mix(in srgb, var(--rc-ink) 38%, transparent));
+  animation: bloom-combo-open 620ms var(--bloom-ease) both;
+}
+
+@keyframes bloom-combo-open {
+  from {
+    opacity: 0;
+    clip-path: polygon(50% 46%, 50% 54%, 50% 54%, 50% 46%);
+  }
+  to {
+    opacity: 1;
+    clip-path: var(--bloom-clip);
+  }
+}
+
+.bloom-combo-panel__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 54px 86px 0;
+}
+
+.bloom-combo-panel__head .bloom-detail__heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.bloom-combo-panel__hinge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 86px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--bloom-ink) 9%, transparent);
+  font-size: 10px;
+  color: color-mix(in srgb, var(--bloom-ink) 48%, transparent);
+}
+
+.bloom-combo-panel__hinge strong {
+  color: var(--bloom-paper-ink);
+  font-weight: 700;
+}
+
+.bloom-combo-panel__cols {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  padding: 0 16px;
+}
+
+.bloom-combo-panel__divider {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--bloom-ink) 14%, transparent) 12%,
+    color-mix(in srgb, var(--bloom-ink) 14%, transparent) 88%,
+    transparent
+  );
+}
+
+.bloom-combo-col {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 70px 34px;
+}
+
+.bloom-combo-col .bloom-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bloom-combo-col__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.bloom-combo-panel__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 90px;
+  padding: 10px 60px 32px;
+  border-top: 1px solid color-mix(in srgb, var(--bloom-ink) 9%, transparent);
+  font-size: 10px;
+  color: color-mix(in srgb, var(--bloom-ink) 44%, transparent);
+}
+
+/* ---------------- 首页项目星丛 ---------------- */
+
+.bloom-constellation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 18px 20px 22px;
+  background: var(--bloom-ink);
+  border-radius: 0 0 30px 30px;
+}
+
+.bloom-constellation__card {
+  position: relative;
+  flex: 1 1 210px;
+  min-width: 200px;
+  max-width: 280px;
+  height: 148px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--bloom-paper);
+  text-align: left;
+  cursor: pointer;
+  filter: drop-shadow(0 12px 18px color-mix(in srgb, var(--rc-ink) 28%, transparent));
+  transition: transform 260ms var(--bloom-ease), filter 260ms ease;
+}
+
+.bloom-constellation__card:hover {
+  transform: translateY(-4px) rotate(-0.6deg);
+  filter: drop-shadow(0 18px 26px color-mix(in srgb, var(--rc-ink) 40%, transparent));
+}
+
+.bloom-constellation__paper {
+  position: absolute;
+  inset: 0;
+  padding: 18px 20px;
+  background: var(--bloom-paper);
+  color: var(--bloom-ink);
+  clip-path: var(--bloom-clip);
+  overflow: hidden;
+}
+
+.bloom-constellation__paper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background: repeating-linear-gradient(
+    112deg,
+    color-mix(in srgb, var(--bloom-ink) 2%, transparent) 0,
+    color-mix(in srgb, var(--bloom-ink) 2%, transparent) 1px,
+    transparent 1px,
+    transparent 5px
+  );
+}
+
+.bloom-constellation__domain {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--bloom-ink) 42%, transparent);
+}
+
+.bloom-constellation__name {
+  margin: 9px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bloom-constellation__paper-title {
+  margin: 5px 0 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--bloom-ink) 48%, transparent);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bloom-constellation__foot {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--bloom-ink) 52%, transparent);
+}
+
+.bloom-constellation__enter {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 700;
+  color: var(--bloom-paper-ink);
+}
+
+.bloom-constellation__empty {
+  flex: 1;
+  padding: 26px 20px;
+  color: color-mix(in srgb, var(--rc-hi) 55%, transparent);
+  font-size: 12px;
+}
+
+/* ---------------- 移动端 ---------------- */
+
+.bloom-stage--mobile {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.bloom-stage--mobile .bloom-core {
+  display: none;
+}
+
+.bloom-stage--mobile .bloom-stage__rails {
+  display: none;
+}
+
+.bloom-page--mobile .bloom-ridge {
+  display: none !important;
+}
+
+.bloom-page--mobile .bloom-topbar__right {
+  display: none;
+}
+
+.bloom-page--mobile .bloom-project__paper {
+  display: none;
+}
+
+.bloom-page--mobile.bloom-page--combined .bloom-topbar {
+  display: none;
+}
+
+.bloom-stage--mobile .bloom-core__disc::after {
+  inset: 9px;
+}
+
+.bloom-stage--mobile .bloom-core__name {
+  font-size: 12px;
+}
+
+.bloom-stage--mobile .bloom-core__paper {
+  display: none;
+}
+
+.bloom-stage--mobile .bloom-core__score {
+  font-size: 15px;
+}
+
+.bloom-stage--mobile .bloom-card {
+  filter: drop-shadow(0 10px 14px color-mix(in srgb, var(--rc-ink) 26%, transparent));
+}
+
+.bloom-stage--mobile .bloom-compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-content: center;
+  column-gap: 16px;
+  padding: 20px 30px;
+}
+
+.bloom-stage--mobile .bloom-compact__top,
+.bloom-stage--mobile .bloom-compact__peek {
+  display: none;
+}
+
+.bloom-stage--mobile .bloom-compact__kicker {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+  font-size: 8px;
+  line-height: 1.2;
+}
+
+.bloom-stage--mobile .bloom-compact__title {
+  grid-column: 1;
+  grid-row: 2;
+  margin-top: 3px;
+  font-size: 17px;
+  line-height: 1.1;
+}
+
+.bloom-stage--mobile .bloom-compact__hint {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-items: flex-end;
+  justify-content: center;
+  margin-top: 0;
+  gap: 3px;
+}
+
+.bloom-stage--mobile .bloom-compact__metric {
+  font-size: 22px;
+}
+
+.bloom-stage--mobile .bloom-compact__metric-label {
+  margin-left: 4px;
+  font-size: 9px;
+}
+
+.bloom-stage--mobile .bloom-compact__status {
+  max-width: 140px;
+  font-size: 8px;
+  line-height: 1.2;
+}
+
+.bloom-stage--mobile .bloom-orbit {
+  transform: none !important;
+  will-change: auto;
+}
+
+.bloom-stage--mobile .bloom-card.is-open {
+  position: fixed !important;
+  left: 8px !important;
+  top: 8px !important;
+  width: calc(100vw - 16px) !important;
+  height: calc(100vh - 16px) !important;
+  z-index: 80 !important;
+  transform: none !important;
+}
+
+.bloom-stage--mobile .bloom-card.is-open .bloom-card__surface {
+  clip-path: none;
+  border-radius: 22px;
+}
+
+.bloom-stage--mobile .bloom-card.is-open .bloom-compact {
+  padding: 0;
+}
+
+.bloom-stage--mobile .bloom-detail__head {
+  padding: 20px 22px 0;
+}
+
+.bloom-stage--mobile .bloom-detail__title {
+  font-size: 21px;
+}
+
+.bloom-stage--mobile .bloom-detail__scroll {
+  padding: 16px 22px 20px;
+}
+
+.bloom-stage--mobile .bloom-detail__foot {
+  margin: 0;
+  padding: 10px 22px 14px;
+}
+
+.bloom-stage--mobile .bloom-foot {
+  display: none;
+}
+
+.bloom-stage--mobile .bloom-foot__hint,
+.bloom-stage--mobile .bloom-foot__legend {
+  display: none;
+}
+
+.bloom-stage--mobile .bloom-foot__right {
+  font-size: 9px;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.bloom-stage--mobile .bloom-foot__refresh {
+  padding: 7px 10px;
+  font-size: 9px;
+}
+
+.bloom-stage--mobile .bloom-topbar {
+  height: auto;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.bloom-stage--mobile .bloom-project__name,
+.bloom-stage--mobile .bloom-project__paper {
+  max-width: 200px;
+}
+
+.bloom-stage--mobile .bloom-ridge {
+  order: 4;
+  margin-left: 0;
+  width: 100%;
+  overflow-x: auto;
+  justify-content: flex-start;
+}
+
+.bloom-stage--mobile .bloom-topbar__right {
+  margin-left: auto;
+}
+
+.bloom-stage--mobile .bloom-avatars {
+  display: none;
+}
+
+.bloom-stage--mobile .bloom-combo {
+  position: fixed;
+  bottom: 56px;
+  max-width: calc(100vw - 24px);
+}
+
+.bloom-stage--mobile .bloom-combo__label {
+  display: none;
+}
+
+.bloom-stage--mobile .bloom-combo-panel {
+  position: fixed;
+  left: 8px !important;
+  top: 8px !important;
+  width: calc(100vw - 16px) !important;
+  height: calc(100vh - 16px) !important;
+  z-index: 92;
+  clip-path: none;
+  border-radius: 22px;
+  animation: none;
+}
+
+.bloom-stage--mobile .bloom-combo-panel__head {
+  padding: 20px 22px 0;
+}
+
+.bloom-stage--mobile .bloom-combo-panel__hinge {
+  padding: 8px 22px 9px;
+}
+
+.bloom-stage--mobile .bloom-combo-panel__cols {
+  display: block;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.bloom-stage--mobile .bloom-combo-panel__foot {
+  margin: 0;
+  padding: 10px 22px 16px;
+}
+
+.bloom-stage--mobile .bloom-combo-panel__cols {
+  grid-template-columns: 1fr;
+}
+
+.bloom-stage--mobile .bloom-combo-panel__divider {
+  display: none;
+}
+
+.bloom-stage--mobile .bloom-combo-col {
+  overflow: visible;
+  padding: 14px 22px 18px;
+}
+
+/* ---------------- 移动端组合选择：中心径向选择盘 ---------------- */
+
+.bloom-picker {
+  --picker-size: min(78vw, 340px);
+  position: fixed;
+  inset: 0;
+  z-index: 96;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--bloom-ink) 34%, transparent), color-mix(in srgb, var(--bloom-ink) 82%, transparent) 76%);
+  color: var(--rc-hi);
+  animation: bloom-picker-veil 260ms ease-out both;
+}
+
+/* 放射花瓣：一层 conic 光带 + 16 片交错弧形叶，整体略作对角旋转以获得纵深。 */
+.bloom-picker__petals {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(150vw, 660px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  pointer-events: none;
+}
+
+.bloom-picker__petals::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 210deg,
+    color-mix(in srgb, var(--rc-accent) 4%, transparent),
+    color-mix(in srgb, var(--rc-violet) 17%, transparent) 16%,
+    color-mix(in srgb, var(--rc-accent) 3%, transparent) 33%,
+    color-mix(in srgb, var(--rc-magenta) 15%, transparent) 51%,
+    color-mix(in srgb, var(--rc-accent) 3%, transparent) 69%,
+    color-mix(in srgb, var(--rc-violet) 14%, transparent) 86%,
+    color-mix(in srgb, var(--rc-accent) 4%, transparent)
+  );
+  -webkit-mask-image: radial-gradient(circle, transparent 11%, #000 38%, transparent 77%);
+  mask-image: radial-gradient(circle, transparent 11%, #000 38%, transparent 77%);
+}
+
+.bloom-picker__petal {
+  position: absolute;
+  inset: 0;
+  transform: rotate(var(--petal-angle));
+}
+
+.bloom-picker__petal::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 4%;
+  width: 27%;
+  height: 50%;
+  transform: translateX(-50%);
+  border: 1px solid color-mix(in srgb, var(--rc-magenta) 15%, transparent);
+  border-radius: 50% 50% 42% 42% / 62% 62% 38% 38%;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--rc-magenta) 5%, transparent) 0%,
+    color-mix(in srgb, var(--rc-violet) 19%, transparent) 42%,
+    color-mix(in srgb, var(--rc-accent) 30%, transparent) 100%
+  );
+  box-shadow: inset 0 0 28px color-mix(in srgb, var(--rc-lilac) 8%, transparent), 0 12px 30px color-mix(in srgb, var(--rc-purple-deep) 24%, transparent);
+}
+
+.bloom-picker__petal::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  width: 17%;
+  height: 39%;
+  transform: translateX(-50%);
+  border-radius: 50% 50% 42% 42% / 62% 62% 38% 38%;
+  border-top: 1px solid color-mix(in srgb, var(--rc-lilac) 20%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rc-hi) 7%, transparent), transparent 64%);
+}
+
+.bloom-picker__petal:nth-child(even)::before {
+  top: 11%;
+  width: 22%;
+  height: 44%;
+  opacity: 0.72;
+}
+
+.bloom-picker__petal:nth-child(3n)::before {
+  top: 0;
+  width: 31%;
+  height: 56%;
+  opacity: 0.62;
+}
+
+.bloom-picker__disc {
+  position: relative;
+  z-index: 1;
+  width: var(--picker-size);
+  height: var(--picker-size);
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 28%, transparent);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--rc-hi) 17%, transparent), color-mix(in srgb, var(--rc-hi) 5%, transparent) 44%, transparent 72%),
+    color-mix(in srgb, var(--bloom-ink) 42%, transparent);
+  box-shadow:
+    0 30px 90px color-mix(in srgb, var(--rc-ink) 52%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--rc-hi) 8%, transparent),
+    inset 0 18px 50px color-mix(in srgb, var(--rc-hi) 7%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+  animation: bloom-picker-rise 420ms var(--bloom-ease) both;
+}
+
+.bloom-picker__ring {
+  position: absolute;
+  inset: 11%;
+  border: 1px dashed color-mix(in srgb, var(--rc-hi) 18%, transparent);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bloom-accent) 6%, transparent);
+  pointer-events: none;
+}
+
+.bloom-picker__center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 43%;
+  min-width: 118px;
+  aspect-ratio: 1;
+  padding: 10px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--rc-hi) 97%, transparent), color-mix(in srgb, var(--bloom-paper) 88%, transparent));
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--rc-ink) 30%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--rc-hi) 80%, transparent);
+  color: var(--bloom-ink);
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.bloom-picker__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--bloom-ink) 50%, transparent);
+}
+
+.bloom-picker__prompt {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.bloom-picker__source {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: color-mix(in srgb, var(--bloom-ink) 62%, transparent);
+}
+
+.bloom-picker__option {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: clamp(38px, 11vw, 48px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 38%, transparent);
+  border-radius: 50%;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--rc-hi) 24%, transparent), color-mix(in srgb, var(--bloom-accent) 12%, transparent));
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--rc-ink) 34%, transparent), inset 0 0 12px color-mix(in srgb, var(--rc-hi) 10%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--rc-lilac);
+  transform: translate(-50%, -50%);
+  animation: bloom-picker-node 460ms var(--bloom-ease) backwards;
+  animation-delay: var(--node-delay, 0ms);
+  transition:
+    transform 200ms var(--bloom-ease),
+    border-color 200ms ease,
+    background-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.bloom-picker__option::after {
+  content: attr(data-title);
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 9px);
+  z-index: 5;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 14%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bloom-ink) 94%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--rc-ink) 32%, transparent);
+  color: var(--rc-hi);
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.bloom-picker__option:hover,
+.bloom-picker__option:focus-visible {
+  border-color: color-mix(in srgb, var(--bloom-accent) 90%, transparent);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--rc-hi) 34%, transparent), color-mix(in srgb, var(--bloom-accent) 28%, transparent));
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--bloom-accent) 14%, transparent), 0 12px 26px color-mix(in srgb, var(--rc-ink) 40%, transparent);
+  outline: none;
+  transform: translate(-50%, -50%) scale(1.18);
+}
+
+.bloom-picker__option:hover::after,
+.bloom-picker__option:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.bloom-picker__cancel {
+  position: absolute;
+  left: 50%;
+  bottom: -44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 20%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bloom-ink) 62%, transparent);
+  color: color-mix(in srgb, var(--rc-hi) 78%, transparent);
+  font-size: 10px;
+  font-weight: 600;
+  transform: translateX(-50%);
+  transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.bloom-picker__cancel:hover,
+.bloom-picker__cancel:focus-visible {
+  border-color: color-mix(in srgb, var(--bloom-accent) 62%, transparent);
+  background: color-mix(in srgb, var(--bloom-accent) 12%, transparent);
+  color: var(--rc-lilac);
+  outline: none;
+}
+
+@keyframes bloom-picker-veil {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bloom-picker-rise {
+  from { opacity: 0; transform: scale(0.86); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bloom-picker-node {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.42); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bloom-picker,
+  .bloom-picker__disc,
+  .bloom-picker__option {
+    animation: none !important;
+  }
+
+  .bloom-picker__option,
+  .bloom-picker__option::after,
+  .bloom-picker__cancel {
+    transition: none !important;
+  }
+}
+
+/* ---------------- 工作台启动态 ---------------- */
+
+.bloom-boot {
+  height: 100dvh;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 30px;
+  background: var(--bloom-ink);
+  color: color-mix(in srgb, var(--rc-hi) 72%, transparent);
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+.bloom-boot strong {
+  color: var(--rc-hi);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.bloom-boot__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--bloom-accent) 50%, transparent);
+  color: var(--rc-lilac);
+}
+
+/* ==========================================================================
+   2026-11 三层重构：绽放入口 / 形变工作区 / 复现工坊入口
+   卡片不再是"白色花瓣"，而是三族可层叠的半透明标本板：
+   folio 折页、lattice 格架、instrument 仪器。轮廓仍由 geometry.ts 生成。
+   ========================================================================== */
+
+.bloom-stage__hud {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  top: 19px;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--rc-hi) 34%, transparent);
+}
+
+.bloom-stage__hud-item--right {
+  color: color-mix(in srgb, var(--bloom-accent) 42%, transparent);
+}
+
+/* 顶栏：工坊入口是唯一实心按钮，其它保持线框，避免整排发光 */
+.bloom-atelier-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--rc-accent);
+  color: var(--rc-hi);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition: transform 160ms var(--bloom-ease), background-color 160ms ease;
+}
+
+.bloom-atelier-entry:hover {
+  background: var(--rc-violet);
+  transform: translateY(-1px);
+}
+
+/* 证据织机入口：描边式，与实心的复现工坊区分层级 */
+.bloom-loom-entry {
+  background: transparent;
+  color: var(--rc-lilac);
+  border: 1px solid color-mix(in srgb, var(--bloom-accent) 50%, transparent);
+}
+.bloom-loom-entry:hover {
+  background: color-mix(in srgb, var(--bloom-accent) 12%, transparent);
+  color: var(--rc-lilac);
+}
+
+/* 中心核：从纯圆盘变成带角的仪表环，并承担工坊入口 */
+.bloom-core__disc {
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 20%, transparent);
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--bloom-accent) 16%, transparent), color-mix(in srgb, var(--bloom-ink) 88%, transparent) 62%),
+    linear-gradient(150deg, color-mix(in srgb, var(--rc-hi) 7%, transparent), color-mix(in srgb, var(--rc-hi) 2%, transparent));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--rc-hi) 14%, transparent),
+    0 34px 80px color-mix(in srgb, var(--rc-ink) 46%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.bloom-core__ring {
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--bloom-accent) 22%, transparent);
+  border-right-color: color-mix(in srgb, var(--bloom-accent) 52%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--rc-hi) 8%, transparent);
+  transform: rotate(-12deg);
+  pointer-events: none;
+}
+
+.bloom-core__glyph {
+  position: absolute;
+  top: 27px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--rc-hi) 32%, transparent);
+}
+
+.bloom-core__glyph span {
+  color: color-mix(in srgb, var(--bloom-accent) 60%, transparent);
+}
+
+.bloom-core__tag {
+  margin-top: 15px;
+  font-size: 8px;
+}
+
+.bloom-core__name {
+  font-size: 17px;
+}
+
+.bloom-core__score {
+  margin-top: 1px;
+  font-size: 20px;
+}
+
+.bloom-core__atelier {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  padding: 4px 9px 4px 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--bloom-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--bloom-accent) 10%, transparent);
+  color: var(--rc-lilac);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: background-color 170ms ease, border-color 170ms ease;
+}
+
+.bloom-core__atelier:hover {
+  background: color-mix(in srgb, var(--bloom-accent) 20%, transparent);
+  border-color: color-mix(in srgb, var(--bloom-accent) 70%, transparent);
+}
+
+/* 卡片：三层复合板。中间层是主体，前后两层只在边缘露出，形成真实厚度。
+ * V3 性能：连续动画只走 transform / opacity；width / height 在形变起点一次性落定，
+ * 厚重工作区延迟到尾段挂载。这样避免整卡大面积 layout 每帧重排，同时保留瓣卡
+ * 位移、旋转、缩放与 clip-path 形变的空间感。 */
+.bloom-card {
+  /* V3 性能：软件合成下，整卡 drop-shadow 与十卡同时 transform 都会逐帧重绘。
+   * 厚度由三层 underlay 表达；常态卡只淡入淡出，transform 只保留给入场 / 展开 / 收拢活动卡。 */
+  filter: none;
+  transition-property: opacity;
+  contain: layout paint style;
+}
+
+.bloom-card.is-entering,
+.bloom-card.is-open,
+.bloom-card.is-morphing {
+  transition-property: transform, opacity;
+}
+
+.bloom-card.is-entering,
+.bloom-card.is-morphing {
+  will-change: transform, opacity;
+}
+
+/* V3 性能：形变窗口（约 800ms）内降级纯装饰层。
+ * 逐层消融（真 GPU / Radeon 780M）实测：关闭斜纹纹理 41.8→56.8fps，
+ * 关闭叠加描边 41.8→60.0fps，关闭中层渐变光晕 41.8→59.1fps。三者共同迫使
+ * 合成器在卡片 transform 时逐帧重光栅化整张花瓣，而它们在快速形变中不可察觉。
+ * 降级在展开首帧（is-open 且未 is-revealed）即生效，is-revealed 于形变尾段挂载时
+ * 恢复；收拢动画由 is-morphing 覆盖。静态视觉完全不变。 */
+.bloom-card.is-open:not(.is-revealed) .bloom-card__surface::before,
+.bloom-card.is-open:not(.is-revealed) .bloom-card__surface::after,
+.bloom-card.is-morphing .bloom-card__surface::before,
+.bloom-card.is-morphing .bloom-card__surface::after {
+  display: none;
+}
+
+.bloom-card.is-open:not(.is-revealed) .bloom-card__underlay--mid,
+.bloom-card.is-morphing .bloom-card__underlay--mid {
+  background: color-mix(in srgb, var(--bloom-accent) 8%, transparent);
+  border-color: transparent;
+}
+
+.bloom-card__underlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition:
+    transform var(--bloom-dur) var(--bloom-ease),
+    opacity 260ms ease;
+  transition-delay: var(--bloom-delay, 0ms);
+}
+
+.bloom-card.is-entering .bloom-card__underlay,
+.bloom-card.is-morphing .bloom-card__underlay {
+  will-change: clip-path, transform;
+}
+
+.bloom-card__underlay--back {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--rc-purple-deep) 98%, transparent), color-mix(in srgb, var(--rc-purple-deep) 94%, transparent)),
+    var(--rc-purple-deep);
+  transform: translate3d(-9px, 8px, 0) rotate(-1.4deg);
+  opacity: 0.96;
+}
+
+.bloom-card__underlay--mid {
+  z-index: 1;
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--bloom-accent) 30%, transparent), color-mix(in srgb, var(--bloom-accent) 8%, transparent) 48%, color-mix(in srgb, var(--rc-hi) 14%, transparent)),
+    color-mix(in srgb, var(--bloom-accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bloom-accent) 24%, transparent);
+  transform: translate3d(7px, -6px, 0) rotate(1deg);
+}
+
+.bloom-card:not(.is-open):hover .bloom-card__underlay--back {
+  transform: translate3d(-10px, 8px, 0) rotate(-1.8deg);
+}
+
+.bloom-card:not(.is-open):hover .bloom-card__underlay--mid {
+  transform: translate3d(8px, -7px, 0) rotate(1.1deg);
+}
+
+.bloom-card.is-open .bloom-card__underlay {
+  opacity: 0.4;
+  transform: translate3d(2px, 2px, 0) rotate(0.2deg);
+}
+
+.bloom-card__surface {
+  z-index: 2;
+  background:
+    linear-gradient(
+      152deg,
+      color-mix(in srgb, var(--rc-hi) 90%, transparent) 0%,
+      color-mix(in srgb, var(--bloom-paper) 79%, transparent) 46%,
+      color-mix(in srgb, var(--rc-lilac) 70%, transparent) 100%
+    ),
+    var(--bloom-paper);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--rc-hi) 90%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--rc-hi) 22%, transparent);
+  backdrop-filter: blur(12px) saturate(1.12);
+}
+
+/* 形变活动期关闭背景模糊：纸面在展开中几乎铺满整屏，对背后暗场做逐帧采样几乎无视觉收益，
+ * 却是实打实的绘制成本。动画结束（is-morphing 摘除）后恢复原样，静止外观不变。 */
+.bloom-card.is-open .bloom-card__surface,
+.bloom-card.is-morphing .bloom-card__surface {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.bloom-card__surface::before {
+  opacity: 0.38;
+  background:
+    repeating-linear-gradient(
+      112deg,
+      color-mix(in srgb, var(--bloom-ink) 3%, transparent) 0,
+      color-mix(in srgb, var(--bloom-ink) 3%, transparent) 1px,
+      transparent 1px,
+      transparent 6px
+    ),
+    radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--bloom-accent) 10%, transparent), transparent 58%);
+}
+
+.bloom-card__surface::after {
+  inset: 7px;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 12%, transparent);
+  opacity: 0.55;
+}
+
+/* folio：纸本折页。暖纸色、宋体标题、内侧装订线。 */
+.bloom-morph--folio .bloom-card__surface {
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--bloom-paper) 96%, transparent), color-mix(in srgb, var(--bloom-paper) 90%, transparent) 58%),
+    var(--bloom-paper);
+}
+
+.bloom-morph--folio .bloom-card__surface::before {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--bloom-paper-ink) 3%, transparent) 0,
+      color-mix(in srgb, var(--bloom-paper-ink) 3%, transparent) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    linear-gradient(90deg, transparent 18px, color-mix(in srgb, var(--bloom-paper-ink) 10%, transparent) 19px, transparent 20px);
+}
+
+.bloom-morph--folio .bloom-compact__title,
+.bloom-morph--folio .bloom-detail__title {
+  font-family: 'Iowan Old Style', 'Songti SC', 'Noto Serif SC', 'SimSun', serif;
+  letter-spacing: -0.02em;
+}
+
+/* lattice：格架。冷绿网格、模块接缝，展开后像一张可摆放的证据板。 */
+.bloom-morph--lattice .bloom-card__surface {
+  background:
+    linear-gradient(148deg, color-mix(in srgb, var(--bloom-paper) 94%, transparent), color-mix(in srgb, var(--rc-lilac) 86%, transparent) 62%),
+    var(--bloom-paper);
+}
+
+.bloom-morph--lattice .bloom-card__surface::before {
+  opacity: 0.5;
+  background:
+    linear-gradient(color-mix(in srgb, var(--bloom-paper-ink) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--bloom-paper-ink) 6%, transparent) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+/* instrument：仪器。偏青的读数面板，左侧留一条刻度尺。 */
+.bloom-morph--instrument .bloom-card__surface {
+  background:
+    linear-gradient(154deg, color-mix(in srgb, var(--bloom-paper) 95%, transparent), color-mix(in srgb, var(--rc-lilac) 88%, transparent) 58%),
+    var(--bloom-paper);
+}
+
+.bloom-morph--instrument .bloom-card__surface::before {
+  opacity: 0.44;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--rc-purple-dark) 6%, transparent) 0,
+      color-mix(in srgb, var(--rc-purple-dark) 6%, transparent) 1px,
+      transparent 1px,
+      transparent 9px
+    ),
+    linear-gradient(90deg, color-mix(in srgb, var(--rc-purple-dark) 10%, transparent) 0 1px, transparent 1px);
+  background-size: 26px 100%, 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* 收拢卡片：编号与形态标签并列，让十张卡不再是同一张脸 */
+.bloom-compact {
+  padding: 13px 27px 18px;
+}
+
+.bloom-compact__indexline {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.bloom-compact__morph {
+  font-family: var(--font-mono);
+  font-size: 6.5px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--bloom-paper-ink) 50%, transparent);
+  padding: 3px 5px;
+  border: 1px solid color-mix(in srgb, var(--bloom-paper-ink) 17%, transparent);
+  border-radius: 2px;
+}
+
+.bloom-compact__index {
+  color: color-mix(in srgb, var(--bloom-ink) 38%, transparent);
+}
+
+.bloom-compact__title {
+  margin-top: 5px;
+}
+
+.bloom-morph--instrument .bloom-compact__metric {
+  color: var(--bloom-paper-ink);
+}
+
+/* 展开工作区：三族页眉/页边距/装订线不同，但共用真实 UnitDetail */
+.bloom-detail__chrome {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.bloom-detail__chrome-corner {
+  position: absolute;
+  width: 17px;
+  height: 17px;
+  border-color: color-mix(in srgb, var(--bloom-paper-ink) 32%, transparent);
+  border-style: solid;
+  border-width: 0;
+}
+
+.bloom-detail__chrome-corner--tl {
+  left: 22px;
+  top: 22px;
+  border-left-width: 1px;
+  border-top-width: 1px;
+}
+
+.bloom-detail__chrome-corner--br {
+  right: 22px;
+  bottom: 22px;
+  border-right-width: 1px;
+  border-bottom-width: 1px;
+}
+
+.bloom-detail__chrome-spine {
+  position: absolute;
+  left: 25px;
+  top: 112px;
+  bottom: 110px;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--bloom-paper-ink) 36%, transparent);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.bloom-detail__head,
+.bloom-detail__body,
+.bloom-detail__foot {
+  position: relative;
+  z-index: 2;
+}
+
+.bloom-detail__head {
+  padding-top: 58px;
+}
+
+.bloom-detail__body {
+  margin-top: 15px;
+  border-top-color: color-mix(in srgb, var(--bloom-paper-ink) 13%, transparent);
+}
+
+.bloom-detail__kicker {
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  color: color-mix(in srgb, var(--bloom-paper-ink) 46%, transparent);
+}
+
+.bloom-detail__title {
+  font-size: 28px;
+}
+
+.bloom-icon-btn--atelier {
+  border-color: color-mix(in srgb, var(--bloom-paper-ink) 24%, transparent);
+  background: color-mix(in srgb, var(--bloom-accent) 18%, transparent);
+  color: var(--bloom-paper-ink);
+}
+
+.btn-atelier {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--rc-accent);
+  color: var(--rc-hi);
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+  transition: background-color 160ms ease, transform 160ms var(--bloom-ease);
+}
+
+.btn-atelier:hover {
+  background: var(--rc-violet);
+  transform: translateY(-1px);
+}
+
+/* folio：宽页眉，宋体大标题，像摊开的论文校样 */
+.bloom-morph--folio .bloom-detail__head {
+  padding-left: 94px;
+  padding-right: 82px;
+}
+
+.bloom-morph--folio .bloom-detail__title {
+  font-size: 31px;
+  font-weight: 600;
+}
+
+.bloom-morph--folio .bloom-detail__scroll {
+  padding-left: 94px;
+  padding-right: 82px;
+}
+
+.bloom-morph--folio .bloom-detail__foot {
+  margin: 0 74px;
+  padding-left: 20px;
+  padding-right: 84px;
+}
+
+.bloom-morph--folio .bloom-detail__chrome-spine {
+  color: color-mix(in srgb, var(--bloom-paper-ink) 34%, transparent);
+}
+
+/* lattice：页眉更紧，正文像一块被格线压住的证据板 */
+.bloom-morph--lattice .bloom-detail__head {
+  padding-left: 70px;
+  padding-right: 62px;
+}
+
+.bloom-morph--lattice .bloom-detail__title {
+  font-size: 25px;
+}
+
+.bloom-morph--lattice .bloom-detail__scroll {
+  padding-left: 70px;
+  padding-right: 62px;
+}
+
+.bloom-morph--lattice .bloom-detail__foot {
+  margin: 0 58px;
+  padding-left: 12px;
+  padding-right: 62px;
+}
+
+.bloom-morph--lattice .bloom-detail__chrome-spine {
+  left: 21px;
+  top: 96px;
+}
+
+/* instrument：横向压缩页眉，读数区更宽，装订线变成右侧刻度 */
+.bloom-morph--instrument .bloom-detail__head {
+  padding-top: 48px;
+  padding-left: 78px;
+  padding-right: 72px;
+  align-items: center;
+}
+
+.bloom-morph--instrument .bloom-detail__title {
+  font-size: 23px;
+}
+
+.bloom-morph--instrument .bloom-detail__sub {
+  max-width: 760px;
+}
+
+.bloom-morph--instrument .bloom-detail__scroll {
+  padding-left: 78px;
+  padding-right: 72px;
+}
+
+.bloom-morph--instrument .bloom-detail__foot {
+  margin: 0 66px;
+  padding-left: 12px;
+  padding-right: 74px;
+}
+
+.bloom-morph--instrument .bloom-detail__chrome-spine {
+  left: auto;
+  right: 25px;
+  top: 92px;
+  bottom: 120px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  color: color-mix(in srgb, var(--rc-purple-dark) 38%, transparent);
+}
+
+.bloom-morph--instrument .bloom-detail__chrome-corner--tl {
+  border-color: color-mix(in srgb, var(--rc-purple-dark) 40%, transparent);
+  width: 23px;
+}
+
+/* 底部工坊入口 */
+.bloom-foot__atelier {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bloom-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bloom-accent) 32%, transparent);
+  color: var(--rc-lilac);
+  font-size: 9.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.bloom-foot__atelier:hover {
+  background: color-mix(in srgb, var(--bloom-accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--bloom-accent) 60%, transparent);
+}
+
+@media (max-width: 1340px) {
+  .bloom-avatars {
+    display: none;
+  }
+
+  .bloom-project__name {
+    max-width: 270px;
+  }
+
+  .bloom-ridge__step {
+    padding: 0 9px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 1120px) {
+  .bloom-link-out {
+    display: none;
+  }
+
+  .bloom-project__name {
+    max-width: 200px;
+  }
+
+  .bloom-ridge__step {
+    padding: 0 7px;
+    font-size: 9px;
+  }
+}
+
+
+/* ---------------- 移动端 ---------------- */
+
+@media (max-width: 900px) {
+  .bloom-page {
+    height: auto;
+    min-height: 0;
+  }
+
+  .bloom-boot {
+    height: auto;
+    min-height: 320px;
+    border-radius: 0;
+  }
+
+  .bloom-links {
+    display: none;
+  }
+
+  .bloom-stage__hud,
+  .bloom-stage--mobile .bloom-card__underlay,
+  .bloom-stage--mobile .bloom-detail__chrome {
+    display: none;
+  }
+
+  .bloom-stage--mobile .bloom-card:not(.is-open) .bloom-card__surface {
+    clip-path: polygon(
+      0 14px,
+      14px 0,
+      100% 0,
+      100% calc(100% - 14px),
+      calc(100% - 14px) 100%,
+      0 100%
+    ) !important;
+    border-radius: 2px;
+  }
+
+  .bloom-stage--mobile .bloom-compact__scale {
+    right: 20px;
+    bottom: 16px;
+  }
+
+  .bloom-page--mobile .bloom-topbar__right {
+    display: flex;
+    margin-left: auto;
+  }
+
+  .bloom-page--mobile .bloom-atelier-entry {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 10px;
+  }
+
+  .bloom-page--mobile .bloom-detail__head {
+    padding: 20px 22px 0;
+  }
+
+  .bloom-page--mobile .bloom-detail__title {
+    font-size: 21px;
+  }
+
+  .bloom-page--mobile .bloom-detail__scroll {
+    padding: 16px 22px 20px;
+  }
+
+  .bloom-page--mobile .bloom-detail__foot {
+    margin: 0;
+    padding: 10px 22px 14px;
+  }
+
+  .bloom-page--mobile .bloom-detail__body {
+    margin-top: 10px;
+  }
+
+  .bloom-page--mobile .bloom-detail__sub {
+    font-size: 11.5px;
+  }
+
+  .bloom-stage--mobile .bloom-card.is-open .bloom-card__surface {
+    backdrop-filter: none;
+  }
+}
+
+/* ---------------- 减少动效 ---------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .bloom-card,
+  .bloom-card__surface,
+  .bloom-card__body,
+  .bloom-reveal,
+  .bloom-core,
+  .bloom-orbit,
+  .bloom-link,
+  .bloom-combo-panel {
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    animation-duration: 1ms !important;
+  }
+}
+
+/* ==========================================================================
+   二级形变差异化：三种工作区不是同一张档案页换轮廓，而是三种内容组织方式。
+   folio 折页 = 书脊 + 左元数据页 + 右主体页
+   lattice 格架 = 对角点亮的证据格与切角节点
+   instrument 仪器 = 先行就位的仪表读数条 + 自下抬起的分区面板
+   ========================================================================== */
+
+.bloom-openface.bloom-detail {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.bloom-openface .bloom-detail__head {
+  position: relative;
+  z-index: 2;
+}
+
+.bloom-openface .bloom-detail__foot {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  background: transparent;
+}
+
+/* ---------------- folio：中轴装订的摊开书页 ---------------- */
+
+.bloom-openface--folio .folio__spread {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(178px, 25%) 1px minmax(0, 1fr);
+  transform-origin: 50% 50%;
+}
+
+.bloom-openface--folio .folio__leaf {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bloom-openface--folio .folio__leaf--left {
+  padding: 56px 22px 30px 74px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--bloom-paper-ink) 4%, transparent));
+}
+
+.bloom-openface--folio .folio__imprint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--bloom-paper-ink) 18%, transparent);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: color-mix(in srgb, var(--bloom-paper-ink) 52%, transparent);
+}
+
+.bloom-openface--folio .folio__meta-list {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin-top: 20px;
+}
+
+.bloom-openface--folio .folio__meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-bottom: 10px;
+  border-bottom: 1px dotted color-mix(in srgb, var(--bloom-paper-ink) 20%, transparent);
+}
+
+.bloom-openface--folio .folio__meta-row > span {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--bloom-paper-ink) 52%, transparent);
+}
+
+.bloom-openface--folio .folio__meta-row > b {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--bloom-paper-ink);
+}
+
+.bloom-openface--folio .folio__meta-row > b small {
+  margin-left: 4px;
+  font-size: 9px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--bloom-paper-ink) 50%, transparent);
+}
+
+.bloom-openface--folio .folio__meta-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bloom-openface--folio .folio__binder {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+  margin-top: auto;
+  padding-left: 3px;
+}
+
+.bloom-openface--folio .folio__binder i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bloom-paper-ink) 7%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--bloom-paper-ink) 24%, transparent);
+}
+
+.bloom-openface--folio .folio__spine {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--bloom-paper-ink) 34%, transparent) 9%,
+    color-mix(in srgb, var(--bloom-paper-ink) 34%, transparent) 91%,
+    transparent
+  );
+}
+
+.bloom-openface--folio .folio__spine i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bloom-paper-ink) 55%, transparent);
+}
+
+.bloom-openface--folio .folio__head {
+  padding: 52px 40px 0 32px;
+}
+
+.bloom-openface--folio .folio__head .bloom-detail__title {
+  font-size: 26px;
+}
+
+.bloom-openface--folio .folio__body {
+  margin-top: 14px;
+  border-top-color: color-mix(in srgb, var(--bloom-paper-ink) 18%, transparent);
+}
+
+.bloom-openface--folio .folio__scroll {
+  padding: 18px 40px 30px 32px;
+}
+
+.bloom-openface--folio .bloom-detail__foot {
+  margin: 0 40px 0 74px;
+  padding: 10px 26px 28px 0;
+  border-top-color: color-mix(in srgb, var(--bloom-paper-ink) 18%, transparent);
+}
+
+/* ---------------- lattice：按对角点亮的切角格架 ---------------- */
+
+.bloom-openface--lattice .lattice__head {
+  padding: 46px 44px 0;
+}
+
+.bloom-openface--lattice .lattice__head .bloom-detail__title {
+  font-size: 24px;
+}
+
+.bloom-openface--lattice .lattice__board {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 14px 40px 0;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--bloom-paper-ink) 18%, transparent);
+  clip-path: polygon(
+    0 12px,
+    12px 0,
+    100% 0,
+    100% calc(100% - 12px),
+    calc(100% - 12px) 100%,
+    0 100%
+  );
+  background:
+    linear-gradient(color-mix(in srgb, var(--bloom-paper-ink) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--bloom-paper-ink) 6%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.bloom-openface--lattice .lattice__axis {
+  position: absolute;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bloom-paper-ink) 14%, transparent);
+}
+
+.bloom-openface--lattice .lattice__axis--h {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+}
+
+.bloom-openface--lattice .lattice__axis--v {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+}
+
+.bloom-openface--lattice .lattice__origin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  transform: translate(-50%, -50%);
+  border: 1px solid color-mix(in srgb, var(--bloom-paper-ink) 36%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bloom-paper) 90%, transparent);
+  pointer-events: none;
+}
+
+.bloom-openface--lattice .lattice__origin i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--bloom-paper-ink);
+}
+
+.bloom-openface--lattice .lattice__body {
+  margin-top: 0;
+  border-top: 0;
+}
+
+.bloom-openface--lattice .lattice__scroll {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-content: start;
+  padding: 0;
+}
+
+.bloom-openface--lattice .lattice__scroll > * {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--bloom-paper-ink) 18%, transparent);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--rc-hi) 88%, transparent);
+  clip-path: polygon(
+    0 0,
+    calc(100% - 11px) 0,
+    100% 11px,
+    100% 100%,
+    11px 100%,
+    0 calc(100% - 11px)
+  );
+}
+
+.bloom-openface--lattice .lattice__scroll > *::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bloom-paper-ink) 30%, transparent);
+}
+
+.bloom-openface--lattice .lattice__scroll > .bloom-metrics {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  padding: 1px;
+  background: color-mix(in srgb, var(--bloom-paper-ink) 12%, transparent);
+}
+
+.bloom-openface--lattice .lattice__scroll > .bloom-metrics .bloom-metric {
+  padding: 12px 13px;
+}
+
+.bloom-openface--lattice .bloom-detail__foot {
+  margin: 0 40px;
+  padding: 10px 26px 28px;
+  border-top-color: color-mix(in srgb, var(--bloom-paper-ink) 15%, transparent);
+}
+
+/* ---------------- instrument：读数条 + 分区面板 ---------------- */
+
+.bloom-openface--instrument .instrument__rail {
+  position: relative;
+  z-index: 3;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  height: 66px;
+  margin: 30px 46px 0;
+  padding: 0 22px;
+  background: linear-gradient(100deg, var(--rc-purple-deep), var(--rc-purple-dark) 62%, var(--rc-surface-2));
+  color: var(--rc-lilac);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+}
+
+.bloom-openface--instrument .instrument__rail-id {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  color: color-mix(in srgb, var(--rc-lilac) 55%, transparent);
+  white-space: nowrap;
+}
+
+.bloom-openface--instrument .instrument__reading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.bloom-openface--instrument .instrument__reading-label {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--rc-lilac) 62%, transparent);
+  white-space: nowrap;
+}
+
+.bloom-openface--instrument .instrument__reading-value {
+  font-family: var(--font-mono);
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--rc-lilac);
+}
+
+.bloom-openface--instrument .instrument__rail-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--rc-lilac) 80%, transparent);
+  white-space: nowrap;
+}
+
+.bloom-openface--instrument .instrument__rail-ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  height: 5px;
+  opacity: 0.6;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--bloom-accent) 45%, transparent) 0 1px,
+    transparent 1px 18px
+  );
+}
+
+.bloom-openface--instrument .instrument__console {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bloom-openface--instrument .instrument__head {
+  padding: 30px 46px 0;
+}
+
+.bloom-openface--instrument .instrument__head .bloom-detail__title {
+  font-size: 24px;
+}
+
+.bloom-openface--instrument .instrument__body {
+  margin-top: 14px;
+  border-top-color: color-mix(in srgb, var(--rc-purple-dark) 18%, transparent);
+}
+
+.bloom-openface--instrument .instrument__scroll {
+  padding: 16px 46px 28px;
+}
+
+.bloom-openface--instrument .instrument__scroll > .bloom-metrics {
+  border-radius: 0;
+  border-color: color-mix(in srgb, var(--rc-purple-dark) 20%, transparent);
+}
+
+.bloom-openface--instrument .instrument__scroll > .bloom-section {
+  position: relative;
+  padding-left: 16px;
+  border-left: 2px solid color-mix(in srgb, var(--rc-purple-dark) 22%, transparent);
+}
+
+.bloom-openface--instrument .instrument__scroll > .bloom-section::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--bloom-paper-ink);
+}
+
+.bloom-openface--instrument .bloom-detail__foot {
+  margin: 0 46px;
+  padding: 10px 26px 28px;
+  border-top-color: color-mix(in srgb, var(--rc-purple-dark) 18%, transparent);
+}
+
+/* ---------------- 新增动效：仅在用户允许动效时启用 ---------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 一级入口：内环先绽、外环后绽，落位前有一次轻微收拢回弹 */
+  .bloom-card.is-entered:not(.is-open):not(.is-dimmed) .bloom-card__surface {
+    animation: bloom-petal-breathe 1120ms var(--bloom-ease) backwards;
+    animation-delay: var(--bloom-breathe-delay, 0ms);
+  }
+
+  @keyframes bloom-petal-breathe {
+    0% {
+      opacity: 0.45;
+      transform: scale(0.94);
+    }
+    56% {
+      opacity: 1;
+      transform: scale(1.016);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* 舞台轨道随卡片分层展开 */
+  .bloom-stage.is-entered .bloom-stage__rails ellipse {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: bloom-rail-open 820ms var(--bloom-ease) backwards;
+  }
+
+  .bloom-stage.is-entered .bloom-stage__rails ellipse:nth-of-type(2) {
+    animation-delay: 90ms;
+  }
+
+  .bloom-stage.is-entered .bloom-stage__rails ellipse:nth-of-type(3) {
+    animation-delay: 180ms;
+  }
+
+  @keyframes bloom-rail-open {
+    from {
+      opacity: 0;
+      transform: scale(0.72);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* folio：从中轴摊开，左右书页错峰归位 */
+  .bloom-card.is-open.is-revealed .bloom-openface--folio .folio__spread {
+    animation: folio-spread 620ms var(--bloom-ease) both;
+  }
+
+  .bloom-card.is-open.is-revealed .bloom-openface--folio .folio__leaf--left {
+    animation: folio-leaf-left 560ms var(--bloom-ease) 130ms both;
+  }
+
+  .bloom-card.is-open.is-revealed .bloom-openface--folio .folio__leaf--right {
+    animation: folio-leaf-right 560ms var(--bloom-ease) 210ms both;
+  }
+
+  @keyframes folio-spread {
+    from {
+      opacity: 0;
+      transform: scaleX(0.05);
+    }
+    to {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
+
+  @keyframes folio-leaf-left {
+    from {
+      opacity: 0;
+      transform: translateX(-18px) rotateY(-6deg);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes folio-leaf-right {
+    from {
+      opacity: 0;
+      transform: translateX(18px) rotateY(6deg);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* lattice：区块按对角顺序从中心向外点亮 */
+  .bloom-card.is-open.is-revealed .bloom-openface--lattice .lattice__scroll > * {
+    animation: lattice-node 460ms var(--bloom-ease) backwards;
+  }
+
+  .bloom-card.is-open.is-revealed .bloom-openface--lattice .lattice__scroll > *:nth-child(1) {
+    animation-delay: 40ms;
+  }
+  .bloom-card.is-open.is-revealed .bloom-openface--lattice .lattice__scroll > *:nth-child(2) {
+    animation-delay: 110ms;
+  }
+  .bloom-card.is-open.is-revealed .bloom-openface--lattice .lattice__scroll > *:nth-child(3) {
+    animation-delay: 180ms;
+  }
+  .bloom-card.is-open.is-revealed .bloom-openface--lattice .lattice__scroll > *:nth-child(4) {
+    animation-delay: 250ms;
+  }
+  .bloom-card.is-open.is-revealed .bloom-openface--lattice .lattice__scroll > *:nth-child(5) {
+    animation-delay: 320ms;
+  }
+  .bloom-card.is-open.is-revealed .bloom-openface--lattice .lattice__scroll > *:nth-child(6) {
+    animation-delay: 390ms;
+  }
+  .bloom-card.is-open.is-revealed .bloom-openface--lattice .lattice__scroll > *:nth-child(7) {
+    animation-delay: 460ms;
+  }
+  .bloom-card.is-open.is-revealed .bloom-openface--lattice .lattice__scroll > *:nth-child(8) {
+    animation-delay: 530ms;
+  }
+
+  @keyframes lattice-node {
+    from {
+      opacity: 0;
+      transform: translate(-10px, -10px) scale(0.86);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* instrument：仪表条先行就位，控制台随后抬起 */
+  .bloom-card.is-open.is-revealed .bloom-openface--instrument .instrument__rail {
+    animation: instrument-rail 420ms var(--bloom-ease) both;
+  }
+
+  .bloom-card.is-open.is-revealed .bloom-openface--instrument .instrument__console {
+    animation: instrument-console 620ms var(--bloom-ease) 140ms both;
+  }
+
+  @keyframes instrument-rail {
+    from {
+      opacity: 0;
+      transform: translateY(-18px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes instrument-console {
+    from {
+      opacity: 0;
+      transform: translateY(46px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* 首页星丛：项目纸瓣逐片生长 */
+  .bloom-constellation__card {
+    animation: bloom-constellation-grow 680ms var(--bloom-ease) backwards;
+    animation-delay: calc(var(--pc-index, 0) * 95ms + 60ms);
+  }
+
+  @keyframes bloom-constellation-grow {
+    from {
+      opacity: 0;
+      transform: translateY(22px) rotate(-3.5deg) scale(0.9);
+    }
+    62% {
+      opacity: 1;
+      transform: translateY(-3px) rotate(0.6deg) scale(1.015);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* ---------------- 小屏兜底：保留三态差异，但收起昂贵的两栏布局 ---------------- */
+
+@media (max-width: 900px) {
+  .bloom-openface--folio .folio__spread {
+    display: block;
+  }
+
+  .bloom-openface--folio .folio__leaf--left,
+  .bloom-openface--folio .folio__spine {
+    display: none;
+  }
+
+  .bloom-openface--lattice .lattice__board {
+    margin: 12px 14px 0;
+    padding: 10px;
+  }
+
+  .bloom-openface--lattice .lattice__scroll {
+    grid-template-columns: 1fr;
+  }
+
+  .bloom-openface--lattice .lattice__scroll > .bloom-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bloom-openface--instrument .instrument__rail {
+    height: auto;
+    min-height: 58px;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin: 16px 14px 0;
+    padding: 12px 16px;
+  }
+
+  .bloom-openface--folio .folio__head,
+  .bloom-openface--lattice .lattice__head,
+  .bloom-openface--instrument .instrument__head {
+    padding: 20px 22px 0;
+  }
+
+  .bloom-openface--folio .folio__head .bloom-detail__title,
+  .bloom-openface--lattice .lattice__head .bloom-detail__title,
+  .bloom-openface--instrument .instrument__head .bloom-detail__title {
+    font-size: 21px;
+  }
+
+  .bloom-openface--folio .folio__scroll,
+  .bloom-openface--lattice .lattice__scroll,
+  .bloom-openface--instrument .instrument__scroll {
+    padding: 16px 22px 20px;
+  }
+
+  .bloom-openface--folio .bloom-detail__foot,
+  .bloom-openface--lattice .bloom-detail__foot,
+  .bloom-openface--instrument .bloom-detail__foot {
+    margin: 0;
+    padding: 10px 22px 14px;
+  }
+}
+
+/* ---------------- 绽放台视图切换 tab（与工坊顶栏一致） ---------------- */
+
+.bloom-stage__tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 10%, transparent);
+  background: color-mix(in srgb, var(--rc-hi) 2%, transparent);
+  flex-shrink: 0;
+}
+
+.bloom-stage__tabs a,
+.bloom-stage__tabs span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 25px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--rc-hi) 46%, transparent);
+  white-space: nowrap;
+}
+
+.bloom-stage__tabs a:hover {
+  color: color-mix(in srgb, var(--rc-hi) 80%, transparent);
+}
+
+.bloom-stage__tabs span.is-active {
+  background: var(--rc-accent);
+  color: var(--rc-hi);
+}
+
+@media (max-width: 1120px) {
+  .bloom-stage__tabs {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .bloom-stage__tabs {
+    display: flex;
+    margin-left: 0;
+  }
+
+  .bloom-stage__tabs a,
+  .bloom-stage__tabs span {
+    height: 23px;
+    padding: 0 7px;
+    font-size: 9.5px;
+  }
+}

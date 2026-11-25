@@ -1,0 +1,2 @@
+# Declared for parser/environment auditing; the fixture script itself uses only the standard library.
+packaging==24.2

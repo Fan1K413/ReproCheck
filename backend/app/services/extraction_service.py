@@ -20,6 +20,7 @@ from app.core.config import settings
 from app.core.errors import AppError, EvidenceValidationError
 from app.core.logging import logger
 from app.llm import LLMService, llm_service
+from app.modelhub.bridge import TaskLLM
 from app.llm.prompts import build_extraction_messages, prompt_version_for
 from app.models import AIRun, ExtractedFact, Material, SourceChunk
 from app.models.stage2 import EvidenceItem
@@ -69,7 +70,7 @@ def _normalize_for_compare(value: object) -> str | None:
 class ExtractionService:
     def __init__(self, db: AsyncSession, llm: LLMService | None = None) -> None:
         self.db = db
-        self.llm = llm or llm_service
+        self.llm = llm or TaskLLM(db, "fact_extraction")
 
     async def extract(
         self,
@@ -84,6 +85,10 @@ class ExtractionService:
             run_id=f"llm-{uuid.uuid4().hex[:16]}",
             prompt_version=prompt_version_for(parse_result.material_type),
         )
+        # 任务级绑定：PDF 论文解析与通用事实抽取可配置不同模型
+        if hasattr(self.llm, "task_key"):
+            self.llm.task_key = ("pdf_extraction" if parse_result.material_type == "pdf"
+                                 else "fact_extraction")
         import time
         t0 = time.perf_counter()
 
@@ -112,7 +117,7 @@ class ExtractionService:
 
         valid_ids = set(chunk_map.keys())
         if not valid_ids:
-            # 没有可用文本块——明确失败，不伪造事实
+            # 没有可用文本块时直接失败
             raise AppError("EVIDENCE_VALIDATION_FAILED", "材料无可解析文本块，无法进行事实抽取。")
 
         # 构造 prompt 输入（有界）
@@ -174,7 +179,7 @@ class ExtractionService:
                 break
 
         for fact in accepted:
-            # ---- chunk_id 存在性 + material 归属校验 ----
+            # chunk_id 存在性 + material 归属校验
             verified_refs: list[tuple[EvidenceRef, SourceChunk, bool]] = []
             for ref in fact.evidence_refs:
                 if ref.chunk_id not in valid_ids:
@@ -291,6 +296,20 @@ class ExtractionService:
                 quote=raw[:200], source_locator_json=json.dumps(sc.source_locator, ensure_ascii=False),
                 source_name=material.source_name,
                 created_at=datetime.now(timezone.utc),
+            ))
+            # 程序事实的 quote 直接来自当前解析块，逐字关系确定；同步生成证据，
+            # 避免 supported 事实在前端证据链中表现为“无证据”。
+            self.db.add(EvidenceItem(
+                evidence_id=f"ev-{uuid.uuid4().hex[:14]}",
+                fact_id=fact_id,
+                project_id=project_id,
+                material_id=material.id,
+                chunk_id=sc.chunk_id,
+                source_name=material.source_name,
+                quote=raw[:200],
+                original_text=sc.content,
+                source_locator=json.dumps(sc.source_locator, ensure_ascii=False),
+                verification_status="verified",
             ))
             created += 1
         await self.db.flush()

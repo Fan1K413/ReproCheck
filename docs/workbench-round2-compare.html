@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>ReproCheck 主工作台 · 第二轮前后对照</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: #0d0815; color: #f4edfb; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+      .board { width: 1640px; padding: 32px 36px 26px; }
+      h1 { margin: 0 0 4px; font-size: 25px; font-weight: 650; letter-spacing: .02em; }
+      .sub { color: #a994c2; font-size: 12px; letter-spacing: .08em; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 24px; }
+      .panel { background: #171022; border: 1px solid rgba(196, 148, 255, .16); border-radius: 14px; overflow: hidden; }
+      .panel__head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 10px; }
+      .tag { font-size: 10px; letter-spacing: .16em; color: #b99bd9; }
+      .tag.after { color: #e9d6ff; }
+      .title { font-size: 13px; font-weight: 600; }
+      img { display: block; width: 100%; aspect-ratio: 1440 / 900; object-fit: cover; background: #0d0815; }
+      .foot { margin-top: 20px; display: flex; justify-content: space-between; color: #76658e; font-size: 10px; letter-spacing: .06em; }
+      .rule { height: 1px; background: linear-gradient(90deg, rgba(196,148,255,.28), transparent); margin-top: 12px; }
+    </style>
+  </head>
+  <body>
+    <main class="board">
+      <h1>ReproCheck 主工作台 · 第二轮空间重构</h1>
+      <div class="sub">真实浏览器截图 / Edge / 1440 × 900 / 2026-11-24</div>
+      <div class="row">
+        <section class="panel">
+          <div class="panel__head"><span class="tag">BEFORE</span><span class="title">一级工作台 · 旧版</span></div>
+          <img src="file:///C:/Users/ASUS/Desktop/科研复现审计官/.screenshots/workbench-round2/before/1440x900.png" />
+        </section>
+        <section class="panel">
+          <div class="panel__head"><span class="tag after">AFTER</span><span class="title">一级工作台 · 深墨紫丝绸 + 576 环形透镜</span></div>
+          <img src="file:///C:/Users/ASUS/Desktop/科研复现审计官/.screenshots/workbench-round2/after/1440x900-idle.png" />
+        </section>
+      </div>
+      <div class="row">
+        <section class="panel">
+          <div class="panel__head"><span class="tag">BEFORE</span><span class="title">二级交互 · 旧版左侧列表 + 连接线</span></div>
+          <img src="file:///C:/Users/ASUS/Desktop/科研复现审计官/.screenshots/workbench-radial/states/1440x900-fan.png" />
+        </section>
+        <section class="panel">
+          <div class="panel__head"><span class="tag after">AFTER</span><span class="title">二级交互 · 6 项双瓣弧空间展开</span></div>
+          <img src="file:///C:/Users/ASUS/Desktop/科研复现审计官/.screenshots/workbench-round2/after/1440x900-petals.png" />
+        </section>
+      </div>
+      <div class="rule"></div>
+      <div class="foot"><span>ReproCheck / 科研复现审计官</span><span>完整分辨率、交互与性能记录见 docs/WORKBENCH_SPATIAL_ROUND2.md</span></div>
+    </main>
+  </body>
+</html>

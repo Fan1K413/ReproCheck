@@ -1,6 +1,6 @@
 import type { Tone } from '../components/StatusBadge'
 
-/** 把后端可能返回的任意值安全转成可展示文本（不伪造内容）。 */
+/** 把后端返回值安全转成可展示文本。 */
 export function safeText(value: unknown): string {
   if (value == null) return '—'
   if (typeof value === 'string') return value

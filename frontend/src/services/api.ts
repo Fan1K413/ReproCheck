@@ -158,6 +158,13 @@ export const api = {
       body: formData,
     }),
 
+  /** 只登记代码仓库 URL，不下载、不执行仓库内容。 */
+  linkRepository: (body: { project_id: string; url: string; name?: string }) =>
+    request<UploadMaterialResult>('/materials/link-repository', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
   listMaterials: (projectId: string) =>
     request<MaterialsData>(`/materials?project_id=${encodeURIComponent(projectId)}`),
 

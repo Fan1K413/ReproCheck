@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-/** 在 active 为 true 期间返回真实经过的秒数；用于加载中的进度提示，不伪造阶段状态。 */
+/** active 为 true 时返回经过秒数。 */
 export function useElapsed(active: boolean): number {
   const [elapsed, setElapsed] = useState(0)
 

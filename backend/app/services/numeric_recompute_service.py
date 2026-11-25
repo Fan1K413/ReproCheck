@@ -169,7 +169,7 @@ def recompute_accuracy(correct: int, total: int) -> dict[str, Any]:
 
 
 def recompute_from_counts(metric: str, counts: dict[str, Any]) -> dict[str, Any]:
-    """从计数字段重算指定指标；未知指标或字段缺失时 supported=False，不编造。"""
+    """从计数字段重算指定指标；未知指标或字段缺失时 supported=False。"""
     name = metric.strip().lower() if isinstance(metric, str) else ""
     data = counts if isinstance(counts, dict) else {}
     aliases = {
@@ -251,7 +251,7 @@ def compare_recomputed(
 
 
 def verify_layer_panel(layer_outputs: list[dict[str, Any]]) -> dict[str, Any]:
-    """汇总各层输出为统一展示结构；缺失层按未执行标注，不伪造结果。"""
+    """汇总各层输出；缺失层按未执行标注。"""
     provided: dict[int, dict[str, Any]] = {}
     outputs = layer_outputs if isinstance(layer_outputs, list) else []
     for item in outputs:

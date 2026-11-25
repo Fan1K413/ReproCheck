@@ -33,7 +33,7 @@ training_parameter(训练参数) / metric(评价指标) / environment(环境依�
 runtime(运行方式) / experiment_process(实验过程) / other(其他)
 """
 
-# ---------------- 各类型提示词（版本号在 PROMPT_VERSIONS 中登记） ----------------
+# 各类型提示词（版本号在 PROMPT_VERSIONS 中登记）
 
 PAPER_SYSTEM = """你是科研论文信息抽取助手，专注机器学习/深度学习论文。""" + COMMON_RULES + FACT_TYPES + """
 重点抽取：Title, Abstract, Research Objective, Research Problem, Research Method,

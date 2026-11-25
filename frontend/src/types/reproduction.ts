@@ -84,6 +84,8 @@ export type PlanDetail = PlanView & {
 export type CreatePlanRequest = {
   project_id: string
   title?: string
+  /** 默认保持 AI 规划契约；manual 显式创建不含伪造任务的人工空规划。 */
+  mode?: 'ai' | 'manual'
 }
 
 /** POST plans 返回体即 PlanView 形态（含 ai_available / prompt_version）。 */

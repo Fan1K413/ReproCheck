@@ -12,6 +12,7 @@ import re
 import shutil
 import uuid
 from pathlib import Path
+from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,6 +97,58 @@ class MaterialService:
             material_type=mtype, file_size_bytes=len(data), sha256=digest,
             mime_type=mimetypes.guess_type(safe_name)[0] or "application/octet-stream",
             parse_status="uploaded", raw_text="",
+        )
+        self.db.add(material)
+        await self.db.commit()
+        await self.db.refresh(material)
+        return material
+
+    async def link_repository(self, project_id: str, url: str, name: str = "") -> Material:
+        """登记代码仓库链接：仅保存地址引用，不下载仓库、不执行代码。
+
+        复用既有 materials 表，不改表结构；material_type=code_repository 让前端
+        能在材料清单里把它与可解析文件区分开。
+        """
+        project = (await self.db.execute(
+            select(Project).where(Project.id == project_id)
+        )).scalar_one_or_none()
+        if project is None:
+            raise AppError("NOT_FOUND", "项目不存在。")
+
+        raw_url = (url or "").strip()
+        parsed = urlparse(raw_url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise AppError("VALIDATION_ERROR", "请填写以 http:// 或 https:// 开头的代码仓库地址。")
+        if parsed.username or parsed.password:
+            raise AppError("VALIDATION_ERROR", "仓库地址里不应包含账号或密码。")
+
+        count = (await self.db.execute(
+            select(Material.id).where(Material.project_id == project_id)
+        )).all()
+        if len(count) >= MAX_PROJECT_MATERIALS:
+            raise AppError("VALIDATION_ERROR", f"单项目材料数已达上限 {MAX_PROJECT_MATERIALS}。")
+
+        digest = hashlib.sha256(raw_url.encode("utf-8")).hexdigest()
+        dup = (await self.db.execute(
+            select(Material).where(
+                Material.project_id == project_id, Material.sha256 == digest
+            )
+        )).scalar_one_or_none()
+        if dup is not None:
+            return dup
+
+        display = (name or "").strip()
+        if not display:
+            host = parsed.netloc
+            path = parsed.path.strip("/")
+            display = f"{host}/{path}" if path else host
+        source = _safe_filename(display)
+        material = Material(
+            id=f"mat-{uuid.uuid4().hex[:16]}", project_id=project_id,
+            source_name=source[:200], original_filename=source[:200],
+            material_type="code_repository", raw_text=raw_url,
+            file_size_bytes=0, sha256=digest, mime_type="text/uri-list",
+            parse_status="uploaded", stored_path=None,
         )
         self.db.add(material)
         await self.db.commit()

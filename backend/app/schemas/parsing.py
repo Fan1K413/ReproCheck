@@ -20,7 +20,7 @@ ParseStatus = Literal[
     "completed", "partially_completed", "failed", "unsupported",
 ]
 
-# ---------------- 定位结构：按材料类型区分，禁止强行统一 ----------------
+# 定位结构：按材料类型区分，禁止强行统一
 
 class PdfLocator(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -63,7 +63,7 @@ class DataLocator(BaseModel):
 SourceLocator = PdfLocator | CodeLocator | ConfigLocator | DocLocator | DataLocator
 
 
-# ---------------- 统一文本块 ----------------
+# 统一文本块
 
 class SourceChunk(BaseModel):
     """标准化文本块。第一阶段 source_chunks 的超集，保持 chunk_id/original_text 兼容。"""
@@ -116,7 +116,7 @@ class ParseResult(BaseModel):
                 for k, val in v.items()}
 
 
-# ---------------- 解析任务 ----------------
+# 解析任务
 
 class TaskStage(BaseModel):
     """任务当前阶段，前端展示用，来自真实 DB 状态而非前端计时器。"""
@@ -125,7 +125,7 @@ class TaskStage(BaseModel):
     message: str = ""
 
 
-# ---------------- 事实抽取 Schema（第二阶段核心） ----------------
+# 事实抽取 Schema（第二阶段核心）
 
 AssertionType = Literal["explicit", "inferred", "ambiguous", "not_found"]
 ExtractionStatus = Literal["supported", "unsupported", "needs_review"]

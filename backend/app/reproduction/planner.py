@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.errors import AppError
 from app.llm import LLMService, llm_service
-from app.models import Material
+from app.modelhub.bridge import TaskLLM
+from app.models import Material, Project
 from app.models.stage4 import ReproductionPlan, ReproductionTask
 from app.reproduction.adapter import SOURCE_NOTE, Stage3AuditAdapter, propagate_blocking, validate_dag
 from app.reproduction.feasibility import check_feasibility
@@ -30,15 +31,39 @@ class PlanningError(AppError):
 class ReproductionPlanner:
     def __init__(self, db: AsyncSession, llm: LLMService | None = None) -> None:
         self.db = db
-        self.llm = llm or llm_service
+        self.llm = llm or TaskLLM(db, "report_generation")
         self.adapter = Stage3AuditAdapter(db)
 
+    async def create_manual_plan(self, project_id: str, title: str | None = None) -> ReproductionPlan:
+        """创建明确标注的人工空规划；不调用模型，不生成任务或 AI 可用状态。"""
+        project = await self.db.get(Project, project_id)
+        if project is None:
+            raise AppError("NOT_FOUND", "项目不存在。")
+        plan = ReproductionPlan(
+            id=f"rplan-{uuid.uuid4().hex[:16]}",
+            project_id=project_id,
+            title=title or "手动复现规划",
+            status="draft",
+            source="manual",
+            ai_available=False,
+            prompt_version="",
+            model="",
+            feasibility_summary_json="{}",
+            source_refs_json=json.dumps({
+                "source_note": "人工创建的空规划；未调用 AI，任务由用户逐条新增。",
+            }, ensure_ascii=False),
+        )
+        self.db.add(plan)
+        await self.db.commit()
+        return plan
+
     async def create_plan(self, project_id: str, title: str | None = None) -> ReproductionPlan:
-        """AI 驱动生成复现规划；任何失败明确上抛，不伪造。"""
-        if not settings.is_llm_configured:
+        """由模型生成复现规划；失败时上抛异常。"""
+        # 匿名/环境变量无 Key 时保持原有的 503 语义；已登录用户可由网关解析自己的绑定。
+        from app.modelhub.context import current_user_id
+        if not settings.is_llm_configured and not current_user_id.get():
             raise AppError("LLM_KEY_NOT_CONFIGURED",
                            "AI 复现规划不可用：尚未配置真实 API Key，未生成任何规划。")
-
         facts = await self.adapter.get_facts_view(project_id)
         audit = await self.adapter.get_audit_view(project_id)
         conflicts = await self.adapter.programmatic_conflicts(project_id)
@@ -141,5 +166,14 @@ class ReproductionPlanner:
             status="pending",
         )
         self.db.add(task)
+        await self.db.flush()
+        tasks = (await self.db.execute(
+            select(ReproductionTask).where(ReproductionTask.plan_id == plan_id)
+        )).scalars().all()
+        summary: dict[str, int] = {}
+        for item in tasks:
+            summary[item.feasibility] = summary.get(item.feasibility, 0) + 1
+        plan.feasibility_summary_json = json.dumps(summary, ensure_ascii=False)
+        self.db.add(plan)
         await self.db.commit()
         return task

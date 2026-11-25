@@ -9,15 +9,22 @@ env/
 # 环境与密钥（永远不要提交）
 .env
 .env.local
+.env.*.local
 *.db
+*.db-wal
+*.db-shm
+*.db-journal
 *.sqlite
 *.sqlite3
 *.bak
 
-# Node
+# Node / Vite
 node_modules/
 dist/
 .vite/
+*.tsbuildinfo
+frontend/.puppeteer-cache/
+frontend/vite*.timestamp-*.mjs
 
 # IDE / OS
 .idea/
@@ -25,13 +32,22 @@ dist/
 .DS_Store
 Thumbs.db
 
-# logs / coverage
+# 日志 / 覆盖率 / 运行态产物
 *.log
 .coverage
 htmlcov/
 .pytest_cache/
-.playwright-cli/
-.omc/
+storage/
 backend/storage/materials/
 backend/storage/reports/
+backend/storage/exports/
+
+# 本地代理 / 调测工具缓存与截图
+.playwright-cli/
+.omc/
 .worktrees/
+.workbuddy/
+.codebuddy/
+.screenshots/
+.tokendiet/
+audit-reports/

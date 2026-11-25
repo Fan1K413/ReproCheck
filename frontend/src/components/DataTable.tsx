@@ -29,7 +29,10 @@ export function DataTable<T>({ columns, data, rowKey, empty, dense = false }: Da
   }
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div
+      className="w-full overflow-x-auto rounded-md"
+      style={{ border: 'var(--rc-stroke-hair)', backgroundColor: 'var(--rc-surface-glass)' }}
+    >
       <table className={dense ? 'data-table data-table-dense' : 'data-table'}>
         <thead>
           <tr>

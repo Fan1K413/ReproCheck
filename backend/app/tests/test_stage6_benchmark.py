@@ -13,7 +13,7 @@ import pytest
 from app.core.errors import AppError
 
 
-# ---------------------------- 基础设施 ----------------------------
+# 基础设施
 
 @asynccontextmanager
 async def _db():
@@ -122,7 +122,7 @@ _ENV = {"gpu": "NVIDIA GeForce RTX 3090", "python_version": "3.10.12",
         "operating_system": "Ubuntu 20.04"}
 
 
-# ---------------------------- 案例创建与列表 ----------------------------
+# 案例创建与列表
 
 @pytest.mark.asyncio
 async def test_create_and_list_case_with_filters(client):
@@ -193,7 +193,7 @@ async def test_create_and_list_case_with_filters(client):
         "unverified", "partially_verified", "execution_verified", "independently_reviewed"]
 
 
-# ---------------------------- 事实归一化与字段目录 ----------------------------
+# 事实归一化与字段目录
 
 @pytest.mark.asyncio
 async def test_fact_normalization_and_field_schema(client):
@@ -270,7 +270,7 @@ async def test_fact_normalization_and_field_schema(client):
     assert (await client.get("/api/v1/fact-schema")).status_code == 401
 
 
-# ---------------------------- 可见性隔离 ----------------------------
+# 可见性隔离
 
 @pytest.mark.asyncio
 async def test_case_visibility_isolation(client):
@@ -321,7 +321,7 @@ async def test_case_visibility_isolation(client):
     assert (await client.get(f"/api/v1/cases/{private['id']}", headers=_auth(member["token"]))).status_code == 200
 
 
-# ---------------------------- 质量阶梯 ----------------------------
+# 质量阶梯
 
 @pytest.mark.asyncio
 async def test_quality_progression_four_levels(client):
@@ -462,7 +462,7 @@ async def test_recompute_downgrade_requires_confirmation(client):
     assert r.json()["data"]["changed"] is False
 
 
-# ---------------------------- 验证校验与权限 ----------------------------
+# 验证校验与权限
 
 @pytest.mark.asyncio
 async def test_verification_validation_and_permissions(client):
@@ -504,7 +504,7 @@ async def test_verification_validation_and_permissions(client):
     assert r.json()["data"]["items"][0]["conditions"]["cuda_version"] == "11.8"
 
 
-# ---------------------------- 参考检索 ----------------------------
+# 参考检索
 
 @pytest.mark.asyncio
 async def test_search_match_basis_and_visibility(client):
@@ -578,7 +578,7 @@ async def test_search_match_basis_and_visibility(client):
     assert r.status_code == 422
 
 
-# ---------------------------- 留痕 / 冲突 / 追溯 ----------------------------
+# 留痕 / 冲突 / 追溯
 
 @pytest.mark.asyncio
 async def test_trail_conflict_and_traceability(client):
@@ -629,7 +629,7 @@ async def test_trail_conflict_and_traceability(client):
         assert all(r.actor_user_id == a["user"]["id"] and r.request_id for r in fact_rows)
 
 
-# ---------------------------- 纯函数单测（确定性） ----------------------------
+# 纯函数单测（确定性）
 
 def _v(vid, vtype, result, verifier, conditions=None, created="2026-01-01T00:00:00+00:00"):
     return {"id": vid, "verification_type": vtype, "result": result,

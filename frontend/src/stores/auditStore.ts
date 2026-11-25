@@ -6,7 +6,7 @@ type AuditState = {
   setLastResult: (result: AuditResult) => void
 }
 
-/** 保留最近一次演示审计结果，供工作台展示“最近发现问题”。不落盘，不伪造数据。 */
+/** 保留最近一次演示审计结果，供工作台展示。 */
 export const useAuditStore = create<AuditState>((set) => ({
   lastResult: null,
   setLastResult: (lastResult) => set({ lastResult }),

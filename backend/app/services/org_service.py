@@ -187,7 +187,7 @@ async def revoke_invitation(db: AsyncSession, actor: User, inv_id: str, request_
     return {"id": inv_id, "status": "revoked"}
 
 
-# ---- 团队 / 工作空间 ----
+# 团队 / 工作空间
 
 async def create_team(db: AsyncSession, actor: User, org_id: str, name: str, description: str, request_id: str = "") -> dict:
     await ensure_org_member(db, actor, org_id, admin=True)

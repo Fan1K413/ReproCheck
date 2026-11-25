@@ -245,7 +245,7 @@ class TaskService:
                 await self.db.commit()
                 return task
 
-            # ---- AI 抽取（无 LLM Key 时优雅降级，保留确定性解析结果）----
+            # AI 抽取（无 LLM Key 时优雅降级，保留确定性解析结果）
             current_stage = "extracting"
             llm_available = settings.is_llm_configured
             llm_skip_reason = None  # 记录跳过原因（用于治理门阻断）

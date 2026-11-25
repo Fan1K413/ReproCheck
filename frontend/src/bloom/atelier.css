@@ -1,0 +1,1773 @@
+/* ==========================================================================
+   Bloom Atelier —— 三级：组合式复现工作区
+   暗色画布 + 半透明模块节点 + 纸张式详情抽屉。
+   不使用满屏渐变/发光边框；所有读数来自真实接口。
+
+   §1.11 作用域收敛：变量收敛到 --rc-* 体系（Shell → rc 语义层，
+   Data → rc 功能色，Glow → rc 紫光），舞台保持自带深色。
+   ========================================================================== */
+
+.bloom-page--atelier {
+  height: 100dvh;
+  min-height: 620px;
+}
+
+.bloom-atelier {
+  /* Shell */
+  --atelier-ink: var(--rc-ink);
+  --atelier-panel: var(--rc-surface);
+  --atelier-paper: var(--rc-glass);
+  --atelier-paper-ink: var(--rc-purple-deep);
+  /* Data */
+  --atelier-accent: var(--rc-violet);
+  --atelier-line: color-mix(in srgb, var(--rc-violet) 20%, transparent);
+  /* Glow */
+  --atelier-glow: var(--rc-glow-violet);
+  /* 纸面（浅底）上的状态墨色 */
+  --atelier-fail-ink: color-mix(in srgb, var(--rc-danger) 42%, var(--rc-purple-deep));
+  /* 与 bloom.css 共用的作用域别名（工坊页同样以 .bloom-page 为根） */
+  --bloom-ink: var(--rc-ink);
+  --bloom-paper: var(--rc-glass);
+  --bloom-paper-ink: var(--rc-purple-deep);
+  --bloom-accent: var(--rc-violet);
+  display: flex;
+  flex-direction: column;
+  background: var(--rc-ink);
+}
+
+.bloom-atelier__grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(color-mix(in srgb, var(--bloom-accent) 3%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--bloom-accent) 3%, transparent) 1px, transparent 1px),
+    radial-gradient(62% 60% at 50% 46%, color-mix(in srgb, var(--bloom-accent) 6%, transparent), transparent 72%);
+  background-size: 26px 26px, 26px 26px, 100% 100%;
+}
+
+.bloom-atelier__topbar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 64px;
+  flex-shrink: 0;
+  padding: 0 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--rc-hi) 9%, transparent);
+  background: color-mix(in srgb, var(--rc-ink) 86%, transparent);
+}
+
+.bloom-atelier__identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.bloom-atelier__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px 0 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 14%, transparent);
+  color: color-mix(in srgb, var(--rc-hi) 66%, transparent);
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.bloom-atelier__back:hover {
+  border-color: color-mix(in srgb, var(--bloom-accent) 50%, transparent);
+  color: var(--rc-lilac);
+}
+
+.bloom-atelier__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--bloom-accent) 46%, transparent);
+  color: var(--rc-lilac);
+  flex-shrink: 0;
+}
+
+.bloom-atelier__project {
+  min-width: 0;
+}
+
+.bloom-atelier__project p {
+  margin: 0;
+  max-width: 310px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--bloom-paper);
+}
+
+.bloom-atelier__project span {
+  display: block;
+  margin-top: 2px;
+  max-width: 310px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--rc-hi) 46%, transparent);
+}
+
+.bloom-atelier__tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 10%, transparent);
+  background: color-mix(in srgb, var(--rc-hi) 2%, transparent);
+  flex-shrink: 0;
+}
+
+.bloom-atelier__tabs a,
+.bloom-atelier__tabs span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 25px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--rc-hi) 46%, transparent);
+  white-space: nowrap;
+}
+
+.bloom-atelier__tabs a:hover {
+  color: color-mix(in srgb, var(--rc-hi) 80%, transparent);
+}
+
+.bloom-atelier__tabs span.is-active {
+  background: var(--rc-accent);
+  color: var(--rc-hi);
+}
+
+.bloom-atelier__readout {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-left: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.bloom-atelier__readout-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--rc-hi) 38%, transparent);
+}
+
+.bloom-atelier__readout strong {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--rc-lilac);
+}
+
+.bloom-atelier__readout-meta {
+  font-size: 9.5px;
+  color: color-mix(in srgb, var(--rc-hi) 42%, transparent);
+}
+
+/* ---------------- 三栏主体 ---------------- */
+
+.bloom-atelier__body {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 244px minmax(0, 1fr) 382px;
+  min-height: 0;
+  flex: 1;
+}
+
+/* ---------------- 模块库 ---------------- */
+
+.bloom-atelier__library {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid color-mix(in srgb, var(--rc-hi) 9%, transparent);
+  background: color-mix(in srgb, var(--rc-ink) 72%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.bloom-atelier__library-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 21px 18px 15px;
+  border-bottom: 1px solid color-mix(in srgb, var(--rc-hi) 7%, transparent);
+}
+
+.bloom-atelier__eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--bloom-accent) 56%, transparent);
+}
+
+.bloom-atelier__library-head h2 {
+  margin: 5px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--bloom-paper);
+}
+
+.bloom-atelier__counter {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: color-mix(in srgb, var(--rc-hi) 42%, transparent);
+  padding: 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 12%, transparent);
+  border-radius: 999px;
+}
+
+.bloom-atelier__library-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 7px 8px 12px;
+}
+
+.bloom-library-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px 24px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 55px;
+  padding: 7px 7px 7px 10px;
+  border: 1px solid transparent;
+  border-left: 2px solid transparent;
+  border-radius: 0 10px 10px 0;
+  background: transparent;
+  color: var(--bloom-paper);
+  text-align: left;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.bloom-library-row:hover {
+  background: color-mix(in srgb, var(--rc-hi) 4%, transparent);
+}
+
+.bloom-library-row.is-active {
+  border-left-color: var(--bloom-accent);
+  background: color-mix(in srgb, var(--bloom-accent) 8%, transparent);
+}
+
+.bloom-library-row.is-selected {
+  border-color: color-mix(in srgb, var(--bloom-accent) 26%, transparent);
+  border-left-color: var(--bloom-accent);
+}
+
+.bloom-library-row__index {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--rc-hi) 32%, transparent);
+}
+
+.bloom-library-row__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 13%, transparent);
+  color: color-mix(in srgb, var(--rc-hi) 68%, transparent);
+}
+
+.bloom-library-row.is-active .bloom-library-row__icon {
+  border-color: color-mix(in srgb, var(--bloom-accent) 34%, transparent);
+  color: var(--rc-lilac);
+}
+
+.bloom-library-row__text {
+  min-width: 0;
+}
+
+.bloom-library-row__title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 720;
+  letter-spacing: -0.01em;
+}
+
+.bloom-library-row__meta {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
+  line-height: 1.2;
+  color: color-mix(in srgb, var(--rc-hi) 40%, transparent);
+}
+
+.bloom-library-row__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 14%, transparent);
+  color: color-mix(in srgb, var(--rc-hi) 58%, transparent);
+}
+
+.bloom-library-row.is-active .bloom-library-row__dot {
+  border-color: color-mix(in srgb, var(--bloom-accent) 38%, transparent);
+  color: var(--rc-lilac);
+}
+
+.bloom-driver-row__dot.tone-ready,
+.bloom-library-row__dot.tone-ready {
+  border-color: color-mix(in srgb, var(--bloom-accent) 50%, transparent);
+  color: var(--rc-lilac);
+}
+
+.bloom-library-row__dot.tone-attention {
+  border-color: color-mix(in srgb, var(--rc-warning) 55%, transparent);
+  color: var(--rc-warning);
+}
+
+.bloom-library-row__dot.tone-blocked {
+  border-color: color-mix(in srgb, var(--rc-danger) 55%, transparent);
+  color: var(--rc-danger);
+}
+
+.bloom-library-row__dot.tone-empty {
+  opacity: 0.55;
+}
+
+.bloom-atelier__library-foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  flex-shrink: 0;
+  padding: 12px 16px 16px;
+  border-top: 1px solid color-mix(in srgb, var(--rc-hi) 7%, transparent);
+  font-size: 8.5px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--rc-hi) 36%, transparent);
+}
+
+/* ---------------- 画布 ---------------- */
+
+.bloom-atelier__canvas {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+
+.bloom-atelier__canvas-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-shrink: 0;
+  padding: 18px 24px 12px;
+}
+
+.bloom-atelier__canvas-head h1 {
+  margin: 3px 0 0;
+  font-family: 'Iowan Old Style', 'Songti SC', 'Noto Serif SC', serif;
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--bloom-paper);
+}
+
+.bloom-atelier__canvas-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 8px 0 0;
+  font-size: 9px;
+  color: color-mix(in srgb, var(--rc-hi) 38%, transparent);
+  white-space: nowrap;
+}
+
+.bloom-atelier__tray {
+  display: none;
+}
+
+.bloom-atelier__graph {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin: 2px 18px 10px;
+}
+
+.bloom-atelier__edges {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.atelier-edge {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.atelier-edge--hub {
+  stroke: color-mix(in srgb, var(--bloom-accent) 17%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+}
+
+.atelier-edge--pair {
+  stroke: color-mix(in srgb, var(--rc-lilac) 38%, transparent);
+  stroke-width: 1.2;
+  stroke-dasharray: 2 4;
+  animation: atelier-flow 12s linear infinite;
+}
+
+@keyframes atelier-flow {
+  to {
+    stroke-dashoffset: -60;
+  }
+}
+
+.bloom-atelier__edge-label {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  padding: 3px 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--bloom-accent) 20%, transparent);
+  background: color-mix(in srgb, var(--rc-ink) 78%, transparent);
+  color: color-mix(in srgb, var(--rc-lilac) 66%, transparent);
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+
+/* 中心枢纽 */
+.bloom-atelier__hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 248px;
+  min-height: 174px;
+  padding: 18px;
+  transform: translate(-50%, -50%);
+  border-radius: 26px;
+  border: 1px solid color-mix(in srgb, var(--bloom-accent) 30%, transparent);
+  background:
+    radial-gradient(circle at 50% 22%, color-mix(in srgb, var(--bloom-accent) 16%, transparent), transparent 58%),
+    linear-gradient(150deg, color-mix(in srgb, var(--rc-ink) 92%, transparent), color-mix(in srgb, var(--rc-ink) 95%, transparent));
+  box-shadow:
+    0 28px 60px color-mix(in srgb, var(--rc-ink) 46%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--rc-hi) 9%, transparent);
+  text-align: center;
+  color: var(--bloom-paper);
+  backdrop-filter: blur(18px);
+}
+
+.bloom-atelier__hub::before {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border-radius: 18px;
+  border: 1px dashed color-mix(in srgb, var(--rc-hi) 9%, transparent);
+  pointer-events: none;
+}
+
+.bloom-atelier__hub-kicker {
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  letter-spacing: 0.18em;
+  color: color-mix(in srgb, var(--bloom-accent) 62%, transparent);
+}
+
+.bloom-atelier__hub strong {
+  position: relative;
+  margin-top: 5px;
+  max-width: 190px;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.bloom-atelier__hub-paper {
+  position: relative;
+  margin-top: 3px;
+  max-width: 172px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 9.5px;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--rc-hi) 50%, transparent);
+}
+
+.bloom-atelier__hub-score {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--rc-lilac);
+}
+
+.bloom-atelier__hub-score small {
+  font-size: 8px;
+  letter-spacing: 0.07em;
+  color: color-mix(in srgb, var(--rc-hi) 42%, transparent);
+}
+
+.bloom-atelier__hub-meta {
+  position: relative;
+  margin-top: 2px;
+  font-size: 8.5px;
+  color: color-mix(in srgb, var(--rc-hi) 36%, transparent);
+}
+
+/* 模块节点 */
+.bloom-atelier-node {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 174px;
+  min-height: 122px;
+  padding: 12px 13px 11px;
+  transform: translate(-50%, -50%);
+  border: 0;
+  background:
+    linear-gradient(152deg, color-mix(in srgb, var(--rc-hi) 94%, transparent), color-mix(in srgb, var(--rc-lilac) 86%, transparent)),
+    var(--bloom-paper);
+  color: var(--bloom-ink);
+  text-align: left;
+  cursor: pointer;
+  filter: drop-shadow(0 18px 24px color-mix(in srgb, var(--rc-ink) 38%, transparent));
+  transition:
+    left 560ms var(--bloom-ease),
+    top 560ms var(--bloom-ease),
+    transform 220ms var(--bloom-ease),
+    filter 220ms ease;
+}
+
+.bloom-atelier-node--folio {
+  clip-path: polygon(0 9px, 9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%);
+  background:
+    linear-gradient(152deg, color-mix(in srgb, var(--bloom-paper) 96%, transparent), color-mix(in srgb, var(--bloom-paper) 90%, transparent)),
+    var(--bloom-paper);
+}
+
+.bloom-atelier-node--lattice {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 15px) 0,
+    100% 15px,
+    100% 100%,
+    15px 100%,
+    0 calc(100% - 15px)
+  );
+  background:
+    linear-gradient(152deg, color-mix(in srgb, var(--bloom-paper) 95%, transparent), color-mix(in srgb, var(--rc-lilac) 88%, transparent)),
+    var(--bloom-paper);
+}
+
+.bloom-atelier-node--instrument {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 19px), calc(100% - 19px) 100%, 0 100%);
+  background:
+    linear-gradient(152deg, color-mix(in srgb, var(--bloom-paper) 96%, transparent), color-mix(in srgb, var(--rc-lilac) 90%, transparent)),
+    var(--bloom-paper);
+}
+
+.bloom-atelier-node:hover {
+  transform: translate(-50%, -52%);
+  filter: drop-shadow(0 22px 30px color-mix(in srgb, var(--rc-ink) 46%, transparent));
+  z-index: 7;
+}
+
+.bloom-atelier-node.is-selected {
+  filter:
+    drop-shadow(0 0 0 2px color-mix(in srgb, var(--bloom-accent) 86%, transparent))
+    drop-shadow(0 22px 30px color-mix(in srgb, var(--rc-ink) 42%, transparent))
+    var(--atelier-glow);
+  z-index: 8;
+}
+
+.bloom-atelier-node::before {
+  content: '';
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  top: 0;
+  height: 2px;
+  background: color-mix(in srgb, var(--bloom-paper-ink) 18%, transparent);
+}
+
+.bloom-atelier-node.state-ready::before {
+  background: var(--rc-accent);
+}
+
+.bloom-atelier-node.state-attention::before {
+  background: var(--bloom-pending);
+}
+
+.bloom-atelier-node.state-blocked::before {
+  background: var(--bloom-fail);
+}
+
+.bloom-atelier-node__top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.bloom-atelier-node__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--bloom-paper-ink) 16%, transparent);
+  color: var(--bloom-paper-ink);
+  flex-shrink: 0;
+}
+
+.bloom-atelier-node__code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 6.5px;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--bloom-ink) 42%, transparent);
+}
+
+.bloom-atelier-node__state {
+  margin-left: auto;
+  padding: 2px 5px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 6.5px;
+  letter-spacing: 0.07em;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 15%, transparent);
+  color: color-mix(in srgb, var(--bloom-ink) 46%, transparent);
+  flex-shrink: 0;
+}
+
+.bloom-atelier-node__state.state-ready,
+.bloom-atelier__detail-state.state-ready {
+  border-color: color-mix(in srgb, var(--bloom-accent) 40%, transparent);
+  color: var(--rc-accent);
+}
+
+.bloom-atelier-node__state.state-attention,
+.bloom-atelier__detail-state.state-attention {
+  border-color: color-mix(in srgb, var(--bloom-pending) 40%, transparent);
+  color: var(--bloom-pending);
+}
+
+.bloom-atelier-node__state.state-blocked,
+.bloom-atelier__detail-state.state-blocked {
+  border-color: color-mix(in srgb, var(--bloom-fail) 40%, transparent);
+  color: var(--bloom-fail);
+}
+
+.bloom-atelier-node__title {
+  display: block;
+  margin-top: 7px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.bloom-atelier-node--folio .bloom-atelier-node__title {
+  font-family: 'Iowan Old Style', 'Songti SC', 'Noto Serif SC', 'SimSun', serif;
+  font-weight: 600;
+}
+
+.bloom-atelier-node__metric {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.bloom-atelier-node__metric small {
+  font-family: var(--font-sans);
+  font-size: 7.5px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--bloom-ink) 46%, transparent);
+}
+
+.bloom-atelier-node__role {
+  display: block;
+  margin-top: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  font-size: 7.5px;
+  color: color-mix(in srgb, var(--bloom-ink) 42%, transparent);
+}
+
+.bloom-atelier-node__note {
+  display: block;
+  margin-top: auto;
+  padding-top: 6px;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
+  line-height: 1.3;
+  color: color-mix(in srgb, var(--bloom-ink) 54%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--bloom-ink) 8%, transparent);
+}
+
+/* 三种家族的入场方式不同 */
+.bloom-atelier-node--folio {
+  animation: atelier-node-folio 540ms var(--bloom-ease) both;
+  animation-delay: calc(var(--node-index, 0) * 70ms);
+}
+
+.bloom-atelier-node--lattice {
+  animation: atelier-node-lattice 500ms var(--bloom-ease) both;
+  animation-delay: calc(var(--node-index, 0) * 58ms);
+}
+
+.bloom-atelier-node--instrument {
+  animation: atelier-node-instrument 460ms var(--bloom-ease) both;
+  animation-delay: calc(var(--node-index, 0) * 52ms);
+}
+
+@keyframes atelier-node-folio {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-3deg) scale(0.94);
+  }
+}
+
+@keyframes atelier-node-lattice {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+@keyframes atelier-node-instrument {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%);
+  }
+}
+
+/* ---------------- 底部读数条 ---------------- */
+
+.bloom-atelier__bench {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-shrink: 0;
+  min-height: 76px;
+  padding: 10px 20px;
+  border-top: 1px solid color-mix(in srgb, var(--rc-hi) 9%, transparent);
+  background: color-mix(in srgb, var(--rc-ink) 66%, transparent);
+}
+
+.bloom-atelier__bench-score {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  column-gap: 7px;
+  flex-shrink: 0;
+}
+
+.bloom-atelier__bench-score span {
+  grid-column: 1 / -1;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--rc-hi) 36%, transparent);
+}
+
+.bloom-atelier__bench-score strong {
+  font-family: var(--font-mono);
+  font-size: 19px;
+  color: var(--rc-lilac);
+}
+
+.bloom-atelier__bench-score small {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8px;
+  color: color-mix(in srgb, var(--rc-hi) 34%, transparent);
+}
+
+.bloom-atelier__bench-bars {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.bloom-atelier-bar {
+  display: grid;
+  grid-template-columns: auto 42px auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bloom-atelier-bar__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 66px;
+  font-size: 7.5px;
+  color: color-mix(in srgb, var(--rc-hi) 44%, transparent);
+}
+
+.bloom-atelier-bar__track {
+  position: relative;
+  height: 3px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--rc-hi) 10%, transparent);
+  overflow: hidden;
+}
+
+.bloom-atelier-bar__track span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--bloom-accent);
+}
+
+.bloom-atelier-bar__value {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: color-mix(in srgb, var(--rc-hi) 50%, transparent);
+}
+
+.bloom-atelier__signals {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+  font-size: 8px;
+  color: color-mix(in srgb, var(--rc-hi) 40%, transparent);
+  white-space: nowrap;
+}
+
+.bloom-atelier__signals .is-warn {
+  color: var(--rc-warning);
+}
+
+.bloom-atelier__refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--rc-hi) 14%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--rc-hi) 62%, transparent);
+  font-size: 9px;
+  flex-shrink: 0;
+}
+
+.bloom-atelier__refresh:hover {
+  border-color: color-mix(in srgb, var(--bloom-accent) 40%, transparent);
+  color: var(--rc-lilac);
+}
+
+.bloom-atelier__refresh:disabled {
+  opacity: 0.5;
+}
+
+/* ---------------- 详情抽屉（纸张材质） ---------------- */
+
+.bloom-atelier__detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--atelier-paper);
+  color: var(--bloom-ink);
+  border-left: 1px solid color-mix(in srgb, var(--rc-hi) 16%, transparent);
+  box-shadow: -18px 0 46px color-mix(in srgb, var(--rc-ink) 24%, transparent);
+}
+
+.bloom-atelier__detail[data-morph='folio'] {
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--bloom-paper) 97%, transparent), color-mix(in srgb, var(--bloom-paper) 96%, transparent)),
+    var(--bloom-paper);
+}
+
+.bloom-atelier__detail[data-morph='lattice'] {
+  background:
+    linear-gradient(color-mix(in srgb, var(--bloom-paper-ink) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--bloom-paper-ink) 4%, transparent) 1px, transparent 1px),
+    var(--bloom-paper);
+  background-size: 18px 18px, 18px 18px, 100% 100%;
+}
+
+.bloom-atelier__detail[data-morph='instrument'] {
+  background:
+    repeating-linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--rc-purple-dark) 4%, transparent) 0,
+      color-mix(in srgb, var(--rc-purple-dark) 4%, transparent) 1px,
+      transparent 1px,
+      transparent 10px
+    ),
+    var(--bloom-paper);
+} 
+
+.bloom-atelier__detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 17px 18px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--bloom-ink) 12%, transparent);
+}
+
+.bloom-atelier__detail-head > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.bloom-atelier__detail-head h2 {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.16;
+  letter-spacing: -0.03em;
+}
+
+.bloom-atelier__detail[data-morph='folio'] .bloom-atelier__detail-head h2 {
+  font-family: 'Iowan Old Style', 'Songti SC', 'Noto Serif SC', serif;
+  font-weight: 600;
+}
+
+.bloom-atelier__detail-state {
+  display: inline-block;
+  margin-top: 6px;
+  max-width: 100%;
+  padding: 2px 5px;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 15%, transparent);
+  border-radius: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 7.5px;
+  color: color-mix(in srgb, var(--bloom-ink) 50%, transparent);
+}
+
+.bloom-atelier__detail-tools {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.bloom-atelier__detail-tools button,
+.bloom-atelier__detail-tools a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 16%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--bloom-ink) 62%, transparent);
+}
+
+.bloom-atelier__detail-tools .bloom-atelier__detail-close {
+  display: none;
+}
+
+.bloom-atelier__detail-tools a:hover,
+.bloom-atelier__detail-tools button:hover {
+  background: color-mix(in srgb, var(--bloom-accent) 22%, transparent);
+  color: var(--bloom-paper-ink);
+}
+
+.bloom-atelier__detail-close {
+  display: none;
+}
+
+.bloom-atelier__detail-metrics {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  padding: 10px 18px;
+  gap: 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--bloom-ink) 10%, transparent);
+}
+
+.bloom-atelier__detail-metrics span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bloom-atelier__detail-metrics small {
+  font-size: 7px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--bloom-ink) 42%, transparent);
+}
+
+.bloom-atelier__detail-metrics strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: -0.02em;
+}
+
+.bloom-atelier__blockers {
+  flex-shrink: 0;
+  margin: 9px 18px 0;
+  padding: 7px 9px;
+  border-left: 2px solid var(--bloom-pending);
+  background: color-mix(in srgb, var(--bloom-pending) 7%, transparent);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.bloom-atelier__blockers span {
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  color: var(--bloom-pending);
+}
+
+.bloom-atelier__blockers ul {
+  margin: 3px 0 0;
+  padding: 0;
+  list-style: none;
+  color: color-mix(in srgb, var(--bloom-ink) 64%, transparent);
+}
+
+.bloom-atelier__blockers li::before {
+  content: '· ';
+}
+
+.bloom-atelier__detail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 18px 16px;
+}
+
+/* 详情内沿用 Bloom 数据块，但在窄抽屉里收紧间距 */
+.bloom-atelier__detail-scroll .bloom-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  border-radius: 12px;
+}
+
+.bloom-atelier__detail-scroll .bloom-metric {
+  padding: 9px 11px;
+}
+
+.bloom-atelier__detail-scroll .bloom-metric__value {
+  font-size: 17px;
+}
+
+.bloom-atelier__detail-scroll .bloom-section {
+  margin-top: 14px;
+}
+
+.bloom-atelier__detail-scroll .bloom-detail__table th,
+.bloom-atelier__detail-scroll .bloom-detail__table td {
+  padding: 7px 8px;
+  font-size: 9px;
+}
+
+.bloom-atelier__detail-scroll .bloom-list__row {
+  padding: 8px 10px;
+}
+
+.bloom-atelier__detail-scroll .bloom-list__title {
+  font-size: 10px;
+}
+
+/* 右侧详情的装配上下文：把当前工坊中的其它模块作为可跳转的邻居 */
+.bloom-atelier__context {
+  margin-top: 22px;
+  padding-top: 15px;
+  border-top: 1px solid color-mix(in srgb, var(--bloom-ink) 12%, transparent);
+}
+
+.bloom-atelier__context-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--bloom-ink) 44%, transparent);
+}
+
+.bloom-atelier__context-head strong {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--bloom-ink) 72%, transparent);
+}
+
+.bloom-atelier__context ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bloom-atelier__context li button {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 10%, transparent);
+  background: color-mix(in srgb, var(--rc-hi) 34%, transparent);
+  color: var(--bloom-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.bloom-atelier__context li button:hover {
+  border-color: color-mix(in srgb, var(--bloom-accent) 34%, transparent);
+  background: color-mix(in srgb, var(--rc-hi) 62%, transparent);
+}
+
+.bloom-atelier__context li button > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.bloom-atelier__context-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bloom-ink) 30%, transparent);
+}
+
+.bloom-atelier__context-dot.state-ready {
+  background: var(--rc-accent);
+}
+
+.bloom-atelier__context-dot.state-attention {
+  background: var(--bloom-pending);
+}
+
+.bloom-atelier__context-dot.state-blocked {
+  background: var(--bloom-fail);
+}
+
+.bloom-atelier__context li small {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--bloom-ink) 48%, transparent);
+}
+
+.bloom-atelier__context-metric {
+  min-width: 34px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  text-align: right;
+  color: color-mix(in srgb, var(--bloom-ink) 66%, transparent);
+}
+
+.bloom-atelier__detail-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 9px 18px 12px;
+  border-top: 1px solid color-mix(in srgb, var(--bloom-ink) 12%, transparent);
+  background: color-mix(in srgb, var(--rc-hi) 34%, transparent);
+}
+
+.bloom-atelier__remove,
+.bloom-atelier__jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 27px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.bloom-atelier__remove {
+  border: 1px solid color-mix(in srgb, var(--bloom-ink) 18%, transparent);
+  background: transparent;
+  color: color-mix(in srgb, var(--bloom-ink) 56%, transparent);
+}
+
+.bloom-atelier__remove:disabled {
+  opacity: 0.35;
+}
+
+.bloom-atelier__jump {
+  margin-left: auto;
+  background: var(--bloom-paper-ink);
+  color: var(--rc-lilac);
+}
+
+.bloom-atelier__jump:hover {
+  background: var(--bloom-accent-deep);
+}
+
+.bloom-atelier__detail-empty {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: color-mix(in srgb, var(--bloom-ink) 46%, transparent);
+  font-size: 12px;
+}
+
+/* 移动端活动模块列表，桌面隐藏 */
+.bloom-atelier__stack {
+  display: none;
+}
+
+/* 移动端缺口清单：用真实阻塞项填充模块堆叠下方的空间 */
+.bloom-atelier__gaps {
+  display: none;
+}
+
+/* ---------------- 中等屏：详情变覆盖抽屉 ---------------- */
+
+@media (max-width: 1180px) {
+  .bloom-atelier__body {
+    grid-template-columns: 224px minmax(0, 1fr);
+  }
+
+  .bloom-atelier__detail {
+    position: absolute;
+    z-index: 30;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 370px;
+    display: none;
+    border-left: 1px solid color-mix(in srgb, var(--bloom-ink) 18%, transparent);
+  }
+
+  .bloom-atelier__body.is-detail-open .bloom-atelier__detail {
+    display: flex;
+  }
+
+  .bloom-atelier__detail-tools .bloom-atelier__detail-close {
+    display: inline-flex;
+  }
+
+  .bloom-atelier__readout-meta {
+    display: none;
+  }
+
+  .bloom-atelier__bench-bars {
+    display: none;
+  }
+
+  .bloom-atelier__graph {
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+
+  .bloom-atelier-node {
+    width: 158px;
+    min-height: 116px;
+  }
+
+  .bloom-atelier__hub {
+    width: 224px;
+    min-height: 158px;
+  }
+}
+
+/* ---------------- 移动端：模块堆叠 + 全屏详情 ---------------- */
+
+@media (max-width: 900px) {
+  .bloom-page.bloom-page--atelier {
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  .bloom-atelier__topbar {
+    height: 58px;
+    gap: 8px;
+    padding: 0 12px;
+  }
+
+  .bloom-atelier__back {
+    padding: 0 8px 0 5px;
+    font-size: 9.5px;
+  }
+
+  .bloom-atelier__mark {
+    display: none;
+  }
+
+  .bloom-atelier__project p {
+    max-width: 160px;
+    font-size: 11.5px;
+  }
+
+  .bloom-atelier__project span {
+    max-width: 160px;
+    font-size: 8.5px;
+  }
+
+  .bloom-atelier__tabs {
+    display: none;
+  }
+
+  .bloom-atelier__readout {
+    gap: 4px;
+  }
+
+  .bloom-atelier__readout-label {
+    display: none;
+  }
+
+  .bloom-atelier__readout strong {
+    font-size: 16px;
+  }
+
+  .bloom-atelier__readout-meta {
+    display: none;
+  }
+
+  .bloom-atelier__body {
+    display: block;
+    height: calc(100dvh - 58px);
+    min-height: 0;
+  }
+
+  .bloom-atelier__library,
+  .bloom-atelier__graph {
+    display: none;
+  }
+
+  .bloom-atelier__canvas {
+    height: 100%;
+  }
+
+  .bloom-atelier__canvas-head {
+    padding: 12px 16px 8px;
+  }
+
+  .bloom-atelier__canvas-head h1 {
+    font-size: 21px;
+  }
+
+  .bloom-atelier__canvas-hint {
+    display: none;
+  }
+
+  .bloom-atelier__tray {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex-shrink: 0;
+    overflow: visible;
+    padding: 0 16px 9px;
+    scrollbar-width: none;
+  }
+
+  .bloom-atelier__tray::-webkit-scrollbar {
+    display: none;
+  }
+
+  .bloom-atelier__tray button {
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--rc-hi) 14%, transparent);
+    background: transparent;
+    color: color-mix(in srgb, var(--rc-hi) 48%, transparent);
+    font-size: 9.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .bloom-atelier__tray button.is-active {
+    border-color: color-mix(in srgb, var(--bloom-accent) 46%, transparent);
+    background: color-mix(in srgb, var(--bloom-accent) 12%, transparent);
+    color: var(--rc-lilac);
+  }
+
+  .bloom-atelier__stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 48%;
+    overflow-y: auto;
+    padding: 2px 12px 10px;
+  }
+
+  .bloom-atelier__gaps {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 90px;
+    margin: 0 12px 10px;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--rc-hi) 9%, transparent);
+    background: color-mix(in srgb, var(--rc-hi) 2%, transparent);
+    overflow-y: auto;
+  }
+
+  .bloom-atelier__gaps-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 7px;
+    letter-spacing: 0.12em;
+    color: color-mix(in srgb, var(--rc-hi) 38%, transparent);
+  }
+
+  .bloom-atelier__gaps-head strong {
+    font-size: 10px;
+    color: var(--rc-warning);
+  }
+
+  .bloom-atelier__gaps ul {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 9px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .bloom-atelier__gaps li {
+    display: grid;
+    grid-template-columns: 5px minmax(0, 1fr) minmax(0, 1.6fr);
+    align-items: center;
+    gap: 7px;
+  }
+
+  .bloom-atelier__gaps li > span:first-child {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--rc-hi) 34%, transparent);
+  }
+
+  .bloom-atelier__gaps li > span.state-attention {
+    background: var(--bloom-pending);
+  }
+
+  .bloom-atelier__gaps li > span.state-blocked {
+    background: var(--bloom-fail);
+  }
+
+  .bloom-atelier__gaps-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 9px;
+    font-weight: 650;
+    color: color-mix(in srgb, var(--rc-hi) 78%, transparent);
+  }
+
+  .bloom-atelier__gaps-note {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 8px;
+    color: color-mix(in srgb, var(--rc-hi) 44%, transparent);
+  }
+
+  .bloom-atelier__gaps-empty {
+    margin: 10px 0 0;
+    font-size: 9px;
+    color: color-mix(in srgb, var(--bloom-accent) 65%, transparent);
+  }
+
+  .bloom-atelier__gaps-next {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid color-mix(in srgb, var(--rc-hi) 8%, transparent);
+  }
+
+  .bloom-atelier__gaps-next span {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 7px;
+    letter-spacing: 0.12em;
+    color: color-mix(in srgb, var(--bloom-accent) 58%, transparent);
+  }
+
+  .bloom-atelier__gaps-next p {
+    margin: 5px 0 0;
+    font-size: 9px;
+    line-height: 1.5;
+    color: color-mix(in srgb, var(--rc-hi) 56%, transparent);
+  }
+
+  .bloom-atelier__gaps-rule {
+    margin: 10px 0 0;
+    padding-top: 8px;
+    border-top: 1px solid color-mix(in srgb, var(--rc-hi) 6%, transparent);
+    font-size: 7.5px;
+    line-height: 1.5;
+    color: color-mix(in srgb, var(--rc-hi) 30%, transparent);
+  }
+
+  .bloom-atelier__stack button {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 4px;
+    flex-shrink: 0;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--rc-hi) 10%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--rc-hi) 4%, transparent);
+    color: var(--bloom-paper);
+    text-align: left;
+  }
+
+  .bloom-atelier__stack button.is-selected {
+    border-color: color-mix(in srgb, var(--bloom-accent) 42%, transparent);
+    background: color-mix(in srgb, var(--bloom-accent) 8%, transparent);
+  }
+
+  .bloom-atelier__stack .bloom-atelier-node__state {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+    border-color: color-mix(in srgb, var(--rc-hi) 18%, transparent) !important;
+    color: color-mix(in srgb, var(--rc-hi) 56%, transparent) !important;
+  }
+
+  .bloom-atelier__stack-title {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 13px;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+  }
+
+  .bloom-atelier__stack-metric {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--rc-lilac);
+    align-self: center;
+  }
+
+  .bloom-atelier__stack-note {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 8px;
+    color: color-mix(in srgb, var(--rc-hi) 42%, transparent);
+  }
+
+  .bloom-atelier__bench {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 10px;
+    min-height: 54px;
+    padding: 8px 14px 10px;
+  }
+
+  .bloom-atelier__bench-score {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .bloom-atelier__bench-score span {
+    font-size: 7px;
+    grid-column: auto;
+  }
+
+  .bloom-atelier__bench-score strong {
+    font-size: 15px;
+  }
+
+  .bloom-atelier__bench-score small {
+    display: none;
+  }
+
+  .bloom-atelier__bench-bars {
+    display: none;
+  }
+
+  .bloom-atelier__signals {
+    display: none;
+  }
+
+  .bloom-atelier__refresh {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    height: 28px;
+  }
+
+  .bloom-atelier__detail {
+    position: fixed;
+    inset: 8px;
+    z-index: 90;
+    display: none;
+    width: auto;
+    border: 0;
+    border-radius: 18px;
+    box-shadow: 0 24px 70px color-mix(in srgb, var(--rc-ink) 58%, transparent);
+    overflow: hidden;
+  }
+
+  .bloom-atelier__body.is-detail-open {
+    z-index: 100;
+  }
+
+  .bloom-atelier__body.is-detail-open .bloom-atelier__detail {
+    display: flex;
+  }
+
+  .bloom-atelier__detail-tools .bloom-atelier__detail-close {
+    display: inline-flex;
+  }
+
+  .bloom-atelier__detail-head {
+    padding: 14px 16px 10px;
+  }
+
+  .bloom-atelier__detail-head h2 {
+    font-size: 19px;
+  }
+
+  .bloom-atelier__detail-metrics {
+    padding: 9px 16px;
+  }
+
+  .bloom-atelier__detail-scroll {
+    padding: 4px 16px 14px;
+  }
+
+  .bloom-atelier__detail-foot {
+    padding: 9px 16px 12px;
+  }
+
+  .bloom-atelier__jump {
+    font-size: 8.5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bloom-atelier__project span {
+    display: none;
+  }
+
+  .bloom-atelier__canvas-head h1 {
+    font-size: 19px;
+  }
+
+  .bloom-atelier__detail-metrics {
+    gap: 10px;
+  }
+
+  .bloom-atelier__detail-metrics span {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bloom-atelier-node,
+  .bloom-atelier__edges path,
+  .bloom-atelier__edges line {
+    animation: none !important;
+    transition-duration: 1ms !important;
+  }
+}

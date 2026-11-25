@@ -1,0 +1,1080 @@
+/* ==========================================================================
+ * ReproCheck · Wave E · 模型设置 / 演示 / 报告 / 登录 专属样式
+ * --------------------------------------------------------------------------
+ * 依据：global-design-system.md §1.9 token 契约 / §1.11 作用域收敛
+ *       global-interaction-spec.md §2.7 透视卡 / §2.8 章节空间导航 / §3 动画系统
+ *
+ * 约束（硬性）：
+ *   1. 只消费 --rc-* token；本文件不含任何颜色字面量
+ *      （rgba 仅允许通过 --rc-*-rgb 三元组 + alpha 表达）；
+ *   2. 动画属性只用 transform / opacity / color / box-shadow / background-color；
+ *      禁止 width / height / top / left / margin / padding；
+ *   3. will-change 只在活动期（is-moving / hover）出现；
+ *   4. prefers-reduced-motion 降级为 120ms 淡入淡出，反馈不丢；
+ *   5. 作用域限定在 .rc-we-* 类名内，不影响其他 Wave 的页面。
+ * ========================================================================== */
+
+/* --------------------------------------------------------------------------
+ * 1. 页面外壳
+ * -------------------------------------------------------------------------- */
+.rc-we-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-space-6);
+  min-height: calc(100vh - var(--rc-header-h) - var(--rc-space-8));
+  color: var(--rc-text);
+}
+
+/* 满幅（浅色档案室 / 登录玻璃需要铺满内容区时使用） */
+.rc-we-page--bleed {
+  margin: calc(-1 * var(--rc-space-5)) calc(-1 * var(--rc-space-4));
+  padding: var(--rc-space-5) var(--rc-space-4);
+  background-color: var(--rc-bg);
+}
+
+@media (min-width: 640px) {
+  .rc-we-page--bleed {
+    margin: calc(-1 * var(--rc-space-6));
+    padding: var(--rc-space-6);
+  }
+}
+
+/* 浅色皮肤可读性修正：
+   浅底上 --rc-violet / --rc-lilac / --rc-magenta 原值对比度不足，
+   StatusBadge(accent)、Icon(tone=accent)、focus ring 都会命中。
+   仅在本组页面作用域内覆盖，不改动 tokens.css 与公共组件实现。 */
+.rc-we-page[data-rc-skin='light'] {
+  --rc-violet: var(--rc-accent);
+  --rc-lilac: var(--rc-purple-dark);
+  --rc-magenta: var(--rc-purple);
+  --rc-accent-bright: var(--rc-purple);
+  --rc-focus: var(--rc-accent);
+}
+
+/* --------------------------------------------------------------------------
+ * 2. 页眉 / 版式
+ * -------------------------------------------------------------------------- */
+.rc-we-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--rc-space-4);
+}
+
+.rc-we-head__text {
+  min-width: 0;
+}
+
+.rc-we-eyebrow {
+  font-family: var(--rc-font-mono);
+  font-size: var(--rc-fs-micro);
+  font-weight: var(--rc-fw-m);
+  letter-spacing: var(--rc-ls-mono);
+  text-transform: uppercase;
+  color: var(--rc-text-subtle);
+}
+
+.rc-we-title {
+  margin-top: var(--rc-space-2);
+  font-family: var(--rc-font-display);
+  font-size: var(--rc-fs-h1);
+  font-weight: var(--rc-fw-sb);
+  line-height: var(--rc-lh-tight);
+  color: var(--rc-text);
+}
+
+.rc-we-lead {
+  margin-top: var(--rc-space-2);
+  max-width: 72ch;
+  font-size: var(--rc-fs-body);
+  line-height: var(--rc-lh-body);
+  color: var(--rc-text-muted);
+}
+
+.rc-we-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rc-space-3);
+}
+
+.rc-we-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-space-5);
+  /* 允许内部宽表在自身容器内横向滚动，而不是把整页撑宽 */
+  min-width: 0;
+}
+
+.rc-we-stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-space-3);
+  min-width: 0;
+}
+
+.rc-we-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rc-space-3);
+}
+
+.rc-we-row-between {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rc-space-3);
+}
+
+.rc-we-grid {
+  display: grid;
+  gap: var(--rc-space-4);
+}
+
+.rc-we-grid--2 {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.rc-we-grid--3 {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.rc-we-grid--4 {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+@media (max-width: 639px) {
+  .rc-we-grid--2,
+  .rc-we-grid--3,
+  .rc-we-grid--4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rc-we-split {
+  display: grid;
+  gap: var(--rc-space-5);
+  align-items: start;
+}
+
+/* 栅格子项默认 min-width:auto，宽表会撑破页面；统一收敛为 0 */
+.rc-we-split > * {
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .rc-we-split {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * 3. 卡片 / 规格行 / 提示条
+ * -------------------------------------------------------------------------- */
+.rc-we-card {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  border: var(--rc-stroke);
+  border-radius: var(--rc-radius-lg);
+  background-color: var(--rc-surface);
+  box-shadow: var(--rc-shadow-panel);
+}
+
+.rc-we-card--glass {
+  background-color: var(--rc-surface-glass);
+  backdrop-filter: var(--rc-blur-panel);
+  -webkit-backdrop-filter: var(--rc-blur-panel);
+}
+
+.rc-we-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rc-space-3);
+  padding: var(--rc-space-5) var(--rc-space-6);
+  border-bottom: var(--rc-stroke-hair);
+}
+
+.rc-we-card__title {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-space-2);
+  font-size: var(--rc-fs-h3);
+  font-weight: var(--rc-fw-sb);
+  color: var(--rc-text);
+}
+
+.rc-we-card__body {
+  padding: var(--rc-space-6);
+}
+
+.rc-we-card__body--tight {
+  padding: var(--rc-space-4);
+}
+
+.rc-we-spec {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rc-space-4);
+  padding: var(--rc-space-3) 0;
+  border-bottom: var(--rc-stroke-hair);
+}
+
+.rc-we-spec:last-child {
+  border-bottom: none;
+}
+
+.rc-we-spec__k {
+  flex: none;
+  font-size: var(--rc-fs-body);
+  color: var(--rc-text-muted);
+}
+
+.rc-we-spec__v {
+  min-width: 0;
+  text-align: right;
+  font-size: var(--rc-fs-body);
+  font-weight: var(--rc-fw-m);
+  color: var(--rc-text);
+  overflow-wrap: anywhere;
+}
+
+.rc-we-spec__v--mono {
+  font-family: var(--rc-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--rc-fs-mono);
+}
+
+.rc-we-note {
+  display: flex;
+  gap: var(--rc-space-3);
+  padding: var(--rc-space-4);
+  border: var(--rc-stroke);
+  border-radius: var(--rc-radius-md);
+  background-color: var(--rc-accent-wash);
+  color: var(--rc-text-muted);
+  font-size: var(--rc-fs-caption);
+  line-height: 1.6;
+}
+
+.rc-we-note--warn {
+  background-color: var(--rc-warning-wash);
+  border-color: var(--rc-warning);
+}
+
+.rc-we-note--danger {
+  background-color: var(--rc-danger-wash);
+  border-color: var(--rc-danger);
+}
+
+.rc-we-note__icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--rc-accent);
+}
+
+.rc-we-note--warn .rc-we-note__icon {
+  color: var(--rc-warning);
+}
+
+.rc-we-note--danger .rc-we-note__icon {
+  color: var(--rc-danger);
+}
+
+.rc-we-note__title {
+  font-size: var(--rc-fs-body);
+  font-weight: var(--rc-fw-sb);
+  color: var(--rc-text);
+}
+
+.rc-we-note__list {
+  margin: var(--rc-space-2) 0 0;
+  padding-left: var(--rc-space-5);
+}
+
+.rc-we-note__list li + li {
+  margin-top: var(--rc-space-1);
+}
+
+.rc-we-kpi {
+  padding: var(--rc-space-4);
+  border: var(--rc-stroke-hair);
+  border-radius: var(--rc-radius-md);
+  background-color: var(--rc-surface-2);
+}
+
+.rc-we-kpi__k {
+  font-size: var(--rc-fs-caption);
+  color: var(--rc-text-muted);
+}
+
+.rc-we-kpi__v {
+  margin-top: var(--rc-space-1);
+  font-family: var(--rc-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--rc-fs-h3);
+  font-weight: var(--rc-fw-sb);
+  color: var(--rc-text);
+}
+
+.rc-we-kpi__hint {
+  margin-top: var(--rc-space-1);
+  font-size: var(--rc-fs-micro);
+  color: var(--rc-text-subtle);
+}
+
+.rc-we-mono {
+  font-family: var(--rc-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--rc-ls-mono);
+}
+
+.rc-we-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+/* 宽表容器：让 data-table 在卡内横向滚动，卡片本身不被撑破 */
+.rc-we-scroll > .data-table {
+  min-width: 520px;
+}
+
+.rc-we-code {
+  max-height: 18rem;
+  margin: 0;
+  padding: var(--rc-space-4);
+  overflow: auto;
+  white-space: pre-wrap;
+  border: var(--rc-stroke);
+  border-radius: var(--rc-radius-md);
+  background-color: var(--rc-surface-3);
+  color: var(--rc-text);
+  font-family: var(--rc-font-mono);
+  font-size: var(--rc-fs-mono);
+  line-height: 1.6;
+}
+
+.rc-we-empty {
+  padding: var(--rc-space-7) var(--rc-space-4);
+  text-align: center;
+  color: var(--rc-text-muted);
+  font-size: var(--rc-fs-body);
+}
+
+/* --------------------------------------------------------------------------
+ * 4. 透视卡组（模型切换 / 演示方案切换，400ms 透视轴滑入滑出）
+ *    3D 倾角 ≤6°，仅用于卡片层叠；窄屏降级为纵向滑动。
+ * -------------------------------------------------------------------------- */
+.rc-we-deck {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-space-4);
+  min-width: 0;
+}
+
+.rc-we-deck__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rc-space-2);
+}
+
+.rc-we-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rc-space-2);
+  min-height: 36px;
+  padding: var(--rc-space-2) var(--rc-space-4);
+  border: var(--rc-stroke);
+  border-radius: var(--rc-radius-pill);
+  background-color: var(--rc-surface);
+  color: var(--rc-text-muted);
+  font-size: var(--rc-fs-caption);
+  font-weight: var(--rc-fw-m);
+  cursor: pointer;
+  transition: transform var(--rc-dur-base) var(--rc-ease-hover),
+    background-color var(--rc-dur-base) var(--rc-ease-hover),
+    border-color var(--rc-dur-base) var(--rc-ease-hover),
+    color var(--rc-dur-base) var(--rc-ease-hover),
+    box-shadow var(--rc-dur-base) var(--rc-ease-hover);
+}
+
+.rc-we-tab:hover {
+  transform: translateY(-1px);
+  border-color: var(--rc-border-strong);
+  color: var(--rc-text);
+}
+
+.rc-we-tab[aria-selected='true'] {
+  background-color: var(--rc-accent);
+  border-color: var(--rc-accent);
+  color: var(--rc-hi);
+  box-shadow: var(--rc-glow-violet);
+}
+
+.rc-we-deck__stage {
+  position: relative;
+  display: grid;
+  gap: var(--rc-space-4);
+  min-width: 0;
+  perspective: 1200px;
+}
+
+.rc-we-deck__card {
+  grid-area: 1 / 1;
+  transform-origin: left center;
+  transition: transform var(--rc-dur-slow) var(--rc-ease-out),
+    opacity var(--rc-dur-slow) var(--rc-ease-out),
+    box-shadow var(--rc-dur-slow) var(--rc-ease-out);
+}
+
+.rc-we-deck__card[data-depth='0'] {
+  z-index: 3;
+}
+
+.rc-we-deck__card[data-depth='1'] {
+  transform: translate3d(18px, 10px, 0) rotateY(-4deg) scale(.965);
+  opacity: .58;
+}
+
+.rc-we-deck__card[data-depth='2'] {
+  transform: translate3d(34px, 20px, 0) rotateY(-4deg) scale(.93);
+  opacity: .34;
+}
+
+.rc-we-deck__card[data-depth='3'] {
+  transform: translate3d(48px, 28px, 0) rotateY(-4deg) scale(.90);
+  opacity: .16;
+}
+
+.rc-we-deck__card[data-depth='4'],
+.rc-we-deck__card[data-depth='5'] {
+  transform: translate3d(60px, 36px, 0) rotateY(-4deg) scale(.875);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rc-we-deck__card.is-moving {
+  will-change: transform, opacity;
+}
+
+.rc-we-deck__card:focus-visible {
+  outline: 2px solid var(--rc-focus);
+  outline-offset: 2px;
+}
+
+.rc-we-deck__panel {
+  border: var(--rc-stroke-strong);
+  border-radius: var(--rc-radius-lg);
+  background-color: var(--rc-surface);
+  box-shadow: var(--rc-shadow-panel);
+}
+
+.rc-we-deck__panel--glass {
+  background-color: var(--rc-surface-glass);
+  backdrop-filter: var(--rc-blur-panel);
+  -webkit-backdrop-filter: var(--rc-blur-panel);
+}
+
+.rc-we-deck__panelhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--rc-space-3);
+  padding: var(--rc-space-5) var(--rc-space-6);
+  border-bottom: var(--rc-stroke-hair);
+}
+
+.rc-we-deck__paneltitle {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-space-2);
+  font-family: var(--rc-font-display);
+  font-size: var(--rc-fs-h2);
+  font-weight: var(--rc-fw-sb);
+  line-height: var(--rc-lh-h);
+  color: var(--rc-text);
+}
+
+.rc-we-deck__panelbody {
+  padding: var(--rc-space-6);
+}
+
+.rc-we-deck__stack {
+  display: grid;
+  gap: var(--rc-space-3);
+}
+
+.rc-we-deck__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--rc-space-3) var(--rc-space-5);
+}
+
+/* 透视卡的“前景 / 后景”标记 */
+.rc-we-deck__layer {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-space-2);
+  font-family: var(--rc-font-mono);
+  font-size: var(--rc-fs-micro);
+  letter-spacing: var(--rc-ls-mono);
+  text-transform: uppercase;
+  color: var(--rc-text-subtle);
+}
+
+.rc-we-deck__layer--front {
+  color: var(--rc-accent);
+}
+
+/* 窄屏：透视降级为纵向滑动（取消层叠与 3D 变形） */
+@media (max-width: 639px) {
+  .rc-we-deck__stage {
+    perspective: none;
+    gap: var(--rc-space-4);
+  }
+
+  .rc-we-deck__card {
+    grid-area: auto;
+    transform: none;
+    opacity: 1;
+  }
+
+  .rc-we-deck__card:not([data-depth='0']) {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * 5. 模型中心：分区导航 + 规格卡
+ * -------------------------------------------------------------------------- */
+.rc-we-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-space-1);
+}
+
+.rc-we-nav__item {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-space-3);
+  padding: var(--rc-space-3) var(--rc-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--rc-radius-md);
+  background-color: transparent;
+  color: var(--rc-text-muted);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--rc-dur-base) var(--rc-ease-hover),
+    color var(--rc-dur-base) var(--rc-ease-hover),
+    border-color var(--rc-dur-base) var(--rc-ease-hover),
+    transform var(--rc-dur-base) var(--rc-ease-hover);
+}
+
+.rc-we-nav__item:hover {
+  background-color: var(--rc-accent-wash);
+  color: var(--rc-text);
+  transform: translateX(2px);
+}
+
+.rc-we-nav__item[aria-current='page'] {
+  background-color: var(--rc-accent-wash);
+  border-color: var(--rc-border-strong);
+  color: var(--rc-text);
+}
+
+.rc-we-nav__label {
+  display: block;
+  font-size: var(--rc-fs-body);
+  font-weight: var(--rc-fw-m);
+}
+
+.rc-we-nav__hint {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--rc-fs-micro);
+  color: var(--rc-text-subtle);
+}
+
+/* 移动端：分区导航改横向滚动条 */
+@media (max-width: 1023px) {
+  .rc-we-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: var(--rc-space-2);
+  }
+
+  .rc-we-nav__item {
+    flex: none;
+    min-width: 172px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * 6. 演示页：方案切换 + 双层透视对比
+ * -------------------------------------------------------------------------- */
+.rc-we-duo {
+  position: relative;
+  display: grid;
+  gap: var(--rc-space-4);
+  perspective: 1200px;
+}
+
+.rc-we-duo__card {
+  position: relative;
+  border: var(--rc-stroke-strong);
+  border-radius: var(--rc-radius-lg);
+  background-color: var(--rc-surface);
+  box-shadow: var(--rc-shadow-panel);
+  transition: transform var(--rc-dur-slow) var(--rc-ease-out),
+    opacity var(--rc-dur-slow) var(--rc-ease-out);
+}
+
+.rc-we-duo__card--front {
+  z-index: 2;
+  padding: var(--rc-space-6);
+}
+
+.rc-we-duo__card--back {
+  z-index: 1;
+  padding: var(--rc-space-6);
+  transform: rotateX(4deg) scale(.96) translateY(-12px);
+  transform-origin: top center;
+  border-color: var(--rc-border);
+  background-color: var(--rc-surface-3);
+}
+
+.rc-we-duo__card.is-entering {
+  will-change: transform, opacity;
+}
+
+.rc-we-duo__label {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-space-2);
+  font-family: var(--rc-font-mono);
+  font-size: var(--rc-fs-micro);
+  letter-spacing: var(--rc-ls-mono);
+  text-transform: uppercase;
+  color: var(--rc-text-subtle);
+}
+
+.rc-we-duo__value {
+  margin-top: var(--rc-space-2);
+  font-family: var(--rc-font-display);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--rc-fs-h1);
+  font-weight: var(--rc-fw-sb);
+  line-height: var(--rc-lh-tight);
+  color: var(--rc-text);
+}
+
+@media (max-width: 1023px) {
+  .rc-we-duo__card--back {
+    transform: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * 7. 登录页：紫黑玻璃登录卡
+ * -------------------------------------------------------------------------- */
+.rc-we-login {
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  overflow: hidden;
+  background-color: var(--rc-ink);
+  color: var(--rc-glass);
+}
+
+@media (min-width: 1024px) {
+  .rc-we-login {
+    grid-template-columns: minmax(0, 46%) minmax(0, 1fr);
+  }
+}
+
+.rc-we-login__aura {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(720px 420px at 12% -8%, rgb(var(--rc-accent-rgb) / .34), transparent 62%),
+    radial-gradient(560px 380px at 108% 22%, rgb(var(--rc-violet-rgb, 168 85 247) / .22), transparent 60%),
+    radial-gradient(640px 420px at 40% 118%, rgb(var(--rc-magenta-rgb, 192 132 252) / .20), transparent 64%);
+}
+
+.rc-we-login__grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .05;
+  background-image:
+    linear-gradient(rgb(var(--rc-hi-rgb, 255 255 255) / .6) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--rc-hi-rgb, 255 255 255) / .6) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.rc-we-login__brand {
+  position: relative;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--rc-space-8);
+  padding: var(--rc-space-8);
+}
+
+@media (min-width: 1024px) {
+  .rc-we-login__brand {
+    display: flex;
+  }
+}
+
+.rc-we-login__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-space-3);
+}
+
+.rc-we-login__logomark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--rc-radius-md);
+  background-color: var(--rc-accent);
+  color: var(--rc-hi);
+  box-shadow: var(--rc-shadow-far);
+}
+
+.rc-we-login__brandname {
+  font-family: var(--rc-font-display);
+  font-size: var(--rc-fs-h2);
+  font-weight: var(--rc-fw-sb);
+  color: var(--rc-hi);
+}
+
+.rc-we-login__brandsub {
+  margin-top: 2px;
+  font-size: var(--rc-fs-caption);
+  color: rgb(var(--rc-lilac-rgb, 233 213 255) / .58);
+}
+
+.rc-we-login__hero {
+  max-width: 34rem;
+  font-family: var(--rc-font-display);
+  font-size: var(--rc-fs-display);
+  font-weight: var(--rc-fw-sb);
+  line-height: 1.22;
+  color: var(--rc-hi);
+}
+
+.rc-we-login__hero em {
+  font-style: normal;
+  color: var(--rc-magenta);
+}
+
+.rc-we-login__herotext {
+  max-width: 34rem;
+  margin-top: var(--rc-space-4);
+  font-size: var(--rc-fs-body);
+  line-height: var(--rc-lh-body);
+  color: rgb(var(--rc-lilac-rgb, 233 213 255) / .62);
+}
+
+.rc-we-login__features {
+  display: grid;
+  gap: var(--rc-space-4);
+  margin: var(--rc-space-8) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rc-we-login__feature {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--rc-space-3);
+}
+
+.rc-we-login__featureicon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--rc-radius-sm);
+  background-color: rgb(var(--rc-hi-rgb, 255 255 255) / .08);
+  color: var(--rc-magenta);
+}
+
+.rc-we-login__featuretitle {
+  font-size: var(--rc-fs-body);
+  font-weight: var(--rc-fw-sb);
+  color: var(--rc-hi);
+}
+
+.rc-we-login__featuretext {
+  margin-top: 2px;
+  font-size: var(--rc-fs-caption);
+  line-height: 1.5;
+  color: rgb(var(--rc-lilac-rgb, 233 213 255) / .55);
+}
+
+.rc-we-login__safety {
+  padding: var(--rc-space-4);
+  border: var(--rc-stroke);
+  border-radius: var(--rc-radius-md);
+  background-color: rgb(var(--rc-hi-rgb, 255 255 255) / .04);
+}
+
+.rc-we-login__safetytext {
+  margin-top: var(--rc-space-2);
+  font-size: var(--rc-fs-micro);
+  line-height: 1.6;
+  color: rgb(var(--rc-lilac-rgb, 233 213 255) / .52);
+}
+
+.rc-we-login__aside {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--rc-space-6) var(--rc-space-4);
+}
+
+@media (min-width: 640px) {
+  .rc-we-login__aside {
+    padding: var(--rc-space-8);
+  }
+}
+
+.rc-we-login__inner {
+  width: 100%;
+  max-width: 440px;
+}
+
+.rc-we-login__mobilebrand {
+  display: flex;
+  align-items: center;
+  gap: var(--rc-space-3);
+  margin-bottom: var(--rc-space-6);
+}
+
+@media (min-width: 1024px) {
+  .rc-we-login__mobilebrand {
+    display: none;
+  }
+}
+
+.rc-we-login__card {
+  padding: var(--rc-space-6);
+  border: var(--rc-stroke);
+  border-radius: var(--rc-radius-xl);
+  background-color: var(--rc-surface-glass);
+  backdrop-filter: var(--rc-blur-glass);
+  -webkit-backdrop-filter: var(--rc-blur-glass);
+  box-shadow: var(--rc-shadow-glass);
+}
+
+@media (min-width: 640px) {
+  .rc-we-login__card {
+    padding: var(--rc-space-7);
+  }
+}
+
+.rc-we-login__switch {
+  display: flex;
+  gap: var(--rc-space-1);
+  padding: var(--rc-space-1);
+  border-radius: var(--rc-radius-md);
+  background-color: rgb(var(--rc-ink-rgb, 8 4 15) / .5);
+}
+
+.rc-we-login__switchbtn {
+  flex: 1;
+  padding: var(--rc-space-2) var(--rc-space-3);
+  border: none;
+  border-radius: var(--rc-radius-sm);
+  background-color: transparent;
+  color: var(--rc-text-muted);
+  font-size: var(--rc-fs-body);
+  font-weight: var(--rc-fw-m);
+  cursor: pointer;
+  transition: background-color var(--rc-dur-base) var(--rc-ease-hover),
+    color var(--rc-dur-base) var(--rc-ease-hover),
+    box-shadow var(--rc-dur-base) var(--rc-ease-hover);
+}
+
+.rc-we-login__switchbtn[aria-pressed='true'] {
+  background-color: var(--rc-surface-3);
+  color: var(--rc-text);
+  box-shadow: var(--rc-shadow-panel);
+}
+
+.rc-we-login__title {
+  margin-top: var(--rc-space-6);
+  font-family: var(--rc-font-display);
+  font-size: var(--rc-fs-h2);
+  font-weight: var(--rc-fw-sb);
+  color: var(--rc-text);
+}
+
+.rc-we-login__sub {
+  margin-top: var(--rc-space-1);
+  font-size: var(--rc-fs-body);
+  color: var(--rc-text-muted);
+}
+
+.rc-we-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-space-4);
+  margin-top: var(--rc-space-6);
+}
+
+.rc-we-login__field {
+  display: block;
+}
+
+.rc-we-login__fieldwrap {
+  position: relative;
+}
+
+.rc-we-login__fieldicon {
+  position: absolute;
+  left: var(--rc-space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--rc-text-subtle);
+}
+
+.rc-we-login__input {
+  width: 100%;
+  height: 40px;
+  padding: 9px 12px 9px var(--rc-space-8);
+  border: var(--rc-stroke);
+  border-radius: var(--rc-radius-sm);
+  background-color: rgb(var(--rc-ink-rgb, 8 4 15) / .42);
+  color: var(--rc-text);
+  transition: border-color var(--rc-dur-base) var(--rc-ease-hover),
+    box-shadow var(--rc-dur-base) var(--rc-ease-hover);
+}
+
+.rc-we-login__input::placeholder {
+  color: var(--rc-text-subtle);
+}
+
+.rc-we-login__input:focus {
+  outline: none;
+  border-color: var(--rc-accent);
+  box-shadow: 0 0 0 3px var(--rc-accent-wash);
+}
+
+.rc-we-login__alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--rc-space-2);
+  padding: var(--rc-space-3);
+  border: 1px solid var(--rc-danger);
+  border-radius: var(--rc-radius-md);
+  background-color: var(--rc-danger-wash);
+  color: var(--rc-danger);
+  font-size: var(--rc-fs-caption);
+  line-height: 1.5;
+}
+
+.rc-we-login__demo {
+  margin-top: var(--rc-space-4);
+  padding: var(--rc-space-5);
+  border: var(--rc-stroke);
+  border-radius: var(--rc-radius-lg);
+  background-color: rgb(var(--rc-hi-rgb, 255 255 255) / .04);
+}
+
+.rc-we-login__demogrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--rc-space-2);
+  margin-top: var(--rc-space-3);
+}
+
+@media (max-width: 399px) {
+  .rc-we-login__demogrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rc-we-login__demobtn {
+  padding: var(--rc-space-2) var(--rc-space-3);
+  border: var(--rc-stroke);
+  border-radius: var(--rc-radius-md);
+  background-color: rgb(var(--rc-hi-rgb, 255 255 255) / .04);
+  color: var(--rc-text);
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--rc-dur-base) var(--rc-ease-hover),
+    background-color var(--rc-dur-base) var(--rc-ease-hover),
+    border-color var(--rc-dur-base) var(--rc-ease-hover);
+}
+
+.rc-we-login__demobtn:hover {
+  transform: translateY(-1px);
+  border-color: var(--rc-accent);
+  background-color: var(--rc-accent-wash);
+}
+
+.rc-we-login__demobtn[aria-pressed='true'] {
+  border-color: var(--rc-accent);
+  background-color: var(--rc-accent-wash);
+}
+
+.rc-we-login__demoname {
+  font-size: var(--rc-fs-caption);
+  font-weight: var(--rc-fw-sb);
+  color: var(--rc-text);
+}
+
+.rc-we-login__demorole {
+  margin-top: 2px;
+  font-size: var(--rc-fs-micro);
+  color: var(--rc-text-subtle);
+}
+
+/* --------------------------------------------------------------------------
+ * 8. 通用降级
+ * -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .rc-we-deck__card,
+  .rc-we-duo__card,
+  .rc-we-tab,
+  .rc-we-nav__item,
+  .rc-we-login__demobtn {
+    transition-duration: var(--rc-dur-fast) !important;
+    transition-property: opacity, color, background-color, border-color !important;
+  }
+
+  .rc-we-deck__card {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+
+  .rc-we-deck__card:not([data-depth='0']) {
+    display: none;
+  }
+
+  .rc-we-duo__card--back {
+    transform: none !important;
+  }
+
+  .rc-we-nav__item:hover,
+  .rc-we-tab:hover,
+  .rc-we-login__demobtn:hover {
+    transform: none !important;
+  }
+}

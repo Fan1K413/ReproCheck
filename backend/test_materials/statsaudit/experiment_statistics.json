@@ -1,0 +1,117 @@
+{
+  "dataset_id": "statsaudit-experiment-statistics-fixture-v1",
+  "description": "实验统计计算引擎的端到端测试数据集；expected 中的数值均由公开公式手工核算，保留 6 位小数。",
+  "payload_schema": {
+    "claims": "对象，论文/调用方报告的统计值，如 {mean, std}",
+    "samples": "原始样本，可为数组或 {values: [...], ddof: 1}",
+    "runs": "多次运行记录数组，每项为 {name, values} 或 {name, mean, std}",
+    "seed_scores": "对象，键为随机种子标识，值为该种子下的分数数组",
+    "group_a": "第一组样本数组",
+    "group_b": "第二组样本数组",
+    "alpha": "显著性水平",
+    "test_kind": "welch / student / paired / mannwhitney / one_sample",
+    "paired": "是否配对",
+    "mu0": "单样本检验的原假设均值",
+    "pvalues": "多重比较的原始 p 值数组",
+    "multiple_method": "bonferroni / holm / bh / by",
+    "effect_kind": "cohens_d / hedges_g / glass_delta",
+    "effect_size": "功效分析用的标准化效应量",
+    "n": "功效分析用的每组样本量",
+    "power": "目标功效（反解样本量时使用）",
+    "power_kind": "two_sample / one_sample",
+    "ci_level": "置信水平",
+    "ci_method": "t / normal",
+    "outlier_method": "iqr / modified_z",
+    "outlier_threshold": "异常识别阈值",
+    "bins": "直方图分箱数"
+  },
+  "payload": {
+    "claims": {"mean": 3.2, "std": 1.58},
+    "samples": {"values": [1, 2, 3, 4, 5], "ddof": 1},
+    "runs": [
+      {"name": "run_1", "values": [1, 2, 3]},
+      {"name": "run_2", "values": [2, 3, 4]}
+    ],
+    "seed_scores": {
+      "seed_1": [1, 2, 3],
+      "seed_2": [5, 6, 7],
+      "seed_3": [2, 3, 4]
+    },
+    "group_a": [1, 2, 3, 4, 5],
+    "group_b": [2, 3, 4, 5, 6],
+    "alpha": 0.05,
+    "test_kind": "welch",
+    "paired": false,
+    "pvalues": [0.01, 0.02, 0.03, 0.04],
+    "multiple_method": "holm",
+    "multiple_comparison_corrected": false,
+    "effect_kind": "cohens_d",
+    "effect_size": 0.5,
+    "n": 30,
+    "power_kind": "two_sample",
+    "ci_level": 0.95,
+    "ci_method": "t",
+    "outlier_method": "iqr",
+    "outlier_threshold": 1.5,
+    "outlier_values": [1, 2, 3, 4, 5, 100],
+    "bins": 5
+  },
+  "expected": {
+    "mean": 3.0,
+    "sample_variance": 2.5,
+    "sample_std": 1.581139,
+    "confidence_interval": {
+      "ci_low": 1.036757,
+      "ci_high": 4.963243,
+      "se": 0.707107,
+      "df": 4,
+      "critical_value": 2.776445
+    },
+    "verify_mean_std": {
+      "mean_diff": 0.2,
+      "std_diff": 0.001139,
+      "consistent": false
+    },
+    "cohens_d": -0.632456,
+    "hedges_g": -0.57125,
+    "glass_delta": -0.632456,
+    "welch": {
+      "statistic": -1.0,
+      "pvalue": 0.346594,
+      "df": 8.0,
+      "significant": false
+    },
+    "holm_adjusted": [0.04, 0.06, 0.06, 0.06],
+    "bh_adjusted": [0.04, 0.04, 0.04, 0.04],
+    "by_adjusted": [0.083333, 0.083333, 0.083333, 0.083333],
+    "bonferroni_adjusted": [0.04, 0.08, 0.12, 0.16],
+    "consistency_cv": 0.282843,
+    "seed_spread": 4.0,
+    "seed_relative_spread": 1.090909,
+    "power": 0.490686,
+    "mde": 1.012121,
+    "outlier_indices": [5],
+    "outlier_values": [100],
+    "outlier_bounds": {"lower": -1.5, "upper": 8.5},
+    "distribution": {
+      "counts": [1, 1, 1, 1, 1],
+      "q1": 2.0,
+      "q2": 3.0,
+      "q3": 4.0,
+      "skewness": 0.0,
+      "kurtosis": -1.2
+    },
+    "expected_verdicts": {
+      "STAT-001": "calculation_error",
+      "STAT-002": "needs_human_review",
+      "STAT-003": "potential_bias",
+      "STAT-004": "verified",
+      "STAT-005": "verified",
+      "STAT-006": "verified",
+      "STAT-007": "potential_bias",
+      "STAT-008": "insufficient_evidence",
+      "STAT-009": "needs_human_review",
+      "STAT-010": "verified"
+    }
+  }
+}

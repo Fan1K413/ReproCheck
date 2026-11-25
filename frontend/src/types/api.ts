@@ -168,6 +168,7 @@ export type MaterialType =
   | 'text'
   | 'csv'
   | 'xlsx'
+  | 'code_repository'
   | 'unknown'
 
 /** 材料 / 任务解析状态（与后端 ParseStatus 字面量一致） */
@@ -208,6 +209,7 @@ export type MaterialView = {
   fact_count: number
   created_at: string
   error_message: string | null
+  external_url?: string | null
 }
 
 /** POST /materials/upload 响应 */

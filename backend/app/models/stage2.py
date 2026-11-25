@@ -38,7 +38,7 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-# ---------- 新增表 ----------
+# 新增表
 
 class MaterialParseRun(Base):
     """每次材料解析任务的独立记录（区分于 AI 调用记录 ai_runs）。"""

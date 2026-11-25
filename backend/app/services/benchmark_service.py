@@ -37,7 +37,7 @@ from app.services.trail_service import record_trail
 
 RULE_VERSION = "stage6-b1"
 
-# ============================ 质量等级阶梯 ============================
+# 质量等级阶梯
 
 QUALITY_LADDER: list[dict[str, str]] = [
     {"key": "unverified", "label": "未验证",
@@ -115,7 +115,7 @@ async def user_org_ids(db: AsyncSession, user: User) -> list[str]:
     return list(dict.fromkeys(rows))
 
 
-# ============================ 视图 ============================
+# 视图
 
 def traceability_view(case: BenchmarkCase) -> dict[str, Any]:
     """来源与许可完整性：只存指针，不再分发原文/代码/数据集。"""
@@ -240,7 +240,7 @@ def quality_standard_view() -> dict[str, Any]:
     }
 
 
-# ============================ 质量判定（纯函数，可单测） ============================
+# 质量判定（纯函数，可单测）
 
 def has_environment_conditions(conditions: Any) -> bool:
     """执行验证是否声明了运行环境（任一环境键非空，或嵌套 environment/env 非空）。"""
@@ -371,7 +371,7 @@ def evaluate_quality(created_by: str | None,
     return level, evidence
 
 
-# ============================ 可见性与权限 ============================
+# 可见性与权限
 
 async def build_visible_stmt(db: AsyncSession, user: User,
                              filters: dict[str, Any] | None = None) -> Select:
@@ -479,7 +479,7 @@ async def _verification_dicts(db: AsyncSession, rows: list[CaseVerification]) ->
     return [verification_view(r, names.get(r.verifier_user_id or "", "")) for r in rows]
 
 
-# ============================ 案例 ============================
+# 案例
 
 async def create_case(db: AsyncSession, user: User, payload: Any, rid: str = "") -> dict[str, Any]:
     """创建基准案例。quality_level 一律由系统置为 unverified，拒绝任何直接设置。"""
@@ -616,7 +616,7 @@ async def get_case(db: AsyncSession, user: User, case_id: str) -> dict[str, Any]
     return data
 
 
-# ============================ 案例事实 ============================
+# 案例事实
 
 async def add_case_fact(db: AsyncSession, user: User, case_id: str, payload: Any,
                         rid: str = "") -> dict[str, Any]:
@@ -714,7 +714,7 @@ async def list_case_facts(db: AsyncSession, user: User, case_id: str,
     return views
 
 
-# ============================ 验证与质量 ============================
+# 验证与质量
 
 async def _apply_quality(db: AsyncSession, user: User, case: BenchmarkCase, rid: str,
                          confirm_downgrade: bool, action: str) -> dict[str, Any]:

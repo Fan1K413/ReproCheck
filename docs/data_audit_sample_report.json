@@ -1,0 +1,629 @@
+{
+  "audit_id": "580877b1f411421b8581c2b256121718",
+  "project_id": "demo-project",
+  "created_at": "2026-11-20T07:53:46.107092+00:00",
+  "version": "dataaudit-v1",
+  "scope": {
+    "data_roots": [
+      "C:\\Users\\ASUS\\AppData\\Local\\Temp\\dataaudit_sample__c2c5n33"
+    ],
+    "code_files": 1,
+    "limits": {
+      "max_files": 100,
+      "max_file_bytes": 209715200,
+      "max_rows": 500000,
+      "sample_rows": 20000
+    },
+    "read_only": true,
+    "external_calls": false
+  },
+  "counts": {
+    "high": 7,
+    "medium": 11,
+    "low": 3,
+    "info": 11
+  },
+  "blocking_count": 7,
+  "findings": [
+    {
+      "rule_id": "DIST-002",
+      "rule_name": "训练/测试分布差异",
+      "severity": "high",
+      "message": "特征 'biomarker' 训练/测试分布漂移 PSI=3.471",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "train_v2.csv",
+          "field": "biomarker",
+          "detail": "train n=380, mean=2.353"
+        },
+        {
+          "file_path": "test_v2.csv",
+          "field": "biomarker",
+          "detail": "test n=105, mean=1.762"
+        }
+      ],
+      "justification": "PSI=3.471 ≥ 0.1，训练与测试来自明显不同的分布",
+      "suggestion": "确认数据划分是否随机；分布漂移会使离线指标高估线上表现",
+      "affects": "train,test"
+    },
+    {
+      "rule_id": "INT-003",
+      "rule_name": "空文件/缺失内容",
+      "severity": "high",
+      "message": "空文件（0 字节）：empty.csv",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file_path": "empty.csv",
+          "detail": "size=0"
+        }
+      ],
+      "justification": "声明的数据文件不包含任何内容",
+      "suggestion": "重新导出或重新下载该数据文件"
+    },
+    {
+      "rule_id": "INT-003",
+      "rule_name": "空文件/缺失内容",
+      "severity": "high",
+      "message": "manifest 声明的文件缺失：not_uploaded.csv",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file_path": "manifest.json",
+          "detail": "declared=not_uploaded.csv but not found"
+        }
+      ],
+      "justification": "清单声明与磁盘实际内容不一致",
+      "suggestion": "重新下载缺失文件或更新 manifest"
+    },
+    {
+      "rule_id": "INT-004",
+      "rule_name": "数据格式错误",
+      "severity": "high",
+      "message": "2 行的列数与表头不一致（notes.csv，占 100.0%）",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file_path": "notes.csv",
+          "detail": "ragged=2/2"
+        }
+      ],
+      "justification": "CSV 行结构不一致，通常是字段中含未转义分隔符或文件截断",
+      "suggestion": "检查分隔符与引号转义；若为截断需重新导出"
+    },
+    {
+      "rule_id": "LEAK-001",
+      "rule_name": "训练/测试重复样本",
+      "severity": "high",
+      "message": "train/test 存在 25 个重复样本（23.81%），高概率数据泄漏",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file_path": "train_v2.csv",
+          "sample_id": "biomarker=1.0|date=2020-03-01|diagnosis=malignant|notes=cross split identical record 14 appears in both files 182|patien",
+          "detail": "train/test 共享 25 个样本键"
+        },
+        {
+          "file_path": "test_v2.csv",
+          "sample_id": "biomarker=1.0|date=2020-03-01|diagnosis=malignant|notes=cross split identical record 14 appears in both files 182|patien"
+        }
+      ],
+      "justification": "重复率 23.81% ≥ 1.0%，如此高的跨划分重复极可能是划分前未去重",
+      "suggestion": "在划分前对全体数据去重，重新生成 train/val/test",
+      "affects": "train,test"
+    },
+    {
+      "rule_id": "LEAK-007",
+      "rule_name": "预处理阶段信息泄漏",
+      "severity": "high",
+      "message": "预处理器在合并后的全量数据上 fit：run_pipeline.py:5",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "run_pipeline.py",
+          "code_location": "run_pipeline.py:5",
+          "detail": "scaler.fit(X_all)"
+        }
+      ],
+      "justification": "代码行匹配已知泄漏模式：预处理器在合并后的全量数据上 fit",
+      "suggestion": "改为只在训练集上 fit，再 transform 训练/测试"
+    },
+    {
+      "rule_id": "PRE-003",
+      "rule_name": "训练与测试预处理不一致",
+      "severity": "high",
+      "message": "列 'patient_id' 在训练与测试中的类型不一致（numeric vs str）",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "train_v2.csv",
+          "field": "patient_id",
+          "detail": "train type=numeric"
+        },
+        {
+          "file_path": "test_v2.csv",
+          "field": "patient_id",
+          "detail": "test type=str"
+        }
+      ],
+      "justification": "同一字段在两个划分中类型不同，说明编码/解析方式不一致，直接拼接会错位",
+      "suggestion": "统一读取与编码逻辑，保证 train/test 同一 schema",
+      "affects": "train,test"
+    },
+    {
+      "rule_id": "DIST-002",
+      "rule_name": "训练/测试分布差异",
+      "severity": "medium",
+      "message": "标签 'diagnosis' 训练/测试比例差异达 16.0%：类别 'benign' 92.2% vs 76.2%",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "train_v2.csv",
+          "field": "diagnosis",
+          "detail": "train dist={'malignant': 33, 'benign': 392}"
+        },
+        {
+          "file_path": "test_v2.csv",
+          "field": "diagnosis",
+          "detail": "test dist={'malignant': 25, 'benign': 80}"
+        }
+      ],
+      "justification": "同一类别在两个划分中的占比相差超过 10 个百分点",
+      "suggestion": "使用分层划分（stratified split）保持类别比例一致",
+      "affects": "train,test"
+    },
+    {
+      "rule_id": "DIST-004",
+      "rule_name": "数据缺失严重",
+      "severity": "medium",
+      "message": "字段 'c' 缺失率 50.0%（1/2）：notes.csv",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "notes.csv",
+          "field": "c",
+          "detail": "missing=1/2"
+        }
+      ],
+      "justification": "采样 2 行中 50.0% 为空值标记",
+      "suggestion": "确认缺失机制（MCAR/MAR/MNAR）并声明处理策略"
+    },
+    {
+      "rule_id": "DIST-005",
+      "rule_name": "样本偏差（划分比例不一致）",
+      "severity": "medium",
+      "message": "划分 'test' 与 'train' 的类别 'benign' 比例相差 16.0%",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "test_v2.csv",
+          "field": "label",
+          "detail": "test dist={'malignant': 25, 'benign': 80}"
+        },
+        {
+          "file_path": "train_v2_backup.csv",
+          "field": "label",
+          "detail": "train dist={'malignant': 33, 'benign': 392}"
+        }
+      ],
+      "justification": "同一类别在不同划分中的占比差异超过 5 个百分点，划分可能非随机或存在抽样偏差",
+      "suggestion": "确认划分是否分层（stratified）；必要时重新划分"
+    },
+    {
+      "rule_id": "INT-006",
+      "rule_name": "数据类型异常",
+      "severity": "medium",
+      "message": "数值列 'patient_id' 混入 25 个非数值值（train_v2.csv）",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "train_v2.csv",
+          "sample_id": "row#400",
+          "field": "patient_id",
+          "detail": "row#400='dup0', row#401='dup1', row#402='dup2'"
+        }
+      ],
+      "justification": "列 'patient_id' 大部分值可转为 int，但存在无法转换的值",
+      "suggestion": "确认是脏数据还是类型设计错误；必要时清洗"
+    },
+    {
+      "rule_id": "INT-006",
+      "rule_name": "数据类型异常",
+      "severity": "medium",
+      "message": "数值列 'patient_id' 混入 25 个非数值值（train_v2_backup.csv）",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "train_v2_backup.csv",
+          "sample_id": "row#400",
+          "field": "patient_id",
+          "detail": "row#400='dup0', row#401='dup1', row#402='dup2'"
+        }
+      ],
+      "justification": "列 'patient_id' 大部分值可转为 int，但存在无法转换的值",
+      "suggestion": "确认是脏数据还是类型设计错误；必要时清洗"
+    },
+    {
+      "rule_id": "LEAK-003",
+      "rule_name": "同内容不同文件名",
+      "severity": "medium",
+      "message": "内容完全相同的 2 个文件：train_v2.csv, train_v2_backup.csv",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file_path": "train_v2.csv",
+          "detail": "sha256=d3265d761342fa1b... 同组: train_v2_backup.csv"
+        }
+      ],
+      "justification": "SHA256 完全一致，字节级相同；文件名不同，可能是数据划分时的副本泄漏",
+      "suggestion": "确认是否为冗余副本；若是不同划分中的同一文件，属于数据泄漏"
+    },
+    {
+      "rule_id": "LEAK-004",
+      "rule_name": "近似重复样本",
+      "severity": "medium",
+      "message": "发现 511 对近似重复文本样本（Jaccard ≥ 0.9）",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "test_v2.csv",
+          "sample_id": "row#0",
+          "detail": "近重复对之一"
+        },
+        {
+          "file_path": "train_v2.csv",
+          "sample_id": "row#400",
+          "detail": "近重复对之二"
+        }
+      ],
+      "justification": "字符 3-gram shingle Jaccard 相似度 ≥ 0.9",
+      "suggestion": "确认是否为跨划分近重复；是则需去重后重新划分"
+    },
+    {
+      "rule_id": "LEAK-006",
+      "rule_name": "时间序列未来信息泄漏",
+      "severity": "medium",
+      "message": "数据含时间列但采用常规 train/val/test 命名，疑似随机划分",
+      "confidence": "low",
+      "evidence": [
+        {
+          "file_path": "notes.csv",
+          "detail": "检测到时间列 + 常规划分命名"
+        }
+      ],
+      "justification": "对时序任务随机划分会让未来信息进入训练集；但无法从文件名确认是否按时间切分",
+      "suggestion": "确认划分是否按时间进行；随机划分时序数据会引入泄漏"
+    },
+    {
+      "rule_id": "LEAK-010",
+      "rule_name": "交叉验证划分不合理",
+      "severity": "medium",
+      "message": "使用随机 K 折划分（需结合任务确认是否为时序）：run_pipeline.py:7",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "run_pipeline.py",
+          "code_location": "run_pipeline.py:7",
+          "detail": "kf = KFold(n_splits=5, shuffle=True)"
+        }
+      ],
+      "justification": "代码行匹配已知泄漏模式：使用随机 K 折划分（需结合任务确认是否为时序）",
+      "suggestion": "时序数据改用 TimeSeriesSplit / 按时间切分"
+    },
+    {
+      "rule_id": "LEAK-010",
+      "rule_name": "交叉验证划分不合理",
+      "severity": "medium",
+      "message": "时序数据可能使用随机 KFold：run_pipeline.py:7",
+      "confidence": "low",
+      "evidence": [
+        {
+          "file_path": "run_pipeline.py",
+          "code_location": "run_pipeline.py:7",
+          "detail": "kf = KFold(n_splits=5, shuffle=True)"
+        }
+      ],
+      "justification": "数据含时间列，随机 KFold 会打乱时间顺序",
+      "suggestion": "改用 TimeSeriesSplit 或按时间切分"
+    },
+    {
+      "rule_id": "PRE-001",
+      "rule_name": "归一化/标准化存在但拟合范围不明",
+      "severity": "medium",
+      "message": "代码中存在缩放/归一化操作：run_pipeline.py:3",
+      "confidence": "low",
+      "evidence": [
+        {
+          "file_path": "run_pipeline.py",
+          "code_location": "run_pipeline.py:3",
+          "detail": "scaler = StandardScaler()"
+        }
+      ],
+      "justification": "检测到缩放操作，但未找到 fit(X_train) 模式，无法确认参数只从训练集拟合",
+      "suggestion": "确认 scaler 仅在训练集 fit，再 transform 测试集"
+    },
+    {
+      "rule_id": "INT-007",
+      "rule_name": "空值率过高",
+      "severity": "low",
+      "message": "字段 'biomarker' 空值率 10.6%（train_v2.csv）",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "train_v2.csv",
+          "field": "biomarker",
+          "detail": "missing=45/425"
+        }
+      ],
+      "justification": "空值率超过 10%"
+    },
+    {
+      "rule_id": "INT-007",
+      "rule_name": "空值率过高",
+      "severity": "low",
+      "message": "字段 'biomarker' 空值率 10.6%（train_v2_backup.csv）",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "train_v2_backup.csv",
+          "field": "biomarker",
+          "detail": "missing=45/425"
+        }
+      ],
+      "justification": "空值率超过 10%"
+    },
+    {
+      "rule_id": "PRE-002",
+      "rule_name": "缺失值填充策略未声明",
+      "severity": "low",
+      "message": "字段 'c' 缺失率 50.0%，但代码中未见缺失值填充策略",
+      "confidence": "low",
+      "evidence": [
+        {
+          "file_path": "notes.csv",
+          "field": "c",
+          "detail": "missing_rate=50.0%"
+        }
+      ],
+      "justification": "数据存在缺失且代码扫描未命中 fillna/Imputer/dropna 模式；也可能是填充发生在未提供的代码中",
+      "suggestion": "在代码或配置中声明缺失值处理（填充/删除/保留）"
+    },
+    {
+      "rule_id": "INT-001",
+      "rule_name": "文件哈希缺失",
+      "severity": "info",
+      "message": "SHA256 已记录：manifest.json",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file_path": "manifest.json",
+          "detail": "sha256=f5702695f04439f4..."
+        }
+      ],
+      "justification": "哈希可用于完整性验证与版本追溯"
+    },
+    {
+      "rule_id": "INT-001",
+      "rule_name": "文件哈希缺失",
+      "severity": "info",
+      "message": "SHA256 已记录：notes.csv",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file_path": "notes.csv",
+          "detail": "sha256=08ffee96caf3bcc0..."
+        }
+      ],
+      "justification": "哈希可用于完整性验证与版本追溯"
+    },
+    {
+      "rule_id": "INT-001",
+      "rule_name": "文件哈希缺失",
+      "severity": "info",
+      "message": "SHA256 已记录：test_v2.csv",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file_path": "test_v2.csv",
+          "detail": "sha256=9c4718823379d0a6..."
+        }
+      ],
+      "justification": "哈希可用于完整性验证与版本追溯"
+    },
+    {
+      "rule_id": "INT-001",
+      "rule_name": "文件哈希缺失",
+      "severity": "info",
+      "message": "SHA256 已记录：train_v2.csv",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file_path": "train_v2.csv",
+          "detail": "sha256=d3265d761342fa1b..."
+        }
+      ],
+      "justification": "哈希可用于完整性验证与版本追溯"
+    },
+    {
+      "rule_id": "INT-001",
+      "rule_name": "文件哈希缺失",
+      "severity": "info",
+      "message": "SHA256 已记录：train_v2_backup.csv",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file_path": "train_v2_backup.csv",
+          "detail": "sha256=d3265d761342fa1b..."
+        }
+      ],
+      "justification": "哈希可用于完整性验证与版本追溯"
+    },
+    {
+      "rule_id": "INT-010",
+      "rule_name": "数据集版本识别",
+      "severity": "info",
+      "message": "识别到数据集版本标识：2.0",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file_path": "empty.csv",
+          "dataset_version": "2.0",
+          "detail": "从文件/目录命名推断"
+        }
+      ],
+      "justification": "路径中包含语义化版本号模式"
+    },
+    {
+      "rule_id": "INT-011",
+      "rule_name": "数据来源追踪",
+      "severity": "info",
+      "message": "从清单/README 追踪到 2 个数据来源声明",
+      "confidence": "high",
+      "evidence": [
+        {
+          "file_path": "manifest/README",
+          "detail": "license: synthetic-demo-only; dataset: demo-synthetic-clinical"
+        }
+      ],
+      "justification": "文档中包含来源 URL"
+    },
+    {
+      "rule_id": "LEAK-006",
+      "rule_name": "时间序列未来信息泄漏",
+      "severity": "info",
+      "message": "训练/测试时间顺序正常（测试时间上界晚于训练）",
+      "confidence": "medium",
+      "evidence": [
+        {
+          "file_path": "train/test",
+          "field": "date",
+          "detail": "train_max=20200301, test_max=20210701"
+        }
+      ],
+      "justification": "按时间顺序划分的必要条件满足"
+    },
+    {
+      "rule_id": "PRE-002",
+      "rule_name": "缺失值填充策略未声明",
+      "severity": "info",
+      "message": "类别字段 'diagnosis'（2 个取值）未见编码代码：test_v2.csv",
+      "confidence": "low",
+      "evidence": [
+        {
+          "file_path": "test_v2.csv",
+          "field": "diagnosis",
+          "detail": "sample_values=['benign', 'malignant']"
+        }
+      ],
+      "justification": "非数值类别字段存在，但代码中未见 OneHot/LabelEncoder/get_dummies 模式",
+      "suggestion": "确认特征编码发生在何处（可能在未提供的代码中）"
+    },
+    {
+      "rule_id": "PRE-002",
+      "rule_name": "缺失值填充策略未声明",
+      "severity": "info",
+      "message": "类别字段 'diagnosis'（2 个取值）未见编码代码：train_v2.csv",
+      "confidence": "low",
+      "evidence": [
+        {
+          "file_path": "train_v2.csv",
+          "field": "diagnosis",
+          "detail": "sample_values=['benign', 'malignant']"
+        }
+      ],
+      "justification": "非数值类别字段存在，但代码中未见 OneHot/LabelEncoder/get_dummies 模式",
+      "suggestion": "确认特征编码发生在何处（可能在未提供的代码中）"
+    },
+    {
+      "rule_id": "PRE-002",
+      "rule_name": "缺失值填充策略未声明",
+      "severity": "info",
+      "message": "类别字段 'diagnosis'（2 个取值）未见编码代码：train_v2_backup.csv",
+      "confidence": "low",
+      "evidence": [
+        {
+          "file_path": "train_v2_backup.csv",
+          "field": "diagnosis",
+          "detail": "sample_values=['benign', 'malignant']"
+        }
+      ],
+      "justification": "非数值类别字段存在，但代码中未见 OneHot/LabelEncoder/get_dummies 模式",
+      "suggestion": "确认特征编码发生在何处（可能在未提供的代码中）"
+    }
+  ],
+  "stats": {
+    "files": 4,
+    "total_rows": 957,
+    "per_file": {
+      "notes.csv": {
+        "rows": 2,
+        "sampled": 2,
+        "columns": 3
+      },
+      "test_v2.csv": {
+        "rows": 105,
+        "sampled": 105,
+        "columns": 5
+      },
+      "train_v2.csv": {
+        "rows": 425,
+        "sampled": 425,
+        "columns": 5
+      },
+      "train_v2_backup.csv": {
+        "rows": 425,
+        "sampled": 425,
+        "columns": 5
+      }
+    },
+    "splits": {
+      "test": 105,
+      "train": 850
+    },
+    "files_scanned": 6,
+    "images_scanned": 0,
+    "code_files_scanned": 1,
+    "dataset_version": "2.0",
+    "sources": [
+      "license: synthetic-demo-only",
+      "dataset: demo-synthetic-clinical"
+    ],
+    "findings_dropped_no_evidence": 0
+  },
+  "rule_results": {
+    "INT-001": "pass",
+    "INT-002": "skipped",
+    "INT-003": "fail",
+    "INT-004": "fail",
+    "INT-005": "skipped",
+    "INT-006": "fail",
+    "INT-007": "fail",
+    "INT-008": "skipped",
+    "INT-009": "skipped",
+    "INT-010": "pass",
+    "INT-011": "pass",
+    "LEAK-001": "fail",
+    "LEAK-002": "skipped",
+    "LEAK-003": "fail",
+    "LEAK-004": "fail",
+    "LEAK-005": "skipped",
+    "LEAK-006": "fail",
+    "LEAK-007": "fail",
+    "LEAK-008": "skipped",
+    "LEAK-009": "skipped",
+    "LEAK-010": "fail",
+    "DIST-001": "skipped",
+    "DIST-002": "fail",
+    "DIST-003": "skipped",
+    "DIST-004": "fail",
+    "DIST-005": "fail",
+    "DIST-006": "skipped",
+    "PRE-001": "fail",
+    "PRE-002": "fail",
+    "PRE-003": "fail",
+    "PRE-004": "skipped",
+    "PRE-005": "skipped"
+  },
+  "duration_ms": 2059
+}

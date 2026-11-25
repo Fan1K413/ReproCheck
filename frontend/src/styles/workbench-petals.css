@@ -1,0 +1,455 @@
+/* ==========================================================================
+ * ReproCheck 一级工作台 · 二级「空间花瓣」
+ *
+ * 独立于一级的视觉语言：
+ * - 一级 = 浅色玻璃透镜 + 深紫线性图标；
+ * - 二级 = 深色烟熏玻璃薄片 + 排印编号，只用一条极细弧光串联。
+ * 面板位置全部由 petalLayout.ts 计算，本文件不写任何单个入口坐标。
+ * ========================================================================== */
+
+/* 盘外遮罩：位于圆盘之下（z1），只压暗背景，不挡入口切换。 */
+.rc-petal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(6, 3, 12, 0) 0 30%, rgba(6, 3, 12, 0.4) 100%),
+    linear-gradient(180deg, rgba(6, 3, 12, 0.2), rgba(6, 3, 12, 0.36));
+  cursor: default;
+  animation: rc-petal-scrim-in 220ms var(--rc-ease-out) both;
+}
+
+@keyframes rc-petal-scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* 花瓣层本身不拦截空白点击，只有面板与「收起」接收指针。 */
+.rc-petal-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  color: var(--rc-glass);
+}
+
+.rc-petal-stage[data-mode='stack'] {
+  z-index: 8;
+}
+
+/* ---- 层级标签：左上角一行排印，不占画布中心 --------------------------------- */
+.rc-petal-heading {
+  position: absolute;
+  top: 28px;
+  left: 32px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.rc-petal-heading__name {
+  font: 600 13px/1.2 var(--rc-font-display);
+  letter-spacing: 0.04em;
+  color: rgba(246, 240, 252, 0.82);
+  text-shadow: 0 1px 12px rgba(4, 2, 8, 0.9);
+}
+
+.rc-petal-heading__rule {
+  width: 22px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(233, 213, 255, 0.32), transparent);
+}
+
+.rc-petal-heading__count {
+  font: 500 9.5px/1 var(--rc-font-mono);
+  letter-spacing: 0.14em;
+  color: rgba(216, 180, 254, 0.46);
+}
+
+/* ---- 弧光：所有面板共用一条半径，线只做空间定位，不做仪表刻度 ------------- */
+.rc-petal-rail {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.rc-petal-rail__line {
+  fill: none;
+  stroke: rgba(216, 180, 254, 0.34);
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+.rc-petal-rail__glow {
+  fill: none;
+  stroke: rgba(168, 85, 247, 0.24);
+  stroke-width: 7;
+  stroke-linecap: round;
+  filter: blur(6px);
+}
+
+/* ---- 单片花瓣 ---------------------------------------------------------------- */
+.rc-petal {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 0 16px;
+  margin: 0;
+  border-radius: 20px 8px 20px 8px;
+  border: 1px solid rgba(233, 213, 255, 0.17);
+  background: linear-gradient(152deg, rgba(62, 38, 92, 0.8) 0%, rgba(20, 10, 36, 0.92) 100%);
+  color: #f4ecfb;
+  text-align: left;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    0 18px 42px rgba(0, 0, 0, 0.42);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+  backdrop-filter: blur(16px) saturate(125%);
+  animation: rc-petal-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--rc-petal-delay, 0ms);
+  transition:
+    border-color 180ms var(--rc-ease-hover),
+    background 180ms var(--rc-ease-hover),
+    box-shadow 200ms var(--rc-ease-hover);
+}
+
+/* 左缘的极细「花瓣脉」：让每片有方向，但不加厚边。 */
+.rc-petal::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 1px;
+  border-radius: 1px;
+  background: linear-gradient(
+    180deg,
+    rgba(233, 213, 255, 0.24) 0%,
+    rgba(196, 132, 252, 0.14) 45%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+@keyframes rc-petal-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%)
+      translate(var(--rc-petal-from-x, 0px), var(--rc-petal-from-y, 0px)) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(0, 0) scale(1);
+  }
+}
+
+.rc-petal:hover {
+  border-color: rgba(233, 213, 255, 0.4);
+  background: linear-gradient(152deg, rgba(78, 47, 116, 0.86) 0%, rgba(28, 14, 48, 0.94) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 20px 48px rgba(0, 0, 0, 0.48),
+    0 0 0 1px rgba(196, 132, 252, 0.1);
+}
+
+.rc-petal:active {
+  background: linear-gradient(152deg, rgba(76, 45, 112, 0.9) 0%, rgba(30, 15, 48, 0.95) 100%);
+}
+
+.rc-petal:focus-visible {
+  outline: 1.5px solid rgba(233, 213, 255, 0.72);
+  outline-offset: 2px;
+}
+
+.rc-petal__index {
+  flex: none;
+  width: 20px;
+  font: 500 9.5px/1 var(--rc-font-mono);
+  letter-spacing: 0.08em;
+  color: rgba(216, 180, 254, 0.44);
+  text-align: center;
+}
+
+.rc-petal__copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.rc-petal__label {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font: 600 13px/1.25 var(--rc-font-body);
+  letter-spacing: 0.006em;
+  color: rgba(248, 242, 255, 0.95);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+  .rc-petal-stage[data-mode='arc'] .rc-petal__label {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+}
+
+.rc-petal__hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 9.5px/1.3 var(--rc-font-body);
+  letter-spacing: 0.01em;
+  color: rgba(216, 180, 254, 0.52);
+}
+
+.rc-petal__go {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: rgba(233, 213, 255, 0.32);
+  transition:
+    color 160ms var(--rc-ease-hover),
+    transform 160ms var(--rc-ease-hover);
+}
+
+.rc-petal:hover .rc-petal__go {
+  color: rgba(248, 242, 255, 0.86);
+  transform: translate(1px, -1px);
+}
+
+/* ---- 收起：排印按钮，不做白底胶囊 -------------------------------------------- */
+.rc-petal-close {
+  position: absolute;
+  top: 18px;
+  right: 26px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: rgba(233, 213, 255, 0.56);
+  font: 600 11px/1 var(--rc-font-body);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  pointer-events: auto;
+  text-shadow: 0 1px 10px rgba(4, 2, 8, 0.9);
+  transition: color 160ms var(--rc-ease-hover);
+}
+
+.rc-petal-close:hover {
+  color: rgba(248, 242, 255, 0.94);
+}
+
+.rc-petal-close:focus-visible {
+  outline: 1.5px solid rgba(233, 213, 255, 0.7);
+  outline-offset: 2px;
+}
+
+.rc-petal-close__esc {
+  padding-left: 8px;
+  border-left: 1px solid rgba(233, 213, 255, 0.18);
+  font: 500 9px/1 var(--rc-font-mono);
+  letter-spacing: 0.1em;
+  color: rgba(216, 180, 254, 0.38);
+}
+
+/* ---- 一级在花瓣展开时的退让 ------------------------------------------------ */
+.rc-disc-shell[data-fan='true'] .rc-disc {
+  filter: brightness(0.84) saturate(0.92);
+  transition: filter 260ms var(--rc-ease-out);
+}
+
+.rc-disc-shell[data-fan='true'] .rc-disc-halo {
+  opacity: 0.5;
+  transition: opacity 260ms var(--rc-ease-out);
+}
+
+.rc-disc-shell[data-fan='true'] .rc-core {
+  opacity: 0.9;
+}
+
+.rc-disc-shell[data-fan='true'] .rc-track--entry {
+  opacity: 0.5;
+}
+
+/* 展开后名称交给中央标题，入口上不再残留气泡（需压过 data-dir 的高特异度规则）。 */
+.rc-disc-shell[data-fan='true'] .rc-entry[data-active='true'] .rc-tooltip,
+.rc-disc-shell[data-fan='true'] .rc-entry .rc-tooltip {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* 锚点先动：只有被点击的入口获得一次 460ms 的扩散脉冲。 */
+.rc-disc-shell[data-fan='true'] .rc-entry[data-active='true'] .rc-entry__bead::before {
+  opacity: 1;
+  animation: rc-anchor-pulse 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes rc-anchor-pulse {
+  0% {
+    opacity: 0.2;
+    transform: scale(0.72);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.16);
+  }
+  100% {
+    opacity: 0.96;
+    transform: scale(1.06);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   窄屏：盘面缩小上移，花瓣改为盘下纵向栈（布局由 petalLayout 同步计算）
+   -------------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  .rc-disc-shell[data-fan='true'] {
+    --rc-disc-lift: 150px;
+    --rc-disc-scale: 0.7;
+  }
+
+  /* 盘面缩到 0.7 后字号不再可读，只留当前入口标题，正文交给左上的层级标签。 */
+  .rc-disc-shell[data-fan='true'] .rc-core__brand,
+  .rc-disc-shell[data-fan='true'] .rc-core__hint,
+  .rc-disc-shell[data-fan='true'] .rc-core__desc,
+  .rc-disc-shell[data-fan='true'] .rc-core__drag {
+    display: none;
+  }
+
+  .rc-disc-shell[data-fan='true'] .rc-core__title {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .rc-disc-shell[data-fan='true'] .rc-core__live {
+    gap: 0;
+  }
+
+  .rc-petal-heading {
+    top: 14px;
+    left: 16px;
+    gap: 8px;
+  }
+
+  .rc-petal-heading__name {
+    font-size: 12px;
+  }
+
+  .rc-petal-heading__rule {
+    width: 16px;
+  }
+
+  .rc-petal-close {
+    top: 6px;
+    right: 12px;
+  }
+
+  .rc-petal-stage[data-mode='stack'] .rc-petal {
+    gap: 8px;
+    padding: 0 12px 0 14px;
+    border-radius: 12px;
+  }
+
+  .rc-petal-stage[data-mode='stack'] .rc-petal__index {
+    width: 16px;
+    font-size: 9px;
+  }
+
+  .rc-petal-stage[data-mode='stack'] .rc-petal__label {
+    font-size: 12.5px;
+    -webkit-line-clamp: 1;
+  }
+
+  .rc-petal-stage[data-columns='2'] .rc-petal__label {
+    font-size: 12px;
+    line-height: 1.22;
+    -webkit-line-clamp: 2;
+  }
+
+  .rc-petal-stage[data-columns='2'] .rc-petal {
+    padding: 0 10px;
+    gap: 6px;
+  }
+
+  .rc-petal-stage[data-mode='stack'] .rc-petal__hint {
+    display: none;
+  }
+
+  .rc-petal-close__esc {
+    display: none;
+  }
+
+  .rc-petal-stage[data-mode='stack'] .rc-petal__go {
+    display: none;
+  }
+
+  .rc-petal-stage[data-mode='stack'] .rc-petal-rail__line {
+    stroke: rgba(216, 180, 254, 0.18);
+  }
+}
+
+@media (max-width: 860px) and (max-height: 759px) {
+  .rc-disc-shell[data-fan='true'] {
+    --rc-disc-lift: 140px;
+    --rc-disc-scale: 0.7;
+  }
+}
+
+@media (max-width: 860px) and (max-height: 619px) {
+  .rc-disc-shell[data-fan='true'] {
+    --rc-disc-lift: 100px;
+    --rc-disc-scale: 0.6;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   prefers-reduced-motion：取消位移、缩放、模糊与级联，只保留 120ms 显隐
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .rc-petal {
+    animation-name: rc-petal-fade;
+    animation-duration: 120ms;
+    animation-delay: 0ms !important;
+  }
+
+  .rc-petal-scrim {
+    animation: none;
+  }
+
+  .rc-disc-shell[data-fan='true'] .rc-entry[data-active='true'] .rc-entry__bead::before {
+    animation: none;
+  }
+
+  .rc-disc-shell {
+    transition: none;
+  }
+
+  @keyframes rc-petal-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

@@ -6,13 +6,15 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_admin
+from app.api.deps import get_current_user, require_admin, resolve_project_access
 from app.core.errors import AppError, ok
 from app.db import get_db
 from app.models import ExtractedFact, Material, SourceChunk
+from app.models.stage6 import User
 from app.services.material_service import MaterialService
 
 router = APIRouter(tags=["materials"])
@@ -26,6 +28,8 @@ def _view(m: Material, chunk_count: int = 0, fact_count: int = 0) -> dict[str, A
         "sha256": m.sha256, "chunk_count": chunk_count, "fact_count": fact_count,
         "created_at": m.created_at.isoformat() if m.created_at else "",
         "error_message": m.parse_error_message,
+        # 仅代码仓库链接对外暴露地址；其他材料的 raw_text 是正文，不能放进列表。
+        "external_url": m.raw_text if m.material_type == "code_repository" else None,
     }
 
 
@@ -42,6 +46,30 @@ async def upload_material(
         raise
     except Exception:  # noqa: BLE001
         raise AppError("DB_SAVE_FAILED", "材料保存失败。")
+    return ok(_view(material), getattr(request.state, "request_id", "-"))
+
+
+class RepositoryLinkIn(BaseModel):
+    """只登记代码仓库地址，不下载、不解析仓库内容。"""
+
+    project_id: str = Field(min_length=1, max_length=36)
+    url: str = Field(min_length=4, max_length=500)
+    name: str = Field(default="", max_length=200)
+
+
+@router.post("/materials/link-repository")
+async def link_repository(
+    body: RepositoryLinkIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """把代码仓库地址登记为项目材料；权限与项目成员规则一致。"""
+    await resolve_project_access(db, body.project_id, user)
+    service = MaterialService(db)
+    material = await service.link_repository(
+        project_id=body.project_id, url=body.url, name=body.name,
+    )
     return ok(_view(material), getattr(request.state, "request_id", "-"))
 
 

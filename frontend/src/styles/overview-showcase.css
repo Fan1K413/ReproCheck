@@ -1,0 +1,287 @@
+/* ==========================================================================
+ * ReproCheck · 解析概览（OverviewPage）
+ * 图 4 精密线框：近黑底 + 24px 细网格 + 1px 分隔线 + r6 chip + mono 读数
+ *
+ * 唯一色源：--rc-*（global-design-system.md §1.9）；本文件不新增颜色字面量。
+ * 仪表盘弧段长度严格 ∝ 后端 parse-overview 的真实计数，无数据时不出弧段。
+ * ========================================================================== */
+
+/* ------------------------------------------------------------ 仪表舞台 */
+.ov-stage {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+}
+
+.ov-stage__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* 刻度环与基准环 */
+.ov-ring {
+  fill: none;
+  stroke: var(--rc-border-hair);
+}
+
+.ov-ring--strong {
+  stroke: var(--rc-border-strong);
+}
+
+.ov-tick {
+  stroke: var(--rc-border-hair);
+  stroke-width: 1;
+}
+
+.ov-tick--major {
+  stroke: var(--rc-border-strong);
+  stroke-width: 1.5;
+}
+
+/* 数据弧段：真实占比 */
+.ov-arc {
+  fill: none;
+  stroke-width: 46;
+  stroke-linecap: butt;
+  transition: stroke-dasharray var(--rc-dur-slow) var(--rc-ease-out);
+}
+
+.ov-arc--success {
+  stroke: var(--rc-success);
+}
+
+.ov-arc--warning {
+  stroke: var(--rc-warning);
+}
+
+.ov-arc--danger {
+  stroke: var(--rc-danger);
+}
+
+.ov-arc--info {
+  stroke: var(--rc-info);
+}
+
+.ov-arc--violet {
+  stroke: var(--rc-violet);
+}
+
+.ov-arc--neutral {
+  stroke: var(--rc-neutral);
+}
+
+/* 锚点 */
+.ov-dot {
+  fill: var(--rc-magenta);
+}
+
+.ov-dot--muted {
+  fill: var(--rc-neutral);
+}
+
+/* 文字 */
+/* --------------------------------------------------------- 仪表读数浮层 */
+/* 读数用 HTML 叠层渲染，保证字号走 --rc-fs-* 排印层级（SVG 内文字过小不可读） */
+.ov-float {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translate3d(-50%, -50%, 0);
+  text-align: center;
+  pointer-events: none;
+}
+
+.ov-float__value {
+  font-family: var(--rc-font-mono);
+  font-size: var(--rc-fs-h2);
+  font-weight: var(--rc-fw-sb);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--rc-text);
+}
+
+.ov-float__label {
+  font-size: var(--rc-fs-caption);
+  line-height: 1.3;
+  color: var(--rc-text-muted);
+}
+
+.ov-float__field {
+  font-family: var(--rc-font-mono);
+  font-size: var(--rc-fs-micro);
+  letter-spacing: var(--rc-ls-mono);
+  color: var(--rc-text-subtle);
+}
+
+.ov-float--core .ov-float__value {
+  font-family: var(--rc-font-display);
+  font-size: var(--rc-fs-h1);
+}
+
+.ov-float--core .ov-float__label {
+  font-family: var(--rc-font-mono);
+  font-size: var(--rc-fs-micro);
+  letter-spacing: var(--rc-ls-mono);
+  text-transform: uppercase;
+  color: var(--rc-text-subtle);
+}
+
+/* ------------------------------------------------------- 类型分布（真实） */
+.ov-dist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rc-space-3);
+}
+
+.ov-dist__row {
+  display: grid;
+  grid-template-columns: minmax(96px, 168px) minmax(0, 1fr) auto;
+  gap: var(--rc-space-3);
+  align-items: center;
+}
+
+.ov-dist__name {
+  font-size: var(--rc-fs-caption);
+  color: var(--rc-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ov-dist__track {
+  height: 10px;
+  border-radius: var(--rc-radius-pill);
+  background-color: var(--rc-surface-3);
+  overflow: hidden;
+}
+
+.ov-dist__bar {
+  display: block;
+  height: 100%;
+  border-radius: var(--rc-radius-pill);
+  background-color: var(--rc-violet);
+  transform-origin: left center;
+  animation: ov-grow var(--rc-dur-slow) var(--rc-ease-out) both;
+}
+
+.ov-dist__n {
+  font-family: var(--rc-font-mono);
+  font-size: var(--rc-fs-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--rc-text);
+}
+
+@keyframes ov-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* --------------------------------------------------------- 精密读数网格 */
+.ov-readouts {
+  display: grid;
+  gap: var(--rc-space-3);
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+}
+
+.ov-readout {
+  border: var(--rc-stroke-hair);
+  border-radius: var(--rc-radius-xs);
+  background-color: var(--rc-surface-2);
+  padding: var(--rc-space-3);
+}
+
+.ov-readout__label {
+  font-family: var(--rc-font-mono);
+  font-size: var(--rc-fs-micro);
+  font-weight: var(--rc-fw-sb);
+  letter-spacing: var(--rc-ls-mono);
+  text-transform: uppercase;
+  color: var(--rc-text-subtle);
+}
+
+.ov-readout__value {
+  margin-top: var(--rc-space-1);
+  font-family: var(--rc-font-display);
+  font-size: var(--rc-fs-h2);
+  font-weight: var(--rc-fw-sb);
+  line-height: var(--rc-lh-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--rc-text);
+}
+
+.ov-readout__value--success {
+  color: var(--rc-success);
+}
+
+.ov-readout__value--warning {
+  color: var(--rc-warning);
+}
+
+.ov-readout__value--danger {
+  color: var(--rc-danger);
+}
+
+.ov-readout__value--info {
+  color: var(--rc-info);
+}
+
+.ov-readout__value--violet {
+  color: var(--rc-violet);
+}
+
+.ov-readout__field {
+  margin-top: var(--rc-space-1);
+  font-family: var(--rc-font-mono);
+  font-size: var(--rc-fs-micro);
+  color: var(--rc-text-subtle);
+}
+
+/* ------------------------------------------------------------ 响应式 */
+@media (max-width: 767px) {
+  .ov-stage {
+    max-width: 420px;
+  }
+
+  .ov-dist__row {
+    grid-template-columns: minmax(80px, 120px) minmax(0, 1fr) auto;
+    gap: var(--rc-space-2);
+  }
+}
+
+/* 窄屏：仪表读数收窄，避免与环体重叠（字段路径在下方卡片中仍可读） */
+@media (max-width: 639px) {
+  .ov-float__field {
+    display: none;
+  }
+
+  .ov-float__value {
+    font-size: var(--rc-fs-h3);
+  }
+
+  .ov-float__label {
+    font-size: var(--rc-fs-micro);
+  }
+
+  .ov-float--core .ov-float__value {
+    font-size: var(--rc-fs-h2);
+  }
+}
+
+/* ------------------------------------------------- reduced-motion 降级 */
+@media (prefers-reduced-motion: reduce) {
+  .ov-dist__bar {
+    animation: none;
+    transform: none;
+  }
+}

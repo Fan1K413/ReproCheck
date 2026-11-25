@@ -19,6 +19,12 @@ openpyxl==3.1.5
 PyJWT==2.10.1
 cryptography==44.0.0
 
+# statistics audit (Stage: 科研统计与可信度审计)
+# scipy/numpy 为成熟统计计算库；stataudit 各原语均带纯 Python 后备，
+# 缺少这些库时自动降级，不影响模块可用性与可复算性。
+numpy>=2.0,<3
+scipy>=1.13,<2
+
 # test
 pytest==8.3.4
 pytest-asyncio==0.25.0

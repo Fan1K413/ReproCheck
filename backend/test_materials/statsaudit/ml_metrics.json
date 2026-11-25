@@ -1,0 +1,83 @@
+{
+  "version": "1.0",
+  "description": "机器学习指标审计引擎端到端测试材料：全部数值由公开公式手算给出，覆盖二分类混淆矩阵、多分类平均口径、AUC 口径、数据集划分与回归指标。",
+  "cases": {
+    "binary_confusion": {
+      "task_type": "classification",
+      "tolerance": 0.000001,
+      "dataset": {
+        "y_true": [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "y_pred": [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+        "labels": [0, 1],
+        "split": {
+          "train": {"sample_count": 60, "claimed_count": 60},
+          "val": {"sample_count": 20, "claimed_count": 20},
+          "test": {"sample_count": 20, "claimed_count": 20}
+        }
+      },
+      "reported_holdout": "test",
+      "claims": [
+        {"metric": "precision", "claimed": 0.714286, "tp": 5, "fp": 2, "fn": 3, "tn": 10, "source": "paper", "holdout": "test"},
+        {"metric": "recall", "claimed": 0.625, "tp": 5, "fp": 2, "fn": 3, "tn": 10, "source": "paper", "holdout": "test"},
+        {"metric": "f1", "claimed": 0.666667, "tp": 5, "fp": 2, "fn": 3, "tn": 10, "source": "paper", "holdout": "test"},
+        {"metric": "accuracy", "claimed": 0.75, "tp": 5, "fp": 2, "fn": 3, "tn": 10, "source": "paper", "holdout": "test"}
+      ]
+    },
+    "multiclass_anomalies": {
+      "task_type": "classification",
+      "tolerance": 0.000001,
+      "dataset": {
+        "y_true": [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2],
+        "y_pred": [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 0],
+        "y_score": [
+          [0.9, 0.05, 0.05],
+          [0.8, 0.15, 0.05],
+          [0.7, 0.20, 0.10],
+          [0.6, 0.30, 0.10],
+          [0.3, 0.60, 0.10],
+          [0.2, 0.70, 0.10],
+          [0.1, 0.80, 0.10],
+          [0.1, 0.70, 0.20],
+          [0.1, 0.40, 0.50],
+          [0.1, 0.30, 0.60],
+          [0.1, 0.20, 0.70],
+          [0.5, 0.10, 0.40]
+        ],
+        "labels": [0, 1, 2],
+        "split": {
+          "train": {"sample_count": 100, "claimed_count": 100},
+          "val": {"sample_count": 20, "claimed_count": 20},
+          "test": {"sample_count": 20, "claimed_count": 25}
+        }
+      },
+      "reported_holdout": "test",
+      "claims": [
+        {"metric": "accuracy", "claimed": 0.583333, "average": null, "source": "paper", "holdout": "test"},
+        {"metric": "macro_f1", "claimed": 0.542424, "average": "macro", "source": "paper", "holdout": "test"},
+        {"metric": "f1", "claimed": 0.596970, "average": "macro", "source": "table2", "holdout": "test"},
+        {"metric": "roc_auc", "claimed": 0.9, "method": "binary_roc_auc", "source": "paper", "holdout": "test"},
+        {"metric": "f1", "claimed": 0.596970, "average": "weighted", "source": "table3", "holdout": "val"}
+      ]
+    },
+    "regression": {
+      "task_type": "regression",
+      "tolerance": 0.000001,
+      "dataset": {
+        "y_true": [1, 2, 3, 4, 5],
+        "y_pred": [1.1, 2.1, 2.9, 3.8, 5.2],
+        "split": {
+          "train": {"sample_count": 80, "claimed_count": 80},
+          "test": {"sample_count": 20, "claimed_count": 20}
+        }
+      },
+      "reported_holdout": "test",
+      "claims": [
+        {"metric": "rmse", "claimed": 0.148324, "source": "paper", "holdout": "test"},
+        {"metric": "mae", "claimed": 0.14, "source": "paper", "holdout": "test"},
+        {"metric": "r2", "claimed": 0.95, "source": "paper", "holdout": "test"},
+        {"metric": "r2", "claimed": 0.989, "method": "zero", "source": "appendix", "holdout": "test"}
+      ]
+    },
+    "empty": {}
+  }
+}

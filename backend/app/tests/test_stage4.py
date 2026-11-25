@@ -56,7 +56,7 @@ def _mk_response(payload):
     }, request=httpx.Request("POST", "https://mock/v1/chat/completions"))
 
 
-# ---------------- DAG ----------------
+# DAG
 
 def test_dag_valid_topological_order():
     tasks = [{"task_key": "A", "depends_on": []},
@@ -89,7 +89,7 @@ def test_blocking_propagation():
     assert result[1]["status"] == "blocked"
 
 
-# ---------------- feasibility ----------------
+# feasibility
 
 def test_feasibility_security_block():
     task = {"title": "训练", "action": "执行 rm -rf /data 清理", "needs_human_confirm": False}
@@ -112,7 +112,7 @@ def test_feasibility_missing_config_not_blame_researcher():
     assert "不等于研究者未设置" in reason
 
 
-# ---------------- sandbox security ----------------
+# sandbox security
 
 def test_security_preflight_detects_dangerous_script():
     code = "import os\nos.system('rm -rf /')\nx = requests.get('http://169.254.169.254/latest')"
@@ -140,7 +140,7 @@ def test_env_detector():
     assert any(f["kind"] == "requirements" for f in info["dependency_files"])
 
 
-# ---------------- result comparison ----------------
+# result comparison
 
 def test_metric_comparator_verdicts():
     c = MetricComparator()
@@ -167,7 +167,7 @@ def test_quality_scope_note():
     assert "Σ" in q["formula"]
 
 
-# ---------------- planner (mock LLM) ----------------
+# planner (mock LLM)
 
 @pytest.mark.asyncio
 async def test_planner_generates_valid_dag(session_fixture, monkeypatch):
@@ -214,7 +214,7 @@ async def test_planner_rejects_cycle_from_ai(session_fixture, monkeypatch):
     assert ei.value.code == "DAG_INVALID"
 
 
-# ---------------- sandbox run creation ----------------
+# sandbox run creation
 
 @pytest.mark.asyncio
 async def test_run_creation_blocked_no_sandbox(session_fixture, monkeypatch):
@@ -229,7 +229,7 @@ async def test_run_creation_blocked_no_sandbox(session_fixture, monkeypatch):
     assert sec["sandbox_available"] is False
 
 
-# ---------------- diagnosis no key ----------------
+# diagnosis no key
 
 @pytest.mark.asyncio
 async def test_diagnosis_no_key_not_fake(session_fixture, monkeypatch):
@@ -242,7 +242,7 @@ async def test_diagnosis_no_key_not_fake(session_fixture, monkeypatch):
     assert ei.value.code == "LLM_KEY_NOT_CONFIGURED"
 
 
-# ---------------- report generation ----------------
+# report generation
 
 @pytest.mark.asyncio
 async def test_report_generation_14_chapters_with_sources(session_fixture):
@@ -256,7 +256,7 @@ async def test_report_generation_14_chapters_with_sources(session_fixture):
     assert all("sources" in s and "origin" in s for s in sections)
     # 范围声明明确不是学术质量判定
     assert "学术质量" in report.scope_note
-    # PDF 不可用时如实为 None，不伪造
+    # PDF 不可用时返回 None
     assert report.pdf_path is None or isinstance(report.pdf_path, str)
 
 

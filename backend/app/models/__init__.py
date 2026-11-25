@@ -47,7 +47,7 @@ class Project(Base):
         DateTimeUTC(), default=_now, onupdate=_now, server_default=func.now()
     )
 
-    # ---- 第六阶段追加列（nullable，兼容遗留数据；由 migrate_stage6 回填归属） ----
+    # 第六阶段追加列（nullable，兼容遗留数据；由 migrate_stage6 回填归属）
     owner_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     org_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     workspace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
@@ -71,7 +71,7 @@ class Material(Base):
         DateTimeUTC(), default=_now, server_default=func.now()
     )
 
-    # ---- 第二阶段追加列（全部 nullable/默认值，兼容第一阶段数据） ----
+    # 第二阶段追加列（全部 nullable/默认值，兼容第一阶段数据）
     original_filename: Mapped[str | None] = mapped_column(String(300), nullable=True)
     stored_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     file_size_bytes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
@@ -119,7 +119,7 @@ class SourceChunk(Base):
         DateTimeUTC(), default=_now, server_default=func.now()
     )
 
-    # ---- 第二阶段追加列 ----
+    # 第二阶段追加列
     project_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     material_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
@@ -147,7 +147,7 @@ class ExtractedFact(Base):
     unit: Mapped[str | None] = mapped_column(String(40), nullable=True)
     confidence: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
 
-    # ---- 第二阶段追加列（第一阶段旧行取默认值，不丢失） ----
+    # 第二阶段追加列（第一阶段旧行取默认值，不丢失）
     fact_id: Mapped[str | None] = mapped_column(String(60), nullable=True, index=True)
     fact_type: Mapped[str] = mapped_column(
         String(40), default="training_parameter", server_default="training_parameter"
@@ -240,7 +240,7 @@ class AIRun(Base):
     provider: Mapped[str] = mapped_column(String(40), default="", server_default="")
     model: Mapped[str] = mapped_column(String(120), default="", server_default="")
     request_id: Mapped[str] = mapped_column(String(60), default="", server_default="")
-    # ---- 第二阶段追加列 ----
+    # 第二阶段追加列
     task_type: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
     prompt_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
     material_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)

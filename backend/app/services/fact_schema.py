@@ -48,10 +48,10 @@ def _f(label: str, label_en: str, category: str, unit: str, aliases: list[str],
             "unit": unit, "aliases": aliases, "value_type": value_type}
 
 
-# ============================ 标准字段目录 ============================
+# 标准字段目录
 
 STANDARD_FIELDS: dict[str, dict[str, Any]] = {
-    # ---- 训练参数 ----
+    # 训练参数
     "learning_rate": _f("学习率", "Learning Rate", "training_parameter", "", [
         "lr", "learning rate", "learningrate", "init_lr", "initial_learning_rate",
         "base_lr", "peak_lr", "学习率", "初始学习率"], "float"),
@@ -87,7 +87,7 @@ STANDARD_FIELDS: dict[str, dict[str, Any]] = {
     "warmup_epochs": _f("预热轮数", "Warmup Epochs", "training_parameter", "epoch", [
         "warmup", "warmup_steps", "warmup_ratio", "预热轮数", "预热步数"], "float"),
 
-    # ---- 运行环境 ----
+    # 运行环境
     "python_version": _f("Python 版本", "Python Version", "environment", "", [
         "python", "python_ver", "py_version", "python版本"], "version"),
     "pytorch_version": _f("PyTorch 版本", "PyTorch Version", "environment", "", [
@@ -112,7 +112,7 @@ STANDARD_FIELDS: dict[str, dict[str, Any]] = {
     "docker_image": _f("容器镜像", "Docker Image", "environment", "", [
         "container_image", "docker", "container", "镜像", "容器镜像"], "string"),
 
-    # ---- 数据集 ----
+    # 数据集
     "dataset_name": _f("数据集名称", "Dataset Name", "dataset", "", [
         "dataset", "data", "data_name", "corpus", "数据集", "数据集名", "数据集名称"], "string"),
     "dataset_version": _f("数据集版本", "Dataset Version", "dataset", "", [
@@ -138,7 +138,7 @@ STANDARD_FIELDS: dict[str, dict[str, Any]] = {
     "dataset_size": _f("数据集规模", "Dataset Size", "dataset", "samples", [
         "num_samples", "total_samples", "sample_count", "样本数", "数据量", "数据集规模"], "int"),
 
-    # ---- 评价指标 ----
+    # 评价指标
     "accuracy": _f("准确率", "Accuracy", "metric", "ratio", [
         "acc", "top1", "top-1", "top1_accuracy", "acc@1", "accuracy_rate", "准确率"], "ratio"),
     "precision": _f("精确率", "Precision", "metric", "ratio", [

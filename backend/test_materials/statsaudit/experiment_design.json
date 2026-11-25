@@ -1,0 +1,123 @@
+{
+  "cases": {
+    "full_design": {
+      "control_group": {
+        "baseline_declared": true,
+        "randomization_declared": true,
+        "blinding_declared": true
+      },
+      "claimed_components": ["attention", "pre_norm", "augmentation"],
+      "ablations": ["attention", "pre_norm", "augmentation"],
+      "baselines": [
+        {"name": "ResNet-50", "contemporaneous": true, "tuned": true},
+        {"name": "ViT-B/16", "contemporaneous": true, "tuned": true}
+      ],
+      "hyperparam_search": {"test_set_used": false, "search_trials": 25},
+      "reported_seeds": [1, 2, 3, 4, 5],
+      "total_seeds": 5,
+      "reported_splits": ["train", "val", "test"],
+      "reported_metrics": ["accuracy", "f1"],
+      "all_metrics": ["accuracy", "f1"],
+      "best_metric_only": false,
+      "n_repeats": 5,
+      "alpha": 0.05,
+      "pvalue": 0.01,
+      "effect_size": 0.55
+    },
+    "empty": {},
+    "selective_reporting": {
+      "control_group": {"baseline_declared": true, "randomization_declared": true, "blinding_declared": true},
+      "claimed_components": ["attention"],
+      "ablations": ["attention"],
+      "baselines": [{"name": "ResNet-50", "contemporaneous": true}],
+      "hyperparam_search": {"test_set_used": false, "search_trials": 10},
+      "reported_seeds": [1, 2],
+      "total_seeds": 5,
+      "reported_splits": ["train", "val"],
+      "reported_metrics": ["accuracy"],
+      "all_metrics": ["accuracy", "f1", "auc"],
+      "best_metric_only": true,
+      "n_repeats": 5,
+      "pvalue": 0.02,
+      "effect_size": 0.4
+    },
+    "hyperparam_contamination": {
+      "control_group": {"baseline_declared": true, "randomization_declared": true, "blinding_declared": true},
+      "claimed_components": ["attention"],
+      "ablations": ["attention"],
+      "baselines": [{"name": "ResNet-50", "contemporaneous": true}],
+      "hyperparam_search": {"test_set_used": true, "search_trials": 20},
+      "reported_seeds": [1, 2, 3],
+      "total_seeds": 3,
+      "reported_splits": ["train", "val", "test"],
+      "reported_metrics": ["accuracy"],
+      "all_metrics": ["accuracy"],
+      "best_metric_only": false,
+      "n_repeats": 3,
+      "pvalue": 0.02,
+      "effect_size": 0.4
+    },
+    "missing_search_trials": {
+      "hyperparam_search": {"test_set_used": false},
+      "n_repeats": 4,
+      "reported_seeds": [1, 2, 3],
+      "total_seeds": 3,
+      "reported_splits": ["train", "val", "test"]
+    },
+    "few_repeats": {
+      "control_group": {"baseline_declared": true, "randomization_declared": true, "blinding_declared": true},
+      "claimed_components": ["attention"],
+      "ablations": ["attention"],
+      "baselines": [{"name": "ResNet-50", "contemporaneous": true}],
+      "hyperparam_search": {"test_set_used": false, "search_trials": 12},
+      "reported_seeds": [1, 2],
+      "total_seeds": 2,
+      "reported_splits": ["train", "val", "test"],
+      "reported_metrics": ["accuracy"],
+      "all_metrics": ["accuracy"],
+      "best_metric_only": false,
+      "n_repeats": 2,
+      "pvalue": 0.02,
+      "effect_size": 0.5
+    },
+    "small_effect": {
+      "control_group": {"baseline_declared": true, "randomization_declared": true, "blinding_declared": true},
+      "claimed_components": ["attention"],
+      "ablations": ["attention"],
+      "baselines": [{"name": "ResNet-50", "contemporaneous": true}],
+      "hyperparam_search": {"test_set_used": false, "search_trials": 10},
+      "reported_seeds": [1, 2, 3],
+      "total_seeds": 3,
+      "reported_splits": ["train", "val", "test"],
+      "reported_metrics": ["accuracy"],
+      "all_metrics": ["accuracy"],
+      "best_metric_only": false,
+      "n_repeats": 3,
+      "alpha": 0.05,
+      "pvalue": 0.01,
+      "effect_size": 0.15,
+      "practical_significance_threshold": 0.2
+    },
+    "causal_language": {
+      "control_group": {"baseline_declared": true, "randomization_declared": true, "blinding_declared": true},
+      "claimed_components": ["attention"],
+      "ablations": ["attention"],
+      "baselines": [{"name": "ResNet-50", "contemporaneous": true}],
+      "hyperparam_search": {"test_set_used": false, "search_trials": 10},
+      "reported_seeds": [1, 2, 3],
+      "total_seeds": 3,
+      "reported_splits": ["train", "val", "test"],
+      "reported_metrics": ["accuracy"],
+      "all_metrics": ["accuracy"],
+      "best_metric_only": false,
+      "n_repeats": 3,
+      "pvalue": 0.01,
+      "effect_size": 0.5,
+      "claimed_conclusion": "该方法导致性能提升"
+    },
+    "random_baseline": {
+      "baselines": [{"name": "random", "is_random": true}],
+      "n_repeats": 4
+    }
+  }
+}

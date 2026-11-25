@@ -42,6 +42,7 @@ export function createFakeDb({ withSeed = true } = {}) {
     const api = {
       select(cols) { selectCols = cols; return api; },
       eq(col, v) { filters.push(r => r[col] === v); return api; },
+      is(col, v) { filters.push(r => (r[col] ?? null) === v); return api; },
       neq(col, v) { filters.push(r => r[col] !== v); return api; },
       in(col, vs) { filters.push(r => vs.includes(r[col])); return api; },
       gte(col, v) { filters.push(r => r[col] >= v); return api; },

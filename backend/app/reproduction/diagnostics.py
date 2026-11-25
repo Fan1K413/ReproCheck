@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.errors import AppError
 from app.llm import LLMService, llm_service
+from app.modelhub.bridge import TaskLLM
 from app.models import ExtractedFact
 from app.models.stage4 import (
     ExecutionEnvironment,
@@ -33,14 +34,15 @@ from app.reproduction.schemas import DiagnosticIn
 class FailureDiagnoser:
     def __init__(self, db: AsyncSession, llm: LLMService | None = None) -> None:
         self.db = db
-        self.llm = llm or llm_service
+        self.llm = llm or TaskLLM(db, "failure_diagnosis")
         self.adapter = Stage3AuditAdapter(db)
 
     async def diagnose(self, run_id: str, project_id: str, problem: str | None = None) -> FailureDiagnostic:
-        if not settings.is_llm_configured:
+        # 匿名/环境变量无 Key 时保持原有的 503 语义；已登录用户可由网关解析自己的绑定。
+        from app.modelhub.context import current_user_id
+        if not settings.is_llm_configured and not current_user_id.get():
             raise AppError("LLM_KEY_NOT_CONFIGURED",
                            "AI 诊断不可用：尚未配置真实 API Key，未生成任何诊断结论。")
-
         run = (await self.db.execute(
             select(ReproductionRun).where(ReproductionRun.id == run_id)
         )).scalar_one_or_none()

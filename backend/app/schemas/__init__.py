@@ -7,7 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-# ---------- LLM 结构化抽取（第一层） ----------
+# LLM 结构化抽取（第一层）
 
 class ExtractedFactIn(BaseModel):
     """模型从单一材料抽取的一条实验事实。"""
@@ -28,7 +28,7 @@ class FactsExtraction(BaseModel):
     facts: list[ExtractedFactIn] = Field(default_factory=list)
 
 
-# ---------- AI 风险解释（第三层） ----------
+# AI 风险解释（第三层）
 
 class RiskExplanationIn(BaseModel):
     """模型针对一条已验证差异给出的解释。"""
@@ -48,7 +48,7 @@ class RiskExplanations(BaseModel):
     explanations: list[RiskExplanationIn] = Field(default_factory=list)
 
 
-# ---------- API 请求 ----------
+# API 请求
 
 class ProjectCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -70,7 +70,7 @@ class DemoAuditRequest(BaseModel):
     use_default_materials: bool = True
 
 
-# ---------- API 响应 data ----------
+# API 响应 data
 
 class TokenUsage(BaseModel):
     prompt_tokens: int = 0

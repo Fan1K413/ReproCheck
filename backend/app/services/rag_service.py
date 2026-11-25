@@ -179,12 +179,15 @@ def _retrieve(query: str, docs: list[KnowledgeDocument], top_k: int) -> list[dic
     return hits
 
 
-async def _synthesize(query: str, hits: list[dict]) -> dict | None:
-    """可选合成：仅在配置了 LLM 时调用；保留来源标签，标注 model_inference；失败优雅降级。"""
-    if not settings.is_llm_configured or not hits:
+async def _synthesize(query: str, hits: list[dict], db=None) -> dict | None:
+    """可选合成：仅在配置了 LLM（用户级或环境变量）时调用；标注 model_inference；失败优雅降级。"""
+    from app.modelhub.context import current_user_id
+    has_user_model = bool(current_user_id.get())
+    if hits and not (settings.is_llm_configured or has_user_model):
+        return None
+    if not hits:
         return None
     try:
-        from app.llm import llm_service
         sources = "\n".join(
             f"[{i+1}] ({h['provenance_class']}) {h['document']['title']} | source_ref={h['source_ref']}\n{h['document']['content'][:600]}"
             for i, h in enumerate(hits)
@@ -197,7 +200,12 @@ async def _synthesize(query: str, hits: list[dict]) -> dict | None:
             )},
             {"role": "user", "content": f"问题：{query}\n\n资料：\n{sources}\n\n请给出简洁回答并标注来源编号。"},
         ]
-        resp = await llm_service.chat(messages, response_schema=None, max_tokens=512)
+        if has_user_model and db is not None:
+            from app.modelhub.gateway import model_gateway
+            resp = await model_gateway.chat(messages, max_tokens=512, task_key="rag_qa", db=db)
+        else:
+            from app.llm import llm_service
+            resp = await llm_service.chat(messages, response_schema=None, max_tokens=512)
         return {"provenance_class": "model_inference", "answer": resp.content,
                 "model": resp.model, "sources": [{"index": i + 1, "source_ref": h["source_ref"],
                                                  "provenance_class": h["provenance_class"],
@@ -219,7 +227,7 @@ async def query(db: AsyncSession, user: User, query: str, project_id: str | None
         priority_note = CURRENT_EVIDENCE_PRIORITY_NOTE
     docs = await _visible_docs(db, user)
     hits = _retrieve(query, docs, top_k)
-    synthesis = await _synthesize(query, hits) if synthesize else None
+    synthesis = await _synthesize(query, hits, db=db) if synthesize else None
     return {
         "query": query, "project_id": project_id, "top_k": top_k, "hits": hits,
         "total_candidates": len(docs),

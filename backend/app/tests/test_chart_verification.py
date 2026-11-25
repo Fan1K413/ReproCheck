@@ -15,7 +15,7 @@ from app.services.chart_verification_service import (
 )
 
 
-# ---------------- 纯函数：真实文本提取 ----------------
+# 纯函数：真实文本提取
 
 def test_extract_table_claims_from_real_text():
     chunks = [
@@ -55,7 +55,7 @@ def test_extract_captions_figure_and_chinese_table():
     assert captions[1]["kind"] == "table" and captions[1]["number"] == 2
 
 
-# ---------------- 纯函数：AST 绘图逻辑 ----------------
+# 纯函数：AST 绘图逻辑
 
 def test_find_plot_logic_detects_matplotlib_plot():
     code = (
@@ -81,7 +81,7 @@ def test_find_plot_logic_detects_plotly_and_handles_bad_code():
     assert find_plot_logic("print('no plot here')") == []
 
 
-# ---------------- 纯函数：结果数值与判定 ----------------
+# 纯函数：结果数值与判定
 
 def test_find_result_files_from_csv_json_and_log():
     found = find_result_files({
@@ -160,7 +160,7 @@ def test_verify_bundle_end_to_end():
     assert any("未做图像级/OCR级重绘对比" in item for item in bundle["limitations"])
 
 
-# ---------------- 真实 client + JWT 的 API 测试 ----------------
+# 真实 client + JWT 的 API 测试
 
 def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}

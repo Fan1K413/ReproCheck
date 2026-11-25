@@ -53,7 +53,7 @@ def parse_config_text(
             error_code="INVALID_CONFIG", error_message=f"不支持的配置类型：{kind}",
         )
 
-    # 1) 按 kind 解析为 Python 对象；任何异常都归为 INVALID_CONFIG，不伪造结果
+    # 1) 按 kind 解析为 Python 对象；解析异常统一归为 INVALID_CONFIG
     try:
         if kind == "yaml":
             import yaml  # 延迟导入，缺依赖时也能返回规范错误

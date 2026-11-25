@@ -1,4 +1,5 @@
 import { AlertCircle, RotateCw } from 'lucide-react'
+import { Icon } from './Icon'
 
 type ErrorStateProps = {
   message: string
@@ -13,19 +14,24 @@ export function ErrorState({ message, code, onRetry, compact = false }: ErrorSta
       className={`flex flex-col items-center justify-center text-center ${compact ? 'py-10' : 'py-16'}`}
       role="alert"
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-danger-wash text-danger">
-        <AlertCircle size={22} strokeWidth={1.8} />
-      </div>
-      <p className="mt-3 text-sm font-semibold text-ink">请求未成功</p>
-      <p className="mt-1 max-w-md text-sm text-ink-muted">{message}</p>
+      <Icon as={AlertCircle} size="xl" tone="danger" />
+      <p className="mt-3 text-base font-semibold" style={{ color: 'var(--rc-text)' }}>
+        请求未成功
+      </p>
+      <p className="mt-2 max-w-md text-xs leading-relaxed" style={{ color: 'var(--rc-text-muted)' }}>
+        {message}
+      </p>
       {code && (
-        <p className="mono mt-2 rounded bg-neutral-wash px-2 py-0.5 text-[11px] text-neutral">
+        <code
+          className="mono mt-3 rounded-md px-2 py-1 text-[11px]"
+          style={{ backgroundColor: 'var(--rc-surface-3)', color: 'var(--rc-text-subtle)' }}
+        >
           {code}
-        </p>
+        </code>
       )}
       {onRetry && (
-        <button type="button" className="btn-ghost mt-4" onClick={onRetry}>
-          <RotateCw size={15} />
+        <button type="button" className="btn-ghost mt-5" onClick={onRetry}>
+          <Icon as={RotateCw} size="sm" />
           重试
         </button>
       )}

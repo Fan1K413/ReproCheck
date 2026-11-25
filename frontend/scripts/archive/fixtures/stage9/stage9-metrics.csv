@@ -1,0 +1,9 @@
+sample_id,split,baseline,prediction,label
+1,validation,0,1,1
+2,validation,1,1,1
+3,validation,0,0,0
+4,validation,1,1,1
+5,validation,1,1,1
+6,validation,0,1,1
+7,validation,1,0,0
+8,validation,0,1,1

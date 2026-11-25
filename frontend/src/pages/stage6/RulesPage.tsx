@@ -1,14 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Check, ChevronDown, ChevronRight, Database, FileText, FlaskConical, Gauge, GitBranch,
-  History, Layers, Play, Plus, Power, RotateCcw, ScrollText, ShieldCheck, Timer, X,
+  ChevronRight,
+  Database,
+  FileText,
+  FlaskConical,
+  Gauge,
+  GitBranch,
+  History,
+  Layers,
+  Plus,
+  Power,
+  RotateCcw,
+  ScrollText,
+  Timer,
+  X,
+  type LucideIcon,
 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { CopyButton } from '../../components/CopyButton'
 import { DataTable, type Column } from '../../components/DataTable'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
+import { Icon } from '../../components/Icon'
 import { JsonBlock } from '../../components/JsonBlock'
 import { LoadingState } from '../../components/LoadingState'
 import { Modal } from '../../components/Modal'
@@ -23,6 +36,7 @@ import { toast } from '../../stores/toastStore'
 import type {
   RuleDetail, RuleEvalCompare, RuleEvalSingle, RuleEvaluation, RuleMetrics, RuleTestResult, RuleVersion,
 } from '../../types/stage6'
+import '../../styles/wave-d-stage6.css'
 
 /* ---------------- 本地常量与工具 ---------------- */
 
@@ -42,7 +56,17 @@ const SAMPLE_EXAMPLE = `[
     "expected": { "status": "consistent", "conflict_fields": [] }
   }
 ]`
-const DANGER_BTN = 'inline-flex items-center gap-1.5 rounded-md bg-danger px-3 py-2 text-sm font-medium text-white transition hover:bg-danger/90 disabled:opacity-50'
+
+/** 风险等级排序权重（critical > high > medium > low），用于「优先级」排序。 */
+const RISK_WEIGHT: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+
+type SortMode = 'priority' | 'name' | 'domain' | 'version'
+const SORT_MODES: { key: SortMode; label: string }[] = [
+  { key: 'priority', label: '优先级' },
+  { key: 'name', label: '名称' },
+  { key: 'domain', label: '领域' },
+  { key: 'version', label: '版本' },
+]
 
 type LogicDraft = { type: string; fields: string; tolerance: string; severity: string }
 type SampleInput = { input: Record<string, unknown>; expected: Record<string, unknown>; label?: string }
@@ -123,20 +147,20 @@ function Field({ label, error, hint, children }: { label: string; error?: string
     <div>
       <label className="field-label">{label}</label>
       {children}
-      {hint && <p className="mt-1 text-[11px] text-ink-subtle">{hint}</p>}
-      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+      {hint && <p className="mt-1 text-[11px] rcw-faint">{hint}</p>}
+      {error && <p className="mt-1 text-xs" style={{ color: 'var(--rc-danger)' }}>{error}</p>}
     </div>
   )
 }
 
-function ModalActions({ onCancel, onSubmit, pending, label, pendingLabel, icon: Icon }: {
+function ModalActions({ onCancel, onSubmit, pending, label, pendingLabel, icon: Glyph }: {
   onCancel: () => void; onSubmit: () => void; pending: boolean; label: string; pendingLabel: string; icon: LucideIcon
 }) {
   return (
     <>
       <button type="button" className="btn-ghost" onClick={onCancel}>取消</button>
       <button type="button" className="btn-primary" disabled={pending} onClick={onSubmit}>
-        <Icon size={16} strokeWidth={1.8} />{pending ? pendingLabel : label}
+        <Icon as={Glyph} size="xs" />{pending ? pendingLabel : label}
       </button>
     </>
   )
@@ -173,10 +197,10 @@ function LogicEditor({ value, onChange }: { value: LogicDraft; onChange: (next: 
 
 function LogicFieldset({ draft, onChange, error }: { draft: LogicDraft; onChange: (d: LogicDraft) => void; error?: string }) {
   return (
-    <div className="rounded-lg border border-line-soft p-3">
-      <p className="mb-2 text-xs font-semibold text-ink-muted">检查逻辑 check_logic_json</p>
+    <div className="rounded-md p-3" style={{ border: 'var(--rc-stroke-hair)' }}>
+      <p className="mb-2 text-xs font-semibold rcw-muted">检查逻辑 check_logic_json</p>
       <LogicEditor value={draft} onChange={onChange} />
-      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
+      {error && <p className="mt-2 text-xs" style={{ color: 'var(--rc-danger)' }}>{error}</p>}
       <p className="field-label mt-3">实时预览</p>
       <JsonBlock value={buildLogic(draft)} maxHeight="max-h-40" />
     </div>
@@ -199,16 +223,16 @@ function MetricsBoard({ metrics, compact = false }: { metrics: RuleMetrics; comp
     { key: 'fn', label: '假阴 FN', cls: 'bg-warning-wash text-warning' }, { key: 'tn', label: '真阴 TN', cls: 'bg-neutral-wash text-neutral' },
   ]
   return (
-    <div className="space-y-3">
+    <div className="rcw-stack-tight">
       <div className={compact ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6'}>
         {METRIC_KEYS.map((key) => (
-          <div key={key} className={`rounded-md border border-line-soft bg-canvas py-2 ${compact ? 'px-2.5' : 'px-3'}`}>
-            <p className="text-[11px] text-ink-subtle">{METRIC_LABELS[key]}</p>
-            <p className={`mono mt-0.5 font-semibold text-ink ${compact ? 'text-base' : 'text-lg'}`}>{pct(metrics[key])}</p>
+          <div key={key} className="rounded-md py-2" style={{ border: 'var(--rc-stroke-hair)', backgroundColor: 'var(--rc-surface-2)', paddingLeft: 12, paddingRight: 12 }}>
+            <p className="text-[11px] rcw-faint">{METRIC_LABELS[key]}</p>
+            <p className={`mono mt-0.5 font-semibold ${compact ? 'text-base' : 'text-lg'}`}>{pct(metrics[key])}</p>
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap items-stretch gap-3">
+      <div className="rcw-row" style={{ alignItems: 'stretch', gap: 'var(--rc-space-3)' }}>
         <div className="grid w-52 shrink-0 grid-cols-2 gap-1.5">
           {cells.map((c) => (
             <div key={c.key} className={`rounded-md px-3 py-2 ${c.cls}`}>
@@ -217,8 +241,8 @@ function MetricsBoard({ metrics, compact = false }: { metrics: RuleMetrics; comp
             </div>
           ))}
         </div>
-        <div className="flex min-w-[200px] flex-1 flex-col justify-center gap-1.5 rounded-md border border-line-soft px-3 py-2 text-xs text-ink-muted">
-          <span className="inline-flex items-center gap-1.5"><Timer size={16} strokeWidth={1.8} />运行耗时：<span className="mono">{formatDuration(metrics.runtime_ms)}</span></span>
+        <div className="flex min-w-[200px] flex-1 flex-col justify-center gap-1.5 rounded-md border px-3 py-2 text-xs rcw-muted" style={{ borderColor: 'var(--rc-stroke-hair)' }}>
+          <span className="rcw-row" style={{ gap: 'var(--rc-space-2)' }}><Icon as={Timer} size="xs" />运行耗时：<span className="mono">{formatDuration(metrics.runtime_ms)}</span></span>
           <span>样本总数：<span className="mono">{metrics.total ?? 0}</span> 条 · 正类定义：预测 status = conflict（检出问题），真值取自样本 expected。</span>
         </div>
       </div>
@@ -241,27 +265,27 @@ function EvalSampleTable({ results, compact = false }: { results: unknown[]; com
     {
       key: 'matched', header: compact ? '匹配' : '全量匹配', align: 'center',
       render: (r) => r.matched
-        ? <span className="inline-flex items-center gap-1 text-xs font-medium text-success" title="全量匹配通过"><Check size={16} strokeWidth={1.8} />{compact ? '' : '通过'}</span>
-        : <span className="inline-flex items-center gap-1 text-xs font-medium text-danger" title="全量匹配未通过"><X size={16} strokeWidth={1.8} />{compact ? '' : '未通过'}</span>,
+        ? <span className="rcw-row" style={{ gap: 'var(--rc-space-1)', justifyContent: 'center', fontSize: 'var(--rc-fs-caption)', fontWeight: 'var(--rc-fw-m)', color: 'var(--rc-success)' }} title="全量匹配通过"><Icon name="check" size="xs" tone="success" />{compact ? '' : '通过'}</span>
+        : <span className="rcw-row" style={{ gap: 'var(--rc-space-1)', justifyContent: 'center', fontSize: 'var(--rc-fs-caption)', fontWeight: 'var(--rc-fw-m)', color: 'var(--rc-danger)' }} title="全量匹配未通过"><Icon as={X} size="xs" tone="danger" />{compact ? '' : '未通过'}</span>,
     },
     {
       key: 'error', header: '错误',
       render: (r) => r.error
-        ? <span className="text-xs font-medium text-danger" title={r.error}>!</span>
-        : <span className="text-xs text-ink-subtle">—</span>,
+        ? <span className="text-xs font-medium" style={{ color: 'var(--rc-danger)' }} title={r.error}>!</span>
+        : <span className="text-xs rcw-faint">—</span>,
     },
   ]
-  return <div className="mt-3 overflow-hidden rounded-md border border-line-soft"><DataTable dense={compact} columns={columns} data={rows} rowKey={(r) => r.key} /></div>
+  return <div className="mt-3 overflow-hidden rounded-md" style={{ border: 'var(--rc-stroke-hair)' }}><DataTable dense={compact} columns={columns} data={rows} rowKey={(r) => r.key} /></div>
 }
 
 const evalHistoryColumns: Column<RuleEvaluation>[] = [
   { key: 'version', header: '版本', render: (e) => <span className="mono text-xs font-medium">v{e.version}</span> },
-  { key: 'dataset', header: '数据集', render: (e) => <span className="mono text-xs text-ink-muted">{e.dataset_ref || '—'}</span> },
+  { key: 'dataset', header: '数据集', render: (e) => <span className="mono text-xs rcw-muted">{e.dataset_ref || '—'}</span> },
   { key: 'precision', header: '精确率', align: 'right', render: (e) => <span className="mono text-xs">{pct(e.metrics?.precision)}</span> },
   { key: 'recall', header: '召回率', align: 'right', render: (e) => <span className="mono text-xs">{pct(e.metrics?.recall)}</span> },
   { key: 'pass_rate', header: '通过率', align: 'right', render: (e) => <span className="mono text-xs">{pct(e.metrics?.pass_rate)}</span> },
-  { key: 'ran_by', header: '执行人', render: (e) => e.ran_by_name ? <span className="text-xs text-ink-muted">{e.ran_by_name}</span> : <span className="mono text-[11px] text-ink-subtle">{e.ran_by ?? '—'}</span> },
-  { key: 'created', header: '时间', render: (e) => <span className="mono whitespace-nowrap text-[11px] text-ink-muted">{formatDateTime(e.created_at)}</span> },
+  { key: 'ran_by', header: '执行人', render: (e) => e.ran_by_name ? <span className="text-xs rcw-muted">{e.ran_by_name}</span> : <span className="mono text-[11px] rcw-faint">{e.ran_by ?? '—'}</span> },
+  { key: 'created', header: '时间', render: (e) => <span className="mono whitespace-nowrap text-[11px] rcw-muted">{formatDateTime(e.created_at)}</span> },
 ]
 
 /* ---------------- 页面 ---------------- */
@@ -270,6 +294,7 @@ export default function RulesPage() {
   const queryClient = useQueryClient()
   const [domainFilter, setDomainFilter] = useState('')
   const [enabledFilter, setEnabledFilter] = useState('all')
+  const [sortMode, setSortMode] = useState<SortMode>('priority')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tab, setTab] = useState('versions')
   const [expandedVersion, setExpandedVersion] = useState<string | null>(null)
@@ -304,7 +329,19 @@ export default function RulesPage() {
 
   const allRules = rulesQuery.data?.items ?? []
   const keyword = domainFilter.trim().toLowerCase()
-  const rules = allRules.filter((r) => (!keyword || r.domain.toLowerCase().includes(keyword)) && (enabledFilter === 'all' || (enabledFilter === 'enabled') === r.is_enabled))
+  const filtered = allRules.filter((r) => (!keyword || r.domain.toLowerCase().includes(keyword)) && (enabledFilter === 'all' || (enabledFilter === 'enabled') === r.is_enabled))
+  /* 优先级排序：启用状态优先 → 风险等级（critical 最高）→ 版本号倒序 → 名称 */
+  const rules = [...filtered].sort((a, b) => {
+    if (sortMode === 'name') return a.name.localeCompare(b.name)
+    if (sortMode === 'domain') return (a.domain || '').localeCompare(b.domain || '')
+    if (sortMode === 'version') return b.current_version - a.current_version
+    if (a.is_enabled !== b.is_enabled) return a.is_enabled ? -1 : 1
+    const ra = RISK_WEIGHT[a.risk_level] ?? 9
+    const rb = RISK_WEIGHT[b.risk_level] ?? 9
+    if (ra !== rb) return ra - rb
+    if (a.current_version !== b.current_version) return b.current_version - a.current_version
+    return a.name.localeCompare(b.name)
+  })
   const detail: RuleDetail | undefined = detailQuery.data
   const versions = versionsQuery.data?.items ?? []
   const detailRisk = detail ? (RISK_LEVELS[detail.risk_level] ?? { label: detail.risk_level, tone: 'neutral' as const }) : null
@@ -418,304 +455,385 @@ export default function RulesPage() {
 
   const shownTest = testResult && testResult.ruleId === selectedId ? testResult.data : null
   const shownEval = evalResult && evalResult.ruleId === selectedId ? evalResult.data : null
+  const enabledCount = allRules.filter((r) => r.is_enabled).length
+  const highRiskCount = allRules.filter((r) => r.risk_level === 'high' || r.risk_level === 'critical').length
+  const kpis = [
+    { label: '规则总数', value: allRules.length, icon: 'scroll' as const },
+    { label: '启用中', value: enabledCount, icon: 'shield' as const },
+    { label: '已停用', value: allRules.length - enabledCount, icon: 'triangleAlert' as const },
+    { label: '高危规则', value: highRiskCount, icon: 'alert' as const },
+  ]
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        title="审计规则"
-        description="规则生命周期管理：版本演进、离线样本测试与版本对比评估。变更须由具备 rule.manage 权限的成员显式发起，全程留痕。"
-        actions={
-          <>
-            <button type="button" className="btn-ghost" disabled={seedMut.isPending} onClick={() => seedMut.mutate()}>
-              <Database size={16} strokeWidth={1.8} />{seedMut.isPending ? '载入中…' : '载入默认规则'}
-            </button>
-            <button type="button" className="btn-primary" onClick={openCreate}><Plus size={16} strokeWidth={1.8} />新建规则</button>
-          </>
-        }
-      />
-      <div className="flex items-start gap-3 rounded-panel border border-accent/30 bg-accent-wash px-4 py-3">
-        <ShieldCheck size={18} strokeWidth={1.8} className="mt-0.5 shrink-0 text-accent-dark" />
-        <p className="text-sm leading-relaxed text-accent-dark">规则生命周期受控：单条反馈不会自动修改生产规则；新版本必须携带测试样本，上线前通过样本测试与离线评估把关。</p>
-      </div>
+    <div className="rcw-page">
+      <div className="rcw-stack">
+        <PageHeader
+          title="审计规则"
+          description="规则生命周期管理：版本演进、离线样本测试与版本对比评估。变更须由具备 rule.manage 权限的成员显式发起，全程留痕。"
+          actions={
+            <>
+              <button type="button" className="btn-ghost" disabled={seedMut.isPending} onClick={() => seedMut.mutate()}>
+                <Icon as={Database} size="xs" />{seedMut.isPending ? '载入中…' : '载入默认规则'}
+              </button>
+              <button type="button" className="btn-primary" onClick={openCreate}><Icon name="plus" size="xs" />新建规则</button>
+            </>
+          }
+        />
 
-      <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-        {/* 左侧：规则主清单 */}
-        <section className="panel overflow-hidden">
-          <div className="panel-header">
-            <h3 className="text-sm font-semibold">规则清单</h3>
-            {rulesQuery.data && <StatusBadge tone="neutral" dot={false}>{rules.length} / {allRules.length}</StatusBadge>}
-          </div>
-          <div className="space-y-2 border-b border-line-soft p-3">
-            <input className="field-input" placeholder="按领域筛选，如：机器学习" value={domainFilter} onChange={(e) => setDomainFilter(e.target.value)} aria-label="按领域筛选规则" />
-            <select className="field-input" value={enabledFilter} onChange={(e) => setEnabledFilter(e.target.value)} aria-label="按启用状态筛选">
-              <option value="all">全部状态</option><option value="enabled">仅启用</option><option value="disabled">仅停用</option>
-            </select>
-          </div>
-          {rulesQuery.isPending ? <LoadingState compact message="正在读取规则…" hint="GET /rules" />
-            : rulesQuery.isError ? <ErrorState compact message={rulesQuery.error.message} code={errCode(rulesQuery.error)} onRetry={() => void rulesQuery.refetch()} />
-            : rules.length === 0 ? (
-              <EmptyState compact icon={ScrollText} title={allRules.length === 0 ? '尚无审计规则' : '没有匹配的规则'}
-                description={allRules.length === 0 ? '载入平台默认规则，或新建一条自定义规则。' : '尝试调整领域关键词或启用状态筛选。'}
-                action={allRules.length === 0 ? (
-                  <button type="button" className="btn-primary" disabled={seedMut.isPending} onClick={() => seedMut.mutate()}><Database size={16} strokeWidth={1.8} />载入默认规则</button>
-                ) : undefined} />
-            ) : (
-              <div className="max-h-[560px] space-y-2 overflow-y-auto p-3">
-                {rules.map((rule) => {
-                  const risk = RISK_LEVELS[rule.risk_level] ?? { label: rule.risk_level, tone: 'neutral' as const }
-                  const active = rule.id === selectedId
-                  return (
-                    <button key={rule.id} type="button" onClick={() => { setSelectedId(rule.id); setExpandedVersion(null) }}
-                      className={`w-full rounded-lg border p-3 text-left transition ${active ? 'border-accent bg-accent-wash' : 'border-line bg-surface hover:border-accent/50 hover:bg-canvas'}`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-medium text-ink">{rule.name}</span>
-                        <span className={`h-2 w-2 shrink-0 rounded-full ${rule.is_enabled ? 'bg-success' : 'bg-neutral/50'}`} title={rule.is_enabled ? '启用中' : '已停用'} />
-                      </div>
-                      <p className="mono mt-0.5 truncate text-[11px] text-ink-subtle">{rule.rule_key}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        {rule.domain && <StatusBadge tone="neutral" dot={false}>{rule.domain}</StatusBadge>}
-                        <StatusBadge tone={risk.tone} dot={false}>风险 {risk.label}</StatusBadge>
-                        <span className="mono rounded bg-canvas px-1.5 text-[10px] leading-5 text-ink-muted">v{rule.current_version}</span>
-                      </div>
-                    </button>
-                  )
-                })}
+        <div className="rcw-note">
+          <p className="rcw-row" style={{ gap: 'var(--rc-space-3)', alignItems: 'flex-start' }}>
+            <Icon name="shield" size="sm" style={{ marginTop: 2 }} />
+            <span>规则生命周期受控：单条反馈不会自动修改生产规则；新版本必须携带测试样本，上线前通过样本测试与离线评估把关。</span>
+          </p>
+        </div>
+
+        <div className="rcw-grid rcw-grid-4">
+          {kpis.map((kpi) => (
+            <div key={kpi.label} className="rcw-kpi">
+              <span className="rcw-kpi-icon"><Icon name={kpi.icon} size="sm" /></span>
+              <div className="min-w-0">
+                <p className="rcw-kpi-value">{kpi.value}</p>
+                <p className="rcw-kpi-label">{kpi.label}</p>
               </div>
-            )}
-        </section>
-
-        {/* 右侧：规则详情 */}
-        <section className="min-w-0 space-y-4">
-          {!selectedId ? (
-            <div className="panel">
-              {rulesQuery.isPending ? <LoadingState message="正在读取规则…" />
-                : <EmptyState icon={ScrollText} title="选择左侧规则查看详情" description="也可以载入默认规则，或新建一条自定义规则开始治理。" />}
             </div>
-          ) : detailQuery.isPending ? <div className="panel"><LoadingState message="正在读取规则详情…" hint="GET /rules/{id}" /></div>
-            : detailQuery.isError ? <div className="panel"><ErrorState message={detailQuery.error.message} code={errCode(detailQuery.error)} onRetry={() => void detailQuery.refetch()} /></div>
-            : detail && detailRisk ? (
-              <>
-                <div className="panel p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-semibold">{detail.name}</h3>
-                        <span className="mono rounded bg-canvas px-2 py-0.5 text-[11px] text-ink-muted">{detail.rule_key}</span>
-                        <CopyButton text={detail.rule_key} label="复制键" className="px-2 py-1 text-xs" />
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        {detail.domain && <StatusBadge tone="neutral" dot={false}>{detail.domain}</StatusBadge>}
-                        <StatusBadge tone={detailRisk.tone} dot={false}>风险 {detailRisk.label}</StatusBadge>
-                        <StatusBadge tone={detail.is_enabled ? 'success' : 'neutral'}>{detail.is_enabled ? '启用中' : '已停用'}</StatusBadge>
-                        <StatusBadge tone="accent" dot={false}>当前 v{detail.current_version}</StatusBadge>
-                      </div>
-                    </div>
-                    <button type="button" className="btn-ghost" disabled={toggleMut.isPending} onClick={() => toggleMut.mutate({ id: detail.id, enabled: !detail.is_enabled })}>
-                      <Power size={16} strokeWidth={1.8} />{detail.is_enabled ? '停用规则' : '启用规则'}
+          ))}
+        </div>
+
+        <div className="rcw-split rcw-split-wide">
+          {/* ---------- 规则清单（优先级排序） ---------- */}
+          <section className="rcw-rail">
+            <div className="rcw-rail-head">
+              <h3 className="text-sm font-semibold">规则清单</h3>
+              {rulesQuery.data && <StatusBadge tone="neutral" dot={false}>{rules.length} / {allRules.length}</StatusBadge>}
+            </div>
+            <div className="rcw-stack-tight" style={{ padding: 'var(--rc-space-3)', borderBottom: 'var(--rc-stroke-hair)' }}>
+              <input className="field-input" placeholder="按领域筛选，如：机器学习" value={domainFilter} onChange={(e) => setDomainFilter(e.target.value)} aria-label="按领域筛选规则" />
+              <select className="field-input" value={enabledFilter} onChange={(e) => setEnabledFilter(e.target.value)} aria-label="按启用状态筛选">
+                <option value="all">全部状态</option><option value="enabled">仅启用</option><option value="disabled">仅停用</option>
+              </select>
+              <div>
+                <p className="rcw-overline" style={{ marginBottom: 'var(--rc-space-2)' }}>排序</p>
+                <div className="rcw-row" style={{ gap: 'var(--rc-space-1)' }}>
+                  {SORT_MODES.map((mode) => (
+                    <button
+                      key={mode.key}
+                      type="button"
+                      className="rcw-chip rcw-chip-btn"
+                      aria-pressed={sortMode === mode.key}
+                      onClick={() => setSortMode(mode.key)}
+                    >
+                      {mode.label}
                     </button>
-                  </div>
-                  {detail.description && <p className="mt-3 text-sm leading-relaxed text-ink-muted">{detail.description}</p>}
-                  {detail.evidence_requirement && (
-                    <p className="mt-2 flex items-start gap-1.5 text-xs text-ink-muted">
-                      <FileText size={16} strokeWidth={1.8} className="mt-0.5 shrink-0 text-accent-dark" />证据要求：{detail.evidence_requirement}
-                    </p>
-                  )}
-                  <p className="mono mt-3 text-[11px] text-ink-subtle">创建 {formatDateTime(detail.created_at)} · 更新 {formatDateTime(detail.updated_at)}</p>
+                  ))}
                 </div>
+              </div>
+            </div>
+            {rulesQuery.isPending ? <LoadingState compact message="正在读取规则…" hint="GET /rules" />
+              : rulesQuery.isError ? <ErrorState compact message={rulesQuery.error.message} code={errCode(rulesQuery.error)} onRetry={() => void rulesQuery.refetch()} />
+              : rules.length === 0 ? (
+                <EmptyState
+                  compact
+                  icon={ScrollText}
+                  title={allRules.length === 0 ? '尚无审计规则' : '没有匹配的规则'}
+                  description={allRules.length === 0 ? '载入平台默认规则，或新建一条自定义规则。' : '尝试调整领域关键词或启用状态筛选。'}
+                  action={allRules.length === 0 ? (
+                    <button type="button" className="btn-primary" disabled={seedMut.isPending} onClick={() => seedMut.mutate()}>
+                      <Icon as={Database} size="xs" />载入默认规则
+                    </button>
+                  ) : undefined}
+                />
+              ) : (
+                <div className="rcw-rail-body rcw-rail-scroll">
+                  {rules.map((rule) => {
+                    const risk = RISK_LEVELS[rule.risk_level] ?? { label: rule.risk_level, tone: 'neutral' as const }
+                    const active = rule.id === selectedId
+                    return (
+                      <button
+                        key={rule.id}
+                        type="button"
+                        onClick={() => { setSelectedId(rule.id); setExpandedVersion(null) }}
+                        aria-pressed={active}
+                        className="rcw-rail-item"
+                      >
+                        <span className="rcw-row-between" style={{ gap: 'var(--rc-space-2)' }}>
+                          <span className="truncate text-sm font-semibold">{rule.name}</span>
+                          <span
+                            className="rcw-dot"
+                            data-tone={rule.is_enabled ? 'success' : 'muted'}
+                            title={rule.is_enabled ? '启用中' : '已停用'}
+                            aria-hidden="true"
+                          />
+                        </span>
+                        <span className="mono mt-1 block truncate text-[11px] rcw-faint">{rule.rule_key}</span>
+                        <span className="rcw-row" style={{ gap: 'var(--rc-space-1)', marginTop: 'var(--rc-space-2)' }}>
+                          {rule.domain && <span className="rcw-chip">{rule.domain}</span>}
+                          <StatusBadge tone={risk.tone} dot={false}>风险 {risk.label}</StatusBadge>
+                          <span className="rcw-chip">v{rule.current_version}</span>
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+          </section>
 
-                <div className="panel overflow-hidden">
-                  <div className="px-3 pt-2">
-                    <Tabs active={tab} onChange={setTab} tabs={[
-                      { key: 'versions', label: '版本', icon: GitBranch, count: versions.length },
-                      { key: 'samples', label: '测试样本', icon: FlaskConical, count: detail.test_samples.length },
-                      { key: 'eval', label: '离线评估', icon: Gauge },
-                    ]} />
-                  </div>
-                  <div className="p-4 sm:p-5">
-                    {tab === 'versions' && (
-                      <div className="space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-xs text-ink-muted">版本只增不改：回滚会复制目标版本生成全新版本号，历史完整保留。</p>
-                          <button type="button" className="btn-primary" onClick={openVersion}><Plus size={16} strokeWidth={1.8} />新建版本</button>
+          {/* ---------- 规则详情 ---------- */}
+          <section className="min-w-0 rcw-stack">
+            {!selectedId ? (
+              <div className="rcw-card">
+                {rulesQuery.isPending ? <LoadingState message="正在读取规则…" />
+                  : <EmptyState icon={ScrollText} title="选择左侧规则查看详情" description="也可以载入默认规则，或新建一条自定义规则开始治理。" />}
+              </div>
+            ) : detailQuery.isPending ? <div className="rcw-card"><LoadingState message="正在读取规则详情…" hint="GET /rules/{id}" /></div>
+              : detailQuery.isError ? <div className="rcw-card"><ErrorState message={detailQuery.error.message} code={errCode(detailQuery.error)} onRetry={() => void detailQuery.refetch()} /></div>
+              : detail && detailRisk ? (
+                <>
+                  <section className="rcw-card rcw-card-glass">
+                    <div className="rcw-row-between" style={{ alignItems: 'flex-start' }}>
+                      <div className="min-w-0">
+                        <div className="rcw-row" style={{ gap: 'var(--rc-space-2)' }}>
+                          <h3 className="text-base font-semibold">{detail.name}</h3>
+                          <span className="rcw-chip">{detail.rule_key}</span>
+                          <CopyButton text={detail.rule_key} label="复制键" className="px-2 py-1 text-xs" />
                         </div>
-                        {versionsQuery.isPending ? <LoadingState compact message="正在读取版本历史…" />
-                          : versionsQuery.isError ? <ErrorState compact message={versionsQuery.error.message} code={errCode(versionsQuery.error)} onRetry={() => void versionsQuery.refetch()} />
-                          : versions.length === 0 ? <EmptyState compact icon={GitBranch} title="暂无版本记录" />
-                          : (
-                            <ol className="space-y-3">
-                              {versions.map((v) => (
-                                <li key={v.id} className="flex gap-3">
-                                  <div className="flex flex-col items-center">
-                                    <span className={`mono grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-semibold ${v.is_active ? 'bg-accent text-accent-dark' : 'border border-line bg-canvas text-ink-muted'}`}>v{v.version}</span>
-                                    <span className="mt-1 w-px flex-1 bg-line" />
-                                  </div>
-                                  <div className="min-w-0 flex-1 rounded-lg border border-line-soft p-3">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      {v.is_active && <StatusBadge tone="success">当前激活</StatusBadge>}
-                                      <span className="text-sm font-medium text-ink">{v.change_note || '（无变更说明）'}</span>
-                                      <StatusBadge tone="neutral" dot={false}>{v.sample_count} 条样本</StatusBadge>
-                                    </div>
-                                    <p className="mono mt-1 text-[11px] text-ink-subtle">{formatDateTime(v.created_at)} · 创建人 {v.created_by ?? '—'}</p>
-                                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                                      <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => setExpandedVersion(expandedVersion === v.id ? null : v.id)}>
-                                        {expandedVersion === v.id ? <ChevronDown size={16} strokeWidth={1.8} /> : <ChevronRight size={16} strokeWidth={1.8} />}检查逻辑 JSON
-                                      </button>
-                                      {!v.is_active && <button type="button" className={DANGER_BTN} onClick={() => setRollbackTarget(v)}><RotateCcw size={16} strokeWidth={1.8} />回滚到此版本</button>}
-                                    </div>
-                                    {expandedVersion === v.id && <div className="mt-2"><JsonBlock value={v.check_logic} maxHeight="max-h-56" /></div>}
-                                  </div>
-                                </li>
-                              ))}
-                            </ol>
-                          )}
-                      </div>
-                    )}
-
-                    {tab === 'samples' && (
-                      <div className="space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-xs text-ink-muted">样本绑定当前激活版本 v{detail.current_version}，由确定性评估器逐条比对期望与实际输出。</p>
-                          <button type="button" className="btn-primary" disabled={testMut.isPending || detail.test_samples.length === 0} onClick={() => testMut.mutate(detail.id)}>
-                            <Play size={16} strokeWidth={1.8} />{testMut.isPending ? '测试运行中…' : '运行样本测试'}
-                          </button>
+                        <div className="rcw-row" style={{ gap: 'var(--rc-space-1)', marginTop: 'var(--rc-space-3)' }}>
+                          {detail.domain && <StatusBadge tone="neutral" dot={false}>{detail.domain}</StatusBadge>}
+                          <StatusBadge tone={detailRisk.tone} dot={false}>风险 {detailRisk.label}</StatusBadge>
+                          <StatusBadge tone={detail.is_enabled ? 'success' : 'neutral'}>{detail.is_enabled ? '启用中' : '已停用'}</StatusBadge>
+                          <StatusBadge tone="accent" dot={false}>当前 v{detail.current_version}</StatusBadge>
                         </div>
-                        {detail.test_samples.length === 0
-                          ? <EmptyState compact icon={FlaskConical} title="当前版本没有测试样本" description="新建版本时附带样本，或回滚到带样本的历史版本。" />
-                          : (
-                            <div className="grid gap-3 md:grid-cols-2">
-                              {detail.test_samples.map((s) => (
-                                <div key={s.id} className="rounded-lg border border-line-soft p-3">
-                                  <p className="mono text-xs font-semibold text-ink">{s.label || s.id}</p>
-                                  <p className="field-label mt-2">输入 input</p>
-                                  <JsonBlock value={s.input} maxHeight="max-h-40" />
-                                  <p className="field-label mt-2">期望 expected</p>
-                                  <JsonBlock value={s.expected} maxHeight="max-h-40" />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        {shownTest && (
-                          <div className="rounded-lg border border-line bg-canvas p-4">
-                            <div className="flex flex-wrap items-center gap-4">
-                              <div>
-                                <p className="text-[11px] text-ink-subtle">样本通过率</p>
-                                <p className={`mono text-3xl font-semibold ${shownTest.pass_rate >= 1 ? 'text-success' : shownTest.pass_rate > 0 ? 'text-warning' : 'text-danger'}`}>{pct(shownTest.pass_rate)}</p>
-                              </div>
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <StatusBadge tone="accent" dot={false}>版本 v{shownTest.version}</StatusBadge>
-                                <StatusBadge tone="success" dot={false}>通过 {shownTest.passed}</StatusBadge>
-                                <StatusBadge tone="danger" dot={false}>失败 {shownTest.failed}</StatusBadge>
-                                <StatusBadge tone="neutral" dot={false}>共 {shownTest.total} 条</StatusBadge>
-                              </div>
-                            </div>
-                            <div className="mt-3 space-y-2">
-                              {shownTest.results.map((r) => (
-                                <div key={r.sample_id} className="rounded-md border border-line-soft bg-surface p-3">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className="mono text-xs font-medium">{r.label || r.sample_id}</span>
-                                    <StatusBadge tone={r.passed ? 'success' : 'danger'} dot={false}>{r.passed ? '✓ 匹配' : '✗ 不匹配'}</StatusBadge>
-                                  </div>
-                                  {r.error && <p className="mt-1 text-xs text-danger">{r.error}</p>}
-                                  <div className="mt-2 grid gap-2 md:grid-cols-2">
-                                    <div><p className="field-label">期望 expected</p><JsonBlock value={r.expected} maxHeight="max-h-40" /></div>
-                                    <div><p className="field-label">实际 actual</p><JsonBlock value={r.actual} maxHeight="max-h-40" /></div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
+                      <button type="button" className="btn-ghost" disabled={toggleMut.isPending} onClick={() => toggleMut.mutate({ id: detail.id, enabled: !detail.is_enabled })}>
+                        <Icon as={Power} size="xs" />{detail.is_enabled ? '停用规则' : '启用规则'}
+                      </button>
+                    </div>
+                    {detail.description && <p className="mt-3 text-sm leading-relaxed rcw-muted">{detail.description}</p>}
+                    {detail.evidence_requirement && (
+                      <p className="rcw-row mt-2" style={{ gap: 'var(--rc-space-2)', alignItems: 'flex-start' }}>
+                        <Icon as={FileText} size="xs" tone="accent" style={{ marginTop: 3 }} />
+                        <span className="text-xs rcw-muted">证据要求：{detail.evidence_requirement}</span>
+                      </p>
                     )}
+                    <p className="mono mt-3 text-[11px] rcw-faint">创建 {formatDateTime(detail.created_at)} · 更新 {formatDateTime(detail.updated_at)}</p>
+                  </section>
 
-                    {tab === 'eval' && (
-                      <div className="space-y-4">
-                        <div className="rounded-lg border border-line-soft p-4">
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <Field label="数据集标识 dataset_ref">
-                              <input className="field-input mono" placeholder="如：imagenet_val_subset_v1" value={evalDataset} onChange={(e) => setEvalDataset(e.target.value)} />
-                            </Field>
-                            <Field label="基线版本（留空 = 单版本评估）">
-                              <select className="field-input" value={evalBaseline} onChange={(e) => setEvalBaseline(e.target.value)}>
-                                <option value="">单版本评估（当前激活 v{detail.current_version}）</option>
-                                {versions.map((v) => <option key={v.id} value={v.version}>对比基线 v{v.version}{v.is_active ? '（当前激活）' : ''}</option>)}
-                              </select>
-                            </Field>
+                  <section className="rcw-card">
+                    <div style={{ padding: '0 var(--rc-space-2) var(--rc-space-1)' }}>
+                      <Tabs active={tab} onChange={setTab} tabs={[
+                        { key: 'versions', label: '版本', icon: GitBranch, count: versions.length },
+                        { key: 'samples', label: '测试样本', icon: FlaskConical, count: detail.test_samples.length },
+                        { key: 'eval', label: '离线评估', icon: Gauge },
+                      ]} />
+                    </div>
+
+                    <div className="rcw-stack" style={{ marginTop: 'var(--rc-space-4)' }}>
+                      {tab === 'versions' && (
+                        <>
+                          <div className="rcw-row-between">
+                            <p className="text-xs rcw-muted">版本只增不改：回滚会复制目标版本生成全新版本号，历史完整保留。</p>
+                            <button type="button" className="btn-primary" onClick={openVersion}><Icon name="plus" size="xs" />新建版本</button>
                           </div>
-                          <div className="mt-3">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <label className="field-label mb-0">评估样本 JSON（input + expected，至少 1 条）</label>
-                              <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={loadEvalSamples} disabled={detail.test_samples.length === 0}>
-                                <Layers size={16} strokeWidth={1.8} />从测试样本载入
-                              </button>
-                            </div>
-                            <textarea className="field-input mono mt-1.5 text-xs" rows={7} placeholder={SAMPLE_EXAMPLE} value={evalSamples} onChange={(e) => { setEvalSamples(e.target.value); setEvalError(null) }} />
-                          </div>
-                          {evalError && <p className="mt-2 text-xs text-danger">{evalError}</p>}
-                          <div className="mt-3 flex justify-end">
-                            <button type="button" className="btn-primary" disabled={evalMut.isPending} onClick={submitEval}>
-                              <Gauge size={16} strokeWidth={1.8} />{evalMut.isPending ? '评估中…' : '开始离线评估'}
+                          {versionsQuery.isPending ? <LoadingState compact message="正在读取版本历史…" />
+                            : versionsQuery.isError ? <ErrorState compact message={versionsQuery.error.message} code={errCode(versionsQuery.error)} onRetry={() => void versionsQuery.refetch()} />
+                            : versions.length === 0 ? <EmptyState compact icon={GitBranch} title="暂无版本记录" />
+                            : (
+                              <div className="rcw-timeline">
+                                {versions.map((v) => (
+                                  <div key={v.id} className="rcw-timeline-item" style={{ marginBottom: 'var(--rc-space-3)' }}>
+                                    <span className="rcw-timeline-dot" data-tone={v.is_active ? 'accent' : 'muted'} aria-hidden="true" />
+                                    <div className="rcw-card rcw-card-tight">
+                                      <div className="rcw-row" style={{ gap: 'var(--rc-space-2)' }}>
+                                        <span className="mono text-xs font-semibold rcw-ink">v{v.version}</span>
+                                        {v.is_active && <StatusBadge tone="success">当前激活</StatusBadge>}
+                                        <span className="min-w-0 flex-1 truncate text-sm">{v.change_note || '（无变更说明）'}</span>
+                                        <StatusBadge tone="neutral" dot={false}>{v.sample_count} 条样本</StatusBadge>
+                                      </div>
+                                      <p className="mono mt-1 text-[11px] rcw-faint">{formatDateTime(v.created_at)} · 创建人 {v.created_by ?? '—'}</p>
+                                      <div className="rcw-row" style={{ gap: 'var(--rc-space-2)', marginTop: 'var(--rc-space-2)' }}>
+                                        <button
+                                          type="button"
+                                          className="btn-ghost px-2 py-1 text-xs"
+                                          aria-expanded={expandedVersion === v.id}
+                                          onClick={() => setExpandedVersion(expandedVersion === v.id ? null : v.id)}
+                                        >
+                                          {expandedVersion === v.id ? <Icon name="chevronDown" size="xs" /> : <Icon as={ChevronRight} size="xs" />}检查逻辑 JSON
+                                        </button>
+                                        {!v.is_active && (
+                                          <button type="button" className="rcw-danger px-2 py-1 text-xs" onClick={() => setRollbackTarget(v)}>
+                                            <Icon name="rotate" size="xs" />回滚到此版本
+                                          </button>
+                                        )}
+                                      </div>
+                                      {expandedVersion === v.id && <div className="mt-2"><JsonBlock value={v.check_logic} maxHeight="max-h-56" /></div>}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                        </>
+                      )}
+
+                      {tab === 'samples' && (
+                        <>
+                          <div className="rcw-row-between">
+                            <p className="text-xs rcw-muted">样本绑定当前激活版本 v{detail.current_version}，由确定性评估器逐条比对期望与实际输出。</p>
+                            <button type="button" className="btn-primary" disabled={testMut.isPending || detail.test_samples.length === 0} onClick={() => testMut.mutate(detail.id)}>
+                              <Icon name="play" size="xs" />{testMut.isPending ? '测试运行中…' : '运行样本测试'}
                             </button>
                           </div>
-                        </div>
-
-                        {shownEval && (isCompare(shownEval) ? (
-                          <div className="space-y-3 rounded-lg border border-accent/30 bg-accent-wash p-4">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <StatusBadge tone="accent" dot={false}>版本对比评估</StatusBadge>
-                              <span className="mono text-xs font-medium text-ink">v{shownEval.baseline.version} → v{shownEval.candidate.version}</span>
-                              {shownEval.dataset_ref && <span className="mono text-xs text-ink-subtle">{shownEval.dataset_ref}</span>}
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {METRIC_KEYS.map((key) => {
-                                const d = shownEval.delta[key]
-                                if (typeof d !== 'number') return null
-                                const good = LOWER_BETTER.has(key) ? d < 0 : d > 0
-                                const tone = d === 0 ? 'neutral' : good ? 'success' : 'danger'
-                                return <StatusBadge key={key} tone={tone} dot={false}>{METRIC_LABELS[key]} {d > 0 ? '+' : ''}{(d * 100).toFixed(1)}pp</StatusBadge>
-                              })}
-                            </div>
-                            <div className="grid gap-3 xl:grid-cols-2">
-                              <div className="rounded-lg border border-line-soft bg-surface p-3">
-                                <p className="mb-2 text-xs font-semibold text-ink-muted">基线 v{shownEval.baseline.version}</p>
-                                <MetricsBoard compact metrics={shownEval.baseline.metrics} />
-                                <EvalSampleTable compact results={shownEval.baseline.results} />
+                          {detail.test_samples.length === 0
+                            ? <EmptyState compact icon={FlaskConical} title="当前版本没有测试样本" description="新建版本时附带样本，或回滚到带样本的历史版本。" />
+                            : (
+                              <div className="rcw-grid rcw-grid-2">
+                                {detail.test_samples.map((s) => (
+                                  <div key={s.id} className="rcw-card rcw-card-tight">
+                                    <p className="mono text-xs font-semibold">{s.label || s.id}</p>
+                                    <p className="field-label mt-2">输入 input</p>
+                                    <JsonBlock value={s.input} maxHeight="max-h-40" />
+                                    <p className="field-label mt-2">期望 expected</p>
+                                    <JsonBlock value={s.expected} maxHeight="max-h-40" />
+                                  </div>
+                                ))}
                               </div>
-                              <div className="rounded-lg border border-accent/30 bg-surface p-3">
-                                <p className="mb-2 text-xs font-semibold text-accent-dark">候选 v{shownEval.candidate.version}（当前激活）</p>
-                                <MetricsBoard compact metrics={shownEval.candidate.metrics} />
-                                <EvalSampleTable compact results={shownEval.candidate.results} />
+                            )}
+                          {shownTest && (
+                            <section className="rcw-card rcw-card-flat">
+                              <div className="rcw-row" style={{ gap: 'var(--rc-space-4)' }}>
+                                <div>
+                                  <p className="text-[11px] rcw-faint">样本通过率</p>
+                                  <p
+                                    className="mono text-3xl font-semibold"
+                                    style={{ color: shownTest.pass_rate >= 1 ? 'var(--rc-success)' : shownTest.pass_rate > 0 ? 'var(--rc-warning)' : 'var(--rc-danger)' }}
+                                  >
+                                    {pct(shownTest.pass_rate)}
+                                  </p>
+                                </div>
+                                <div className="rcw-row" style={{ gap: 'var(--rc-space-1)' }}>
+                                  <StatusBadge tone="accent" dot={false}>版本 v{shownTest.version}</StatusBadge>
+                                  <StatusBadge tone="success" dot={false}>通过 {shownTest.passed}</StatusBadge>
+                                  <StatusBadge tone="danger" dot={false}>失败 {shownTest.failed}</StatusBadge>
+                                  <StatusBadge tone="neutral" dot={false}>共 {shownTest.total} 条</StatusBadge>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-3 rounded-lg border border-line-soft p-4">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <StatusBadge tone="accent" dot={false}>单版本评估 v{shownEval.version}</StatusBadge>
-                              {shownEval.dataset_ref && <span className="mono text-xs text-ink-subtle">{shownEval.dataset_ref}</span>}
-                            </div>
-                            <MetricsBoard metrics={shownEval.metrics} />
-                            <EvalSampleTable results={shownEval.results} />
-                          </div>
-                        ))}
+                              <div className="rcw-stack-tight" style={{ marginTop: 'var(--rc-space-3)' }}>
+                                {shownTest.results.map((r) => (
+                                  <div key={r.sample_id} className="rcw-card rcw-card-tight">
+                                    <div className="rcw-row" style={{ gap: 'var(--rc-space-2)' }}>
+                                      <span className="mono text-xs font-medium">{r.label || r.sample_id}</span>
+                                      <StatusBadge tone={r.passed ? 'success' : 'danger'} dot={false}>{r.passed ? '✓ 匹配' : '✗ 不匹配'}</StatusBadge>
+                                    </div>
+                                    {r.error && <p className="mt-1 text-xs" style={{ color: 'var(--rc-danger)' }}>{r.error}</p>}
+                                    <div className="mt-2 grid gap-2 md:grid-cols-2">
+                                      <div><p className="field-label">期望 expected</p><JsonBlock value={r.expected} maxHeight="max-h-40" /></div>
+                                      <div><p className="field-label">实际 actual</p><JsonBlock value={r.actual} maxHeight="max-h-40" /></div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </section>
+                          )}
+                        </>
+                      )}
 
-                        <div className="overflow-hidden rounded-lg border border-line-soft">
-                          <div className="panel-header">
-                            <h4 className="flex items-center gap-1.5 text-sm font-semibold"><History size={16} strokeWidth={1.8} />评估历史</h4>
-                            {evalsQuery.data && <StatusBadge tone="neutral" dot={false}>{evalsQuery.data.total} 次</StatusBadge>}
-                          </div>
-                          {evalsQuery.isPending ? <LoadingState compact message="正在读取评估历史…" />
-                            : evalsQuery.isError ? <ErrorState compact message={evalsQuery.error.message} code={errCode(evalsQuery.error)} onRetry={() => void evalsQuery.refetch()} />
-                            : <DataTable columns={evalHistoryColumns} data={evalsQuery.data?.items ?? []} rowKey={(e) => e.id}
-                                empty={<EmptyState compact icon={Gauge} title="尚无评估记录" description="运行一次离线评估后，指标会落库并显示在这里。" />} />}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : null}
-        </section>
+                      {tab === 'eval' && (
+                        <>
+                          <section className="rcw-card rcw-card-flat rcw-card-tight">
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <Field label="数据集标识 dataset_ref">
+                                <input className="field-input mono" placeholder="如：imagenet_val_subset_v1" value={evalDataset} onChange={(e) => setEvalDataset(e.target.value)} />
+                              </Field>
+                              <Field label="基线版本（留空 = 单版本评估）">
+                                <select className="field-input" value={evalBaseline} onChange={(e) => setEvalBaseline(e.target.value)}>
+                                  <option value="">单版本评估（当前激活 v{detail.current_version}）</option>
+                                  {versions.map((v) => <option key={v.id} value={v.version}>对比基线 v{v.version}{v.is_active ? '（当前激活）' : ''}</option>)}
+                                </select>
+                              </Field>
+                            </div>
+                            <div className="mt-3">
+                              <div className="rcw-row-between">
+                                <label className="field-label" style={{ marginBottom: 0 }}>评估样本 JSON（input + expected，至少 1 条）</label>
+                                <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={loadEvalSamples} disabled={detail.test_samples.length === 0}>
+                                  <Icon as={Layers} size="xs" />从测试样本载入
+                                </button>
+                              </div>
+                              <textarea className="field-input mono mt-1.5 text-xs" rows={7} placeholder={SAMPLE_EXAMPLE} value={evalSamples} onChange={(e) => { setEvalSamples(e.target.value); setEvalError(null) }} />
+                            </div>
+                            {evalError && <p className="mt-2 text-xs" style={{ color: 'var(--rc-danger)' }}>{evalError}</p>}
+                            <div className="mt-3 flex justify-end">
+                              <button type="button" className="btn-primary" disabled={evalMut.isPending} onClick={submitEval}>
+                                <Icon as={Gauge} size="xs" />{evalMut.isPending ? '评估中…' : '开始离线评估'}
+                              </button>
+                            </div>
+                          </section>
+
+                          {shownEval && (isCompare(shownEval) ? (
+                            <section className="rcw-card">
+                              <div className="rcw-row" style={{ gap: 'var(--rc-space-2)' }}>
+                                <StatusBadge tone="accent" dot={false}>版本对比评估</StatusBadge>
+                                <span className="mono text-xs font-medium">v{shownEval.baseline.version} → v{shownEval.candidate.version}</span>
+                                {shownEval.dataset_ref && <span className="mono text-xs rcw-faint">{shownEval.dataset_ref}</span>}
+                              </div>
+                              <div className="rcw-row" style={{ gap: 'var(--rc-space-1)', marginTop: 'var(--rc-space-3)' }}>
+                                {METRIC_KEYS.map((key) => {
+                                  const d = shownEval.delta[key]
+                                  if (typeof d !== 'number') return null
+                                  const good = LOWER_BETTER.has(key) ? d < 0 : d > 0
+                                  const tone = d === 0 ? 'neutral' : good ? 'success' : 'danger'
+                                  return <StatusBadge key={key} tone={tone} dot={false}>{METRIC_LABELS[key]} {d > 0 ? '+' : ''}{(d * 100).toFixed(1)}pp</StatusBadge>
+                                })}
+                              </div>
+                              <div className="rcw-grid rcw-grid-2" style={{ marginTop: 'var(--rc-space-3)' }}>
+                                <div className="rcw-card rcw-card-tight">
+                                  <p className="mb-2 text-xs font-semibold rcw-muted">基线 v{shownEval.baseline.version}</p>
+                                  <MetricsBoard compact metrics={shownEval.baseline.metrics} />
+                                  <EvalSampleTable compact results={shownEval.baseline.results} />
+                                </div>
+                                <div className="rcw-card rcw-card-tight" style={{ borderColor: 'var(--rc-accent)' }}>
+                                  <p className="mb-2 text-xs font-semibold rcw-ink">候选 v{shownEval.candidate.version}（当前激活）</p>
+                                  <MetricsBoard compact metrics={shownEval.candidate.metrics} />
+                                  <EvalSampleTable compact results={shownEval.candidate.results} />
+                                </div>
+                              </div>
+                            </section>
+                          ) : (
+                            <section className="rcw-card">
+                              <div className="rcw-row" style={{ gap: 'var(--rc-space-2)' }}>
+                                <StatusBadge tone="accent" dot={false}>单版本评估 v{shownEval.version}</StatusBadge>
+                                {shownEval.dataset_ref && <span className="mono text-xs rcw-faint">{shownEval.dataset_ref}</span>}
+                              </div>
+                              <div className="mt-3">
+                                <MetricsBoard metrics={shownEval.metrics} />
+                                <EvalSampleTable results={shownEval.results} />
+                              </div>
+                            </section>
+                          ))}
+
+                          <section className="rcw-card">
+                            <div className="rcw-row-between" style={{ paddingBottom: 'var(--rc-space-3)', borderBottom: 'var(--rc-stroke-hair)' }}>
+                              <h4 className="rcw-row" style={{ gap: 'var(--rc-space-2)' }}>
+                                <Icon as={History} size="sm" tone="accent" />评估历史
+                              </h4>
+                              {evalsQuery.data && <StatusBadge tone="neutral" dot={false}>{evalsQuery.data.total} 次</StatusBadge>}
+                            </div>
+                            <div style={{ marginTop: 'var(--rc-space-3)' }}>
+                              {evalsQuery.isPending ? <LoadingState compact message="正在读取评估历史…" />
+                                : evalsQuery.isError ? <ErrorState compact message={evalsQuery.error.message} code={errCode(evalsQuery.error)} onRetry={() => void evalsQuery.refetch()} />
+                                : <DataTable
+                                  columns={evalHistoryColumns}
+                                  data={evalsQuery.data?.items ?? []}
+                                  rowKey={(e) => e.id}
+                                  empty={<EmptyState compact icon={Gauge} title="尚无评估记录" description="运行一次离线评估后，指标会落库并显示在这里。" />}
+                                />}
+                            </div>
+                          </section>
+                        </>
+                      )}
+                    </div>
+                  </section>
+                </>
+              ) : null}
+          </section>
+        </div>
       </div>
 
       {/* 新建规则 */}
@@ -762,8 +880,14 @@ export default function RulesPage() {
           <Field label="变更说明 change_note">
             <input className="field-input" placeholder="如：放宽容差至 0.1%，覆盖混合精度训练场景" value={versionNote} onChange={(e) => setVersionNote(e.target.value)} />
           </Field>
-          <SamplesField label="测试样本 test_samples *（JSON 数组，至少 1 条）" rows={7} value={versionSamples} onChange={setVersionSamples}
-            error={versionErrors.samples} hint="每条样本须含 input（a/b 两侧字段）与 expected（期望输出）对象，label 可选。" />
+          <SamplesField
+            label="测试样本 test_samples *（JSON 数组，至少 1 条）"
+            rows={7}
+            value={versionSamples}
+            onChange={setVersionSamples}
+            error={versionErrors.samples}
+            hint="每条样本须含 input（a/b 两侧字段）与 expected（期望输出）对象，label 可选。"
+          />
         </div>
       </Modal>
 
@@ -773,20 +897,20 @@ export default function RulesPage() {
         footer={
           <>
             <button type="button" className="btn-ghost" onClick={() => setRollbackTarget(null)}>取消</button>
-            <button type="button" className={DANGER_BTN} disabled={rollbackMut.isPending}
+            <button type="button" className="rcw-danger" disabled={rollbackMut.isPending}
               onClick={() => { if (rollbackTarget && selectedId) rollbackMut.mutate({ ruleId: selectedId, version: rollbackTarget.version }) }}>
-              <RotateCcw size={16} strokeWidth={1.8} />{rollbackMut.isPending ? '回滚中…' : '确认回滚'}
+              <Icon as={RotateCcw} size="xs" />{rollbackMut.isPending ? '回滚中…' : '确认回滚'}
             </button>
           </>
         }>
         {rollbackTarget && (
-          <div className="space-y-2 text-sm text-ink-muted">
+          <div className="space-y-2 text-sm rcw-muted">
             <p>
-              将复制 <span className="mono font-semibold text-ink">v{rollbackTarget.version}</span> 的检查逻辑与{' '}
-              <span className="mono font-semibold text-ink">{rollbackTarget.sample_count}</span> 条测试样本，生成全新版本{' '}
-              <span className="mono font-semibold text-ink">v{(detail?.current_version ?? rollbackTarget.version) + 1}</span> 并立即激活。
+              将复制 <span className="mono font-semibold" style={{ color: 'var(--rc-text)' }}>v{rollbackTarget.version}</span> 的检查逻辑与{' '}
+              <span className="mono font-semibold" style={{ color: 'var(--rc-text)' }}>{rollbackTarget.sample_count}</span> 条测试样本，生成全新版本{' '}
+              <span className="mono font-semibold" style={{ color: 'var(--rc-text)' }}>v{(detail?.current_version ?? rollbackTarget.version) + 1}</span> 并立即激活。
             </p>
-            <p className="text-xs text-ink-subtle">当前激活版本将自动停用；需要 rule.manage 权限。</p>
+            <p className="text-xs rcw-faint">当前激活版本将自动停用；需要 rule.manage 权限。</p>
             <JsonBlock value={rollbackTarget.check_logic} maxHeight="max-h-40" />
           </div>
         )}

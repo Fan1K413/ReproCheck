@@ -19,6 +19,7 @@ from app.core.config import settings
 from app.core.errors import AppError, EvidenceValidationError
 from app.core.logging import logger
 from app.llm import LLMService, llm_service
+from app.modelhub.bridge import TaskLLM
 from app.models import AIRun, AuditFinding, Evidence, ExtractedFact, Material, Project, SourceChunk
 from app.schemas import (
     AuditResultData,
@@ -92,7 +93,7 @@ def _risk_prompt(conflicts: list, ctx_by_id: dict[str, ChunkCtx]) -> list[dict[s
 class AuditService:
     def __init__(self, db: AsyncSession, llm: LLMService | None = None) -> None:
         self.db = db
-        self.llm = llm or llm_service
+        self.llm = llm or TaskLLM(db, "diff_analysis")
 
     async def run_audit(
         self, *, project_name: str, material_a_text: str | None,
@@ -131,11 +132,11 @@ class AuditService:
         await self.db.flush()
 
         try:
-            # ---- 第一层：AI 结构化抽取（两份材料各一次真实调用）----
+            # 第一层：AI 结构化抽取（两份材料各一次真实调用）
             facts_a, resp_a = await self._extract("paper_excerpt.txt", ctx_a)
             facts_b, resp_b = await self._extract("config.yaml", ctx_b)
 
-            # ---- 第二层：程序化比对 ----
+            # 第二层：程序化比对
             comparisons = build_comparisons(facts_a, facts_b)
 
             total_calls = 2
@@ -144,7 +145,7 @@ class AuditService:
             total_tokens = resp_a.usage.total_tokens + resp_b.usage.total_tokens
             actual_model = resp_b.model or resp_a.model or settings.llm_model
 
-            # ---- 第三层：AI 风险解释（仅对冲突）----
+            # 第三层：AI 风险解释（仅对冲突）
             findings: list[FindingView] = []
             conflicts = [c for c in comparisons if c.status == "conflict"]
             if conflicts:
@@ -167,7 +168,7 @@ class AuditService:
                         continue
                     cmp = cmp_by_key[exp.field_key]
                     chunk_ids = [x for x in (cmp.evidence_a_id, cmp.evidence_b_id) if x]
-                    # ---- 第四层：证据链验证 + 从后端材料读取原文 ----
+                    # 第四层：证据链验证 + 从后端材料读取原文
                     ev_views = self._build_evidence(exp.finding_id, chunk_ids, ctx_by_id)
 
                     # 落库 extracted_facts（两条材料的相关事实）

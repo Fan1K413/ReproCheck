@@ -1,32 +1,69 @@
 import { useQuery } from '@tanstack/react-query'
 import {
-  AlertTriangle,
-  ArrowLeft,
+  BookOpen,
   Braces,
-  CalendarClock,
-  Clock,
   Database,
   FileSpreadsheet,
   FileText,
-  Hash,
   Info,
+  MapPin,
+  TriangleAlert,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
+import { Icon } from '../components/Icon'
 import { LoadingState } from '../components/LoadingState'
 import { SourceLocatorView } from '../components/SourceLocatorView'
-import { StatusBadge } from '../components/StatusBadge'
-import { formatBytes, formatDateTime, formatDuration } from '../features/format'
-import { materialTypeLabel, materialTypeTone, parseStatusLabel, parseStatusTone } from '../features/stage2Meta'
+import { StatusBadge, type Tone } from '../components/StatusBadge'
+import { formatBytes, formatConfidence, formatDateTime, formatDuration } from '../features/format'
+import {
+  assertionLabel,
+  assertionTone,
+  extractionLabel,
+  extractionTone,
+  materialTypeLabel,
+  materialTypeTone,
+  parseStatusLabel,
+  parseStatusTone,
+  verificationLabel,
+  verificationTone,
+} from '../features/stage2Meta'
 import { useTrackProject } from '../hooks/useTrackProject'
 import { ApiError, api } from '../services/api'
-import type { SourceLocator } from '../types/api'
+import type { MaterialDetail, ParseStatus, SourceLocator } from '../types/api'
+import '../styles/wave-b-material.css'
 
 const CODE_TYPES = new Set(['python', 'notebook', 'requirements'])
 const CONFIG_TYPES = new Set(['yaml', 'json', 'toml'])
 const DATA_TYPES = new Set(['csv', 'xlsx'])
+
+/**
+ * 后端 MaterialDetail 在 MaterialView 之外还会返回解析耗时 / OCR 标记等顶层字段，
+ * 这里做局部类型扩展（不改共享 types 文件），缺项时按 metadata 回退。
+ */
+type MaterialDetailExtra = MaterialDetail & {
+  page_count?: number | null
+  needs_ocr?: boolean | null
+  parse_duration_ms?: number | null
+  parse_error_code?: string | null
+}
+
+const PARSE_STATUS_TEXT: Partial<Record<string, string>> = {
+  ...parseStatusLabel,
+  parsed: '已解析',
+}
+
+function statusText(status: string): string {
+  return PARSE_STATUS_TEXT[status] ?? status
+}
+
+function statusTone(status: string): Tone {
+  if (status in parseStatusLabel) return parseStatusTone(status as ParseStatus)
+  return status === 'parsed' ? 'success' : 'neutral'
+}
 
 function friendlyMetaLabel(key: string): string {
   const labels: Record<string, string> = {
@@ -36,6 +73,7 @@ function friendlyMetaLabel(key: string): string {
     file_count: '文件数',
     files_count: '文件数',
     chunk_count: '文本块数',
+    chunks: '文本块数',
     duration_ms: '解析耗时',
     parse_duration_ms: '解析耗时',
     elapsed_ms: '解析耗时',
@@ -43,6 +81,7 @@ function friendlyMetaLabel(key: string): string {
     column_count: '列数',
     sheet_names: '工作表',
     parser_version: '解析器版本',
+    parser: '解析器',
     needs_ocr: '需要 OCR',
   }
   return labels[key] ?? key
@@ -62,9 +101,9 @@ function displayMetaValue(value: unknown): string {
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="min-w-0">
-      <p className="text-xs text-ink-subtle">{label}</p>
-      <div className="mt-1 break-words text-sm text-ink">{children}</div>
+    <div className="mb-dl__row">
+      <dt className="mb-dl__key">{label}</dt>
+      <dd className="mb-dl__val">{children}</dd>
     </div>
   )
 }
@@ -77,8 +116,15 @@ export default function MaterialDetailPage() {
     enabled: !!materialId,
   })
 
-  const detail = detailQuery.data
+  const detail = detailQuery.data as MaterialDetailExtra | undefined
   useTrackProject(detail?.project_id)
+
+  /** 事实与证据关联：按 material_id 精确过滤，接口原生支持该过滤条件 */
+  const factsQuery = useQuery({
+    queryKey: ['facts', detail?.project_id ?? '', materialId],
+    queryFn: () => api.listFacts(detail!.project_id, materialId),
+    enabled: !!detail?.project_id && !!materialId,
+  })
 
   if (detailQuery.isPending) {
     return <LoadingState message="正在读取材料详情…" hint="GET /materials/{id}" />
@@ -101,205 +147,383 @@ export default function MaterialDetailPage() {
   const rawLocator = metadata.source_locator
   const locator =
     rawLocator && typeof rawLocator === 'object' ? (rawLocator as SourceLocator) : null
-  const durationValue =
-    metadata.duration_ms ?? metadata.parse_duration_ms ?? metadata.elapsed_ms ?? null
-  const durationMs = typeof durationValue === 'number' ? durationValue : null
-  const lines = (detail.raw_preview ?? '').split('\n')
 
-  const previewIcon = CODE_TYPES.has(detail.material_type)
+  const durationValue =
+    metadata.duration_ms ??
+    metadata.parse_duration_ms ??
+    metadata.elapsed_ms ??
+    detail.parse_duration_ms ??
+    null
+  const durationMs = typeof durationValue === 'number' ? durationValue : null
+
+  const previewIcon: LucideIcon = CODE_TYPES.has(detail.material_type)
     ? Braces
     : DATA_TYPES.has(detail.material_type)
       ? FileSpreadsheet
       : CONFIG_TYPES.has(detail.material_type)
         ? Database
-        : FileText
+        : detail.material_type === 'pdf'
+          ? BookOpen
+          : FileText
 
-  const PreviewIcon = previewIcon
+  const lines = (detail.raw_preview ?? '').split('\n')
+  const facts = factsQuery.data?.items ?? []
+  const base = `/projects/${detail.project_id}`
+
+  const previewBlock = !detail.can_preview ? (
+    <EmptyState
+      compact
+      icon={previewIcon}
+      title="该材料不支持文本预览"
+      description="请下载原始文件查看；解析出的文本块与事实仍可正常使用。"
+    />
+  ) : DATA_TYPES.has(detail.material_type) ? (
+    <div>
+      {metaEntries.length > 0 ? (
+        <div className="mb-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>字段</th>
+                <th>值</th>
+              </tr>
+            </thead>
+            <tbody>
+              {metaEntries.map(([key, value]) => (
+                <tr key={key}>
+                  <td className="whitespace-nowrap text-xs" style={{ color: 'var(--rc-text-muted)' }}>
+                    {friendlyMetaLabel(key)}
+                  </td>
+                  <td className="break-all text-xs" style={{ color: 'var(--rc-text)' }}>
+                    {displayMetaValue(value)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
+          后端未提供该表格的元信息。
+        </p>
+      )}
+      {detail.raw_preview && <pre className="mb-code mb-code--pre mt-4">{detail.raw_preview}</pre>}
+    </div>
+  ) : CODE_TYPES.has(detail.material_type) ? (
+    <pre className="mb-code">
+      {lines.map((line, index) => (
+        <span key={index} className="mb-code__ln">
+          <span className="mb-code__no">{index + 1}</span>
+          <span>{line || ' '}</span>
+        </span>
+      ))}
+    </pre>
+  ) : (
+    <pre className="mb-code mb-code--pre">{detail.raw_preview || '（后端未提供预览文本）'}</pre>
+  )
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="mb-page">
+      <header className="mb-head">
         <div className="min-w-0">
-          <Link
-            to={`/projects/${detail.project_id}/materials`}
-            className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-accent-dark"
-          >
-            <ArrowLeft size={13} />
+          <Link to={`${base}/materials`} className="mb-back">
+            <Icon name="arrowLeft" size="xs" />
             返回材料列表
           </Link>
-          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">
-            Material Detail
+          <p className="mb-head__eyebrow mt-3">材料详情 · 层叠档案</p>
+          <h1 className="mb-head__title break-all">{detail.filename}</h1>
+          <p className="mb-head__desc">
+            材料详情、原文预览、解析告警与证据关联均来自后端真实字段；点击「解析概览」可查看聚合统计。
           </p>
-          <h2 className="mt-1 break-all text-lg font-semibold" title={detail.filename}>
-            {detail.filename}
-          </h2>
-          <p className="mt-1 text-sm text-ink-muted">材料详情、原文预览与解析告警均来自后端真实数据。</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge tone={materialTypeTone(detail.material_type)} dot={false}>
-            {materialTypeLabel[detail.material_type]}
-          </StatusBadge>
-          <StatusBadge tone={parseStatusTone(detail.parse_status)}>
-            {parseStatusLabel[detail.parse_status]}
-          </StatusBadge>
-        </div>
+        <nav className="mb-head__actions">
+          <Link to={`${base}/overview`} className="btn-ghost">
+            <Icon name="grid" size="sm" />
+            解析概览
+          </Link>
+          <Link to={`${base}/tasks`} className="btn-ghost">
+            <Icon name="listTree" size="sm" />
+            解析任务
+          </Link>
+          <Link to={`${base}/evidence-graph`} className="btn-ghost">
+            <Icon name="network" size="sm" />
+            证据图谱
+          </Link>
+        </nav>
+      </header>
+
+      {/* 层叠基础态：封面卡 + 两层纸边 */}
+      <div className="mb-cover-wrap">
+        <span className="mb-cover__sheet" aria-hidden="true" />
+        <span className="mb-cover__sheet mb-cover__sheet--2" aria-hidden="true" />
+        <section className="mb-cover" aria-label="材料概览">
+          <div className="mb-cover__top">
+            <div className="flex min-w-0 items-start gap-4">
+              <span
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg"
+                style={{
+                  backgroundColor: 'var(--rc-surface-3)',
+                  border: 'var(--rc-stroke)',
+                }}
+              >
+                <Icon as={previewIcon} size="lg" tone="accent" />
+              </span>
+              <div className="min-w-0">
+                <p className="mb-label">Materials / Archive</p>
+                <h2 className="mb-cover__name">{detail.filename}</h2>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <StatusBadge tone={materialTypeTone(detail.material_type)} dot={false}>
+                    {materialTypeLabel[detail.material_type]}
+                  </StatusBadge>
+                  <StatusBadge tone={statusTone(detail.parse_status)}>
+                    {statusText(detail.parse_status)}
+                  </StatusBadge>
+                  <StatusBadge tone={detail.can_preview ? 'success' : 'neutral'} dot={false}>
+                    {detail.can_preview ? '可预览' : '不支持文本预览'}
+                  </StatusBadge>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="mb-label">文件指纹 SHA-256</p>
+              <p className="mb-mono mt-1 break-all text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
+                {detail.sha256 || '—'}
+              </p>
+            </div>
+          </div>
+
+          <dl className="mb-dl mt-6">
+            <Field label="文件大小">
+              <span className="mb-mono">{formatBytes(detail.size_bytes)}</span>
+            </Field>
+            <Field label="上传时间">
+              <span className="mb-mono">{formatDateTime(detail.created_at)}</span>
+            </Field>
+            <Field label="文本块数">
+              <span className="mb-mono">{detail.chunk_count}</span>
+            </Field>
+            <Field label="事实数">
+              <span className="mb-mono">{detail.fact_count}</span>
+            </Field>
+            <Field label="解析耗时">
+              <span className="mb-mono">{formatDuration(durationMs)}</span>
+            </Field>
+            <Field label="材料 ID">
+              <span className="mb-mono">{detail.material_id}</span>
+            </Field>
+          </dl>
+
+          {detail.error_message && (
+            <p
+              className="mt-5 flex items-start gap-2 rounded-md px-3 py-2 text-xs"
+              style={{ backgroundColor: 'var(--rc-danger-wash)', color: 'var(--rc-danger)' }}
+            >
+              <Icon as={TriangleAlert} size="xs" className="mt-0.5 shrink-0" />
+              <span className="min-w-0 break-words">解析失败原因：{detail.error_message}</span>
+            </p>
+          )}
+        </section>
       </div>
 
-      <section className="panel p-5">
-        <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="文件大小"><span className="mono">{formatBytes(detail.size_bytes)}</span></Field>
-          <Field label="上传时间"><span className="mono">{formatDateTime(detail.created_at)}</span></Field>
-          <Field label="文本块数"><span className="mono">{detail.chunk_count}</span></Field>
-          <Field label="事实数"><span className="mono">{detail.fact_count}</span></Field>
-          <Field label="解析耗时"><span className="mono">{formatDuration(durationMs)}</span></Field>
-          <Field label="文件指纹 SHA-256">
-            <span className="mono break-all text-xs" title={detail.sha256}>
-              {detail.sha256 || '—'}
-            </span>
-          </Field>
-          <Field label="材料 ID"><span className="mono break-all text-xs">{detail.material_id}</span></Field>
-          <Field label="所属项目"><span className="mono break-all text-xs">{detail.project_id}</span></Field>
-        </div>
-        {detail.error_message && (
-          <p className="mt-5 flex items-start gap-2 rounded-md bg-danger-wash px-3 py-2 text-xs text-danger">
-            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-            <span className="min-w-0 break-words">解析失败原因：{detail.error_message}</span>
-          </p>
-        )}
-      </section>
-
-      {metaEntries.length > 0 && (
-        <section className="panel overflow-hidden">
-          <div className="panel-header">
-            <div className="flex items-center gap-2">
-              <Info size={17} className="text-accent-dark" />
-              <h3 className="text-sm font-semibold">解析元信息</h3>
+      <div className="mb-split">
+        {/* 左 8 列：原文预览 / 元信息 / 定位 / 告警 */}
+        <div className="flex min-w-0 flex-col gap-6">
+          <section className="mb-panel" aria-label="原文预览">
+            <div className="mb-panel__head">
+              <h3 className="mb-panel__title">
+                <Icon as={previewIcon} size="sm" tone="accent" />
+                原文预览
+              </h3>
+              <span className="mb-panel__hint">GET /materials/{'{id}'} · raw_preview</span>
             </div>
-            <span className="text-xs text-ink-subtle">来自 GET /materials/{'{id}'} 的 metadata</span>
-          </div>
-          <dl className="grid gap-x-8 gap-y-3 p-5 sm:grid-cols-2 lg:grid-cols-3">
-            {metaEntries.map(([key, value]) => (
-              <div key={key} className="flex min-w-0 items-start justify-between gap-3 border-b border-line-soft py-1.5 last:border-b-0">
-                <dt className="flex shrink-0 items-center gap-1.5 text-xs text-ink-muted">
-                  <Hash size={12} className="text-ink-subtle" />
-                  {friendlyMetaLabel(key)}
-                </dt>
-                <dd className="min-w-0 break-all text-right text-xs text-ink">{displayMetaValue(value)}</dd>
+            <div className="mb-panel__body">{previewBlock}</div>
+          </section>
+
+          {metaEntries.length > 0 && (
+            <section className="mb-panel" aria-label="解析元信息">
+              <div className="mb-panel__head">
+                <h3 className="mb-panel__title">
+                  <Icon as={Info} size="sm" tone="accent" />
+                  解析元信息
+                </h3>
+                <span className="mb-panel__hint">元数据</span>
               </div>
-            ))}
-          </dl>
-        </section>
-      )}
-
-      <section className="panel overflow-hidden">
-        <div className="panel-header">
-          <div className="flex items-center gap-2">
-            <PreviewIcon size={17} className="text-accent-dark" />
-            <h3 className="text-sm font-semibold">原文预览</h3>
-          </div>
-          <StatusBadge tone={detail.can_preview ? 'success' : 'neutral'} dot={false}>
-            {detail.can_preview ? '可预览' : '不支持文本预览'}
-          </StatusBadge>
-        </div>
-
-        {!detail.can_preview ? (
-          <EmptyState
-            compact
-            icon={PreviewIcon}
-            title="该材料不支持文本预览"
-            description="请下载原始文件查看；解析出的文本块与事实仍可正常使用。"
-          />
-        ) : DATA_TYPES.has(detail.material_type) ? (
-          <div className="p-5">
-            <p className="text-xs font-semibold text-ink-muted">表格元信息</p>
-            {metaEntries.length > 0 ? (
-              <div className="mt-2 overflow-x-auto">
-                <table className="data-table">
-                  <thead>
-                    <tr><th>字段</th><th>值</th></tr>
-                  </thead>
-                  <tbody>
-                    {metaEntries.map(([key, value]) => (
-                      <tr key={key}>
-                        <td className="whitespace-nowrap text-xs text-ink-muted">{friendlyMetaLabel(key)}</td>
-                        <td className="break-all text-xs text-ink">{displayMetaValue(value)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-ink-subtle">后端未提供该表格的元信息。</p>
-            )}
-            {detail.raw_preview && (
-              <pre className="mono mt-4 max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-md bg-canvas p-4 text-xs leading-6 text-ink">
-                {detail.raw_preview}
-              </pre>
-            )}
-          </div>
-        ) : CODE_TYPES.has(detail.material_type) ? (
-          <div className="p-5">
-            <pre className="mono max-h-[520px] overflow-auto rounded-md bg-canvas p-4 text-xs leading-6 text-ink">
-              {lines.map((line, index) => (
-                <span key={index} className="block min-w-max">
-                  <span className="mr-4 inline-block w-10 select-none text-right text-ink-subtle">
-                    {index + 1}
-                  </span>
-                  <span>{line || ' '}</span>
-                </span>
-              ))}
-            </pre>
-          </div>
-        ) : (
-          <div className="p-5">
-            <pre className="mono max-h-[520px] overflow-auto whitespace-pre-wrap break-words rounded-md bg-canvas p-4 text-xs leading-6 text-ink">
-              {detail.raw_preview || '（后端未提供预览文本）'}
-            </pre>
-          </div>
-        )}
-      </section>
-
-      <section className="panel overflow-hidden">
-        <div className="panel-header">
-          <div className="flex items-center gap-2">
-            <CalendarClock size={17} className="text-accent-dark" />
-            <h3 className="text-sm font-semibold">证据定位</h3>
-          </div>
-        </div>
-        <div className="p-5">
-          <SourceLocatorView locator={locator} />
-        </div>
-      </section>
-
-      <section className="panel overflow-hidden">
-        <div className="panel-header">
-          <div className="flex items-center gap-2">
-            <Clock size={17} className="text-accent-dark" />
-            <h3 className="text-sm font-semibold">解析告警</h3>
-          </div>
-          {detail.warnings.length > 0 && (
-            <StatusBadge tone="warning">{detail.warnings.length} 条</StatusBadge>
+              <dl className="mb-dl mb-panel__body">
+                {metaEntries.map(([key, value]) => (
+                  <Field key={key} label={friendlyMetaLabel(key)}>
+                    {displayMetaValue(value)}
+                  </Field>
+                ))}
+              </dl>
+            </section>
           )}
+
+          <section className="mb-panel" aria-label="证据定位">
+            <div className="mb-panel__head">
+              <h3 className="mb-panel__title">
+                <Icon as={MapPin} size="sm" tone="accent" />
+                证据定位
+              </h3>
+            </div>
+            <div className="mb-panel__body">
+              <SourceLocatorView locator={locator} />
+            </div>
+          </section>
+
+          <section className="mb-panel" aria-label="解析告警">
+            <div className="mb-panel__head">
+              <h3 className="mb-panel__title">
+                <Icon as={TriangleAlert} size="sm" tone="warning" />
+                解析告警
+              </h3>
+              {detail.warnings.length > 0 && (
+                <StatusBadge tone="warning">{detail.warnings.length} 条</StatusBadge>
+              )}
+            </div>
+            {detail.warnings.length === 0 ? (
+              <p className="mb-panel__body text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
+                本次解析未产生告警。
+              </p>
+            ) : (
+              <ul>
+                {detail.warnings.map((warning, index) => (
+                  <li
+                    key={`${warning.code}-${index}`}
+                    className="flex flex-wrap items-start gap-2 px-4 py-3"
+                    style={{ borderTop: 'var(--rc-stroke-hair)' }}
+                  >
+                    <StatusBadge tone="warning" dot={false}>
+                      {warning.code}
+                    </StatusBadge>
+                    <span className="min-w-0 flex-1 break-words text-sm" style={{ color: 'var(--rc-text)' }}>
+                      {warning.message}
+                    </span>
+                    {warning.page_index != null && (
+                      <span className="mb-mono text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
+                        页索引 {warning.page_index}
+                      </span>
+                    )}
+                    {warning.line_number != null && (
+                      <span className="mb-mono text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
+                        行号 {warning.line_number}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
-        {detail.warnings.length === 0 ? (
-          <p className="px-5 py-6 text-center text-xs text-ink-subtle">本次解析未产生告警。</p>
-        ) : (
-          <ul className="divide-y divide-line-soft">
-            {detail.warnings.map((warning, index) => (
-              <li key={`${warning.code}-${index}`} className="flex flex-wrap items-start gap-2 px-5 py-3">
-                <StatusBadge tone="warning" dot={false}>{warning.code}</StatusBadge>
-                <span className="min-w-0 flex-1 break-words text-sm text-ink">{warning.message}</span>
-                {warning.page_index != null && (
-                  <span className="mono text-xs text-ink-subtle">页索引 {warning.page_index}</span>
-                )}
-                {warning.line_number != null && (
-                  <span className="mono text-xs text-ink-subtle">行号 {warning.line_number}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+
+        {/* 右 4 列：证据 / 事实关联 */}
+        <div className="flex min-w-0 flex-col gap-6">
+          <section className="mb-panel" aria-label="关联事实与证据">
+            <div className="mb-panel__head">
+              <h3 className="mb-panel__title">
+                <Icon name="shield" size="sm" tone="accent" />
+                关联事实与证据
+              </h3>
+              {factsQuery.data && (
+                <StatusBadge tone="neutral">{factsQuery.data.total} 条事实</StatusBadge>
+              )}
+            </div>
+            <div className="mb-panel__body">
+              {factsQuery.isPending ? (
+                <LoadingState compact message="正在读取关联事实…" />
+              ) : factsQuery.isError ? (
+                <ErrorState
+                  compact
+                  message={
+                    factsQuery.error instanceof Error ? factsQuery.error.message : '无法获取关联事实。'
+                  }
+                  code={factsQuery.error instanceof ApiError ? factsQuery.error.code : undefined}
+                  onRetry={() => void factsQuery.refetch()}
+                />
+              ) : facts.length === 0 ? (
+                <EmptyState
+                  compact
+                  icon={FileText}
+                  title="暂无关联事实"
+                  description="该材料尚未抽取到科研事实，可先发起解析。"
+                />
+              ) : (
+                <ul className="flex flex-col gap-3">
+                  {facts.map((fact) => (
+                    <li key={fact.fact_id} className="mb-evidence">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span
+                          className="text-sm font-semibold"
+                          style={{ color: 'var(--rc-text)' }}
+                        >
+                          {fact.field_label || fact.field_key}
+                        </span>
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <StatusBadge tone={assertionTone(fact.assertion_type)} dot={false}>
+                            {assertionLabel[fact.assertion_type] ?? fact.assertion_type}
+                          </StatusBadge>
+                          <StatusBadge tone={extractionTone(fact.extraction_status)} dot={false}>
+                            {extractionLabel[fact.extraction_status] ?? fact.extraction_status}
+                          </StatusBadge>
+                        </span>
+                      </div>
+                      <p className="mb-mono mt-1 break-all text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
+                        {fact.field_key} · {fact.raw_value || '—'} · 置信度{' '}
+                        {formatConfidence(fact.confidence)}
+                      </p>
+                      {fact.evidence.length > 0 && (
+                        <div className="mt-2 flex flex-col gap-2">
+                          {fact.evidence.map((evidence) => (
+                            <div
+                              key={evidence.evidence_id}
+                              className="rounded-md px-3 py-2"
+                              style={{ backgroundColor: 'var(--rc-surface-3)' }}
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-xs" style={{ color: 'var(--rc-text-muted)' }}>
+                                  {evidence.source_name}
+                                </span>
+                                <StatusBadge tone={verificationTone(evidence.verification_status)} dot={false}>
+                                  {verificationLabel[evidence.verification_status] ??
+                                    evidence.verification_status}
+                                </StatusBadge>
+                              </div>
+                              <p className="mb-quote" style={{ maxHeight: 96 }}>
+                                {evidence.quote || '—'}
+                              </p>
+                              <div className="mt-2">
+                                <SourceLocatorView locator={evidence.source_locator} compact />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          <section className="mb-panel" aria-label="材料导航">
+            <div className="mb-panel__head">
+              <h3 className="mb-panel__title">
+                <Icon name="network" size="sm" tone="accent" />
+                继续探索
+              </h3>
+            </div>
+            <div className="mb-panel__body flex flex-col gap-2">
+              <Link to={`${base}/facts`} className="btn-ghost justify-start">
+                <Icon name="clipboardCheck" size="sm" />
+                查看全部科研事实
+              </Link>
+              <Link to={`${base}/evidence-graph`} className="btn-ghost justify-start">
+                <Icon name="network" size="sm" />
+                在证据图谱中定位本材料
+              </Link>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
   )
 }

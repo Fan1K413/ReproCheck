@@ -32,6 +32,33 @@ async def test_api_no_key_plan_and_diagnosis(client, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_api_manual_plan_needs_no_key_and_counts_tasks(client, monkeypatch):
+    """显式 manual 模式只创建人工空规划，不改变默认 AI 无 Key 的失败契约。"""
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "llm_api_key", "")
+    r = await client.post("/api/v1/projects", json={
+        "name": "人工规划测试", "domain": "", "paper_title": "", "description": ""})
+    pid = r.json()["data"]["id"]
+
+    r = await client.post("/api/v1/reproductions/plans", json={
+        "project_id": pid, "title": "人工空规划", "mode": "manual"})
+    assert r.status_code == 200
+    plan = r.json()["data"]
+    assert plan["source"] == "manual"
+    assert plan["ai_available"] is False
+    assert plan["task_count"] == 0
+
+    r = await client.post(f"/api/v1/reproductions/plans/{plan['plan_id']}/tasks", json={
+        "title": "人工任务", "description": "不调用 AI", "needs_human_confirm": True})
+    assert r.status_code == 200
+
+    r = await client.get(f"/api/v1/reproductions/plans/{plan['plan_id']}")
+    assert len(r.json()["data"]["tasks"]) == 1
+    r = await client.get(f"/api/v1/reproductions/plans?project_id={pid}")
+    assert r.json()["data"]["items"][0]["task_count"] == 1
+
+
+@pytest.mark.asyncio
 async def test_api_sandbox_blocked_run_and_report(client):
     from app.models.stage4 import ReproductionPlan
     from app.main import app

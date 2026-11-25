@@ -1,0 +1,132 @@
+{
+  "started_at": "2026-11-24T10:58:41+08:00",
+  "base": "http://127.0.0.1:8000/api/v1",
+  "probes": [
+    {
+      "id": "anon.list_projects",
+      "status": 200,
+      "ms": 36.1,
+      "total": 15,
+      "expected": "401/403"
+    },
+    {
+      "id": "anon.list_materials",
+      "status": 200,
+      "ms": 12.2,
+      "total": 2,
+      "expected": "401/403"
+    },
+    {
+      "id": "anon.list_parse_tasks",
+      "status": 200,
+      "ms": 9.6,
+      "total": 2,
+      "expected": "401/403"
+    },
+    {
+      "id": "anon.download_material",
+      "status": 200,
+      "bytes": 486,
+      "ms": 7.7,
+      "expected": "401/403"
+    },
+    {
+      "id": "invalid_token.me",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "id": "login.lead",
+      "status": 200,
+      "ok": true,
+      "ms": 68.7
+    },
+    {
+      "id": "login.researcher",
+      "status": 200,
+      "ok": true,
+      "ms": 68.4
+    },
+    {
+      "id": "login.reviewer",
+      "status": 200,
+      "ok": true,
+      "ms": 67.7
+    },
+    {
+      "id": "login.viewer",
+      "status": 200,
+      "ok": true,
+      "ms": 68.2
+    },
+    {
+      "id": "lead.create_project",
+      "status": 200,
+      "project_id": "proj-55d83277115d4dea",
+      "ms": 23.0
+    },
+    {
+      "id": "viewer.upload_non_member",
+      "status": 404,
+      "material_id": null,
+      "ms": 14.8,
+      "expected": "403/404"
+    },
+    {
+      "id": "anon.upload",
+      "status": 200,
+      "material_id": "mat-d3c6af019abc4779",
+      "ms": 23.6,
+      "expected": "401"
+    },
+    {
+      "id": "viewer.delete_project",
+      "status": 404,
+      "ms": 11.1,
+      "expected": "403/404"
+    },
+    {
+      "id": "lead.list_projects",
+      "status": 200,
+      "total": 5,
+      "ms": 12.1
+    },
+    {
+      "id": "viewer.list_projects",
+      "status": 200,
+      "total": 1,
+      "ms": 12.0
+    }
+  ],
+  "cleanup": [
+    {
+      "material": "mat-d3c6af019abc4779",
+      "delete_status": 200
+    },
+    {
+      "material": "mat-476f79ce31af4386",
+      "delete_status": 404
+    },
+    {
+      "project": "proj-55d83277115d4dea",
+      "delete_status": 200,
+      "materials_removed": 0
+    }
+  ],
+  "supplemental_probes": [
+    {
+      "id": "viewer.upload_member",
+      "status": 200,
+      "material_id": "mat-476f79ce31af4386",
+      "ms": 28.6,
+      "expected": "403"
+    },
+    {
+      "id": "anon.delete_material",
+      "status": 200,
+      "ms": 16.4,
+      "expected": "401"
+    }
+  ],
+  "finished_at": "2026-11-24T10:58:42+08:00"
+}

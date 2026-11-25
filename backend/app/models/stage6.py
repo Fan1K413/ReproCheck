@@ -26,7 +26,7 @@ from app.db import Base
 from app.models import DateTimeUTC, _now
 
 
-# ============================ A 组 · 身份 / 组织 / 权限 ============================
+# A 组 · 身份 / 组织 / 权限
 
 class User(Base):
     __tablename__ = "users"
@@ -201,7 +201,7 @@ class AuditTrail(Base):
     created_at: Mapped[datetime] = mapped_column(DateTimeUTC(), default=_now, server_default=func.now())
 
 
-# ============================ B 组 · 基准案例 / 事实 ============================
+# B 组 · 基准案例 / 事实
 
 class BenchmarkCase(Base):
     __tablename__ = "benchmark_cases"
@@ -262,7 +262,7 @@ class CaseVerification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTimeUTC(), default=_now, server_default=func.now())
 
 
-# ============================ C 组 · 规则 / 反馈 / RAG ============================
+# C 组 · 规则 / 反馈 / RAG
 
 class AuditRule(Base):
     __tablename__ = "audit_rules"
@@ -351,7 +351,7 @@ class KnowledgeDocument(Base):
     created_at: Mapped[datetime] = mapped_column(DateTimeUTC(), default=_now, server_default=func.now())
 
 
-# ============================ D 组 · 集成 / 开放 API ============================
+# D 组 · 集成 / 开放 API
 
 class RepositoryConnection(Base):
     __tablename__ = "repository_connections"
@@ -430,7 +430,7 @@ class ApiCallLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTimeUTC(), default=_now, server_default=func.now())
 
 
-# ============================ E 组 · 治理 ============================
+# E 组 · 治理
 
 class AiConsent(Base):
     __tablename__ = "ai_consents"

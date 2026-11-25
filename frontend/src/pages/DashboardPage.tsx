@@ -3,16 +3,15 @@ import { useQuery } from '@tanstack/react-query'
 import type { LucideIcon } from 'lucide-react'
 import { ArrowUpRight, Cpu, FolderKanban, Plus, ScanSearch, ShieldAlert } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { DataTable, type Column } from '../components/DataTable'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
 import { LoadingState } from '../components/LoadingState'
 import { StatusBadge } from '../components/StatusBadge'
-import { formatCount, formatDateTime } from '../features/format'
+import { formatCount } from '../features/format'
 import { connectionMeta, severityTone } from '../features/llm'
 import { api } from '../services/api'
 import { useAuditStore } from '../stores/auditStore'
-import type { Project } from '../types/api'
+import { ProjectConstellation } from '../bloom/ProjectConstellation'
 
 type StatCardProps = {
   label: string
@@ -39,51 +38,6 @@ function StatCard({ label, value, hint, icon: Icon, badge }: StatCardProps) {
     </div>
   )
 }
-
-const projectColumns: Column<Project>[] = [
-  {
-    key: 'name',
-    header: '项目名称',
-    render: (project) => (
-      <div className="min-w-0">
-        <p className="truncate font-medium text-ink">{project.name}</p>
-        <p className="mt-0.5 truncate text-xs text-ink-subtle">{project.description || '暂无描述'}</p>
-      </div>
-    ),
-  },
-  {
-    key: 'domain',
-    header: '研究领域',
-    render: (project) => <span className="text-ink-muted">{project.domain}</span>,
-  },
-  {
-    key: 'paper',
-    header: '论文标题',
-    render: (project) => (
-      <span className="block max-w-[260px] truncate text-ink-muted" title={project.paper_title}>
-        {project.paper_title}
-      </span>
-    ),
-  },
-  {
-    key: 'created',
-    header: '创建时间',
-    render: (project) => <span className="mono whitespace-nowrap text-xs text-ink-muted">{formatDateTime(project.created_at)}</span>,
-  },
-  {
-    key: 'stage2',
-    header: '材料解析',
-    render: (project) => (
-      <Link
-        to={`/projects/${project.id}/materials`}
-        className="inline-flex items-center gap-1 text-xs font-medium text-accent-dark hover:underline"
-        title="上传材料并发起解析"
-      >
-        管理材料 <ArrowUpRight size={12} />
-      </Link>
-    ),
-  },
-]
 
 export default function DashboardPage() {
   const projectsQuery = useQuery({ queryKey: ['projects'], queryFn: api.getProjects })
@@ -177,25 +131,7 @@ export default function DashboardPage() {
               onRetry={() => void projectsQuery.refetch()}
             />
           ) : (
-            <DataTable
-              columns={projectColumns}
-              data={projectsQuery.data?.items.slice(0, 5) ?? []}
-              rowKey={(project) => project.id}
-              empty={
-                <EmptyState
-                  compact
-                  icon={FolderKanban}
-                  title="尚无项目"
-                  description="创建第一个复现审计项目档案后，会显示在这里。"
-                  action={
-                    <Link to="/projects/new" className="btn-primary">
-                      <Plus size={15} />
-                      去创建一个
-                    </Link>
-                  }
-                />
-              }
-            />
+            <ProjectConstellation projects={projectsQuery.data?.items.slice(0, 5) ?? []} />
           )}
         </section>
 

@@ -1,23 +1,62 @@
-import type { ReactNode } from 'react'
+/**
+ * Wave E · AI 模型服务（/settings/llm）
+ * --------------------------------------------------------------------------
+ * 设计：V3 全站统一深色空间体系，与主工作台同一 --rc-* 语义 token。
+ * 硬约束：API 密钥只在后端读取与保存，前端不接收明文；
+ *         浏览器草稿（sessionStorage）只允许保存非敏感字段，
+ *         密钥字段绝不落盘 —— 页面底部提供实时自检。
+ */
+import { useMemo } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Cpu, Loader2, PlugZap, ShieldCheck } from 'lucide-react'
+import { Cpu, PlugZap, ShieldCheck, SlidersHorizontal } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { ErrorState } from '../components/ErrorState'
+import { Icon } from '../components/Icon'
 import { LoadingState } from '../components/LoadingState'
 import { StatusBadge } from '../components/StatusBadge'
 import { formatCount, formatDateTime, formatDuration } from '../features/format'
 import { connectionMeta } from '../features/llm'
 import { ApiError, api } from '../services/api'
+import '../styles/wave-e-model.css'
 
-type RowProps = {
-  label: string
-  children: ReactNode
+/** 草稿槽位前缀：与模型管理中心共用，只允许写入非敏感字段。 */
+const DRAFT_PREFIX = 'rc.draft.'
+/** 命中即视为“密钥字段”的字段名模式。 */
+const SECRET_FIELD_PATTERN = /api[_-]?key|secret|passwo?rd|credential_secret/i
+
+/**
+ * 扫描 sessionStorage 中的草稿槽位，确认没有任何密钥字段落盘。
+ * 只读、不抛错；隐私模式下 sessionStorage 不可用时返回空数组（视为无泄漏）。
+ */
+function scanSecretDrafts(): string[] {
+  if (typeof window === 'undefined') return []
+  let storage: Storage | null = null
+  try {
+    storage = window.sessionStorage
+  } catch {
+    return []
+  }
+  if (!storage) return []
+  const hits: string[] = []
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index)
+    if (!key || !key.startsWith(DRAFT_PREFIX)) continue
+    let raw = ''
+    try {
+      raw = storage.getItem(key) ?? ''
+    } catch {
+      continue
+    }
+    if (SECRET_FIELD_PATTERN.test(key) || SECRET_FIELD_PATTERN.test(raw)) hits.push(key)
+  }
+  return hits
 }
 
-function SpecRow({ label, children }: RowProps) {
+function SpecRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-line-soft py-3 last:border-0">
-      <span className="shrink-0 text-sm text-ink-muted">{label}</span>
-      <div className="min-w-0 text-right text-sm font-medium text-ink">{children}</div>
+    <div className="rc-we-spec">
+      <span className="rc-we-spec__k">{label}</span>
+      <div className="rc-we-spec__v">{children}</div>
     </div>
   )
 }
@@ -29,69 +68,101 @@ export default function LlmSettingsPage() {
   const testError = testMutation.error as ApiError | null
   const testData = testMutation.data
 
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">AI 模型服务</h2>
-          <p className="mt-1 text-sm text-ink-muted">查看模型服务状态并发起一次真实连接测试。</p>
-        </div>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={() => testMutation.mutate()}
-          disabled={testMutation.isPending}
-        >
-          {testMutation.isPending ? (
-            <>
-              <Loader2 size={16} className="animate-spin" />
-              测试中…
-            </>
-          ) : (
-            <>
-              <PlugZap size={16} />
-              测试模型连接
-            </>
-          )}
-        </button>
-      </div>
+  // 密钥落盘自检：状态变化或测试完成后重新扫描一次草稿槽位。
+  const secretDraftHits = useMemo(
+    () => scanSecretDrafts(),
+    [statusQuery.data, testMutation.data, testMutation.isError],
+  )
 
-      <div className="flex items-start gap-3 rounded-panel border border-line bg-surface p-4">
-        <ShieldCheck size={19} className="mt-0.5 shrink-0 text-accent-dark" />
-        <div>
-          <p className="text-sm font-semibold text-ink">密钥安全说明</p>
-          <p className="mt-1 text-sm text-ink-muted">
-            API 密钥仅在后端服务中读取与保存。前端不会接收、存储或展示明文密钥，此处仅显示“已配置 / 未配置”状态。
+  return (
+    <div className="rc-we-page rc-we-page--bleed">
+      <header className="rc-we-head">
+        <div className="rc-we-head__text">
+          <p className="rc-we-eyebrow">系统级状态 · 排错用</p>
+          <h1 className="rc-we-title">系统 AI 状态</h1>
+          <p className="rc-we-lead">
+            这里显示 ReproCheck 的系统默认 AI 服务，不是你个人的配置。要连接自己的 AI 助手，请用五步向导；
+            本页只用于查看状态和排查系统级故障。
           </p>
         </div>
-      </div>
+        <div className="rc-we-actions">
+          <Link to="/settings/models?tab=setup" className="btn-primary">
+            <Icon as={SlidersHorizontal} size="sm" />
+            连接 AI 助手
+          </Link>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => testMutation.mutate()}
+            disabled={testMutation.isPending}
+          >
+            {testMutation.isPending ? (
+              <>
+                <Icon name="loader" size="sm" className="animate-spin" />
+                测试中…
+              </>
+            ) : (
+              <>
+                <Icon as={PlugZap} size="sm" />
+                测试系统连接
+              </>
+            )}
+          </button>
+        </div>
+      </header>
+
+      <section className="rc-we-note" aria-label="密钥安全说明">
+        <Icon as={ShieldCheck} size="lg" className="rc-we-note__icon" />
+        <div>
+          <p className="rc-we-note__title">密钥安全说明</p>
+          <ul className="rc-we-note__list">
+            <li>API 密钥仅在后端服务中读取与保存；前端不会接收、存储或展示明文密钥。</li>
+            <li>此处仅显示「已配置 / 未配置」状态，无法反查密钥内容。</li>
+            <li>
+              浏览器草稿（sessionStorage）仅保存供应商、名称等非敏感字段，密钥字段永不落盘。
+              <span className="ml-1 inline-flex align-middle">
+                {secretDraftHits.length === 0 ? (
+                  <StatusBadge tone="success">草稿自检通过</StatusBadge>
+                ) : (
+                  <StatusBadge tone="danger">
+                    发现 {secretDraftHits.length} 处疑似密钥字段
+                  </StatusBadge>
+                )}
+              </span>
+            </li>
+          </ul>
+        </div>
+      </section>
 
       {statusQuery.isPending ? (
-        <div className="panel">
+        <section className="rc-we-card">
           <LoadingState message="正在读取模型服务状态…" />
-        </div>
+        </section>
       ) : statusQuery.isError || !status ? (
-        <div className="panel">
+        <section className="rc-we-card">
           <ErrorState
             message="无法获取模型服务状态，请确认后端服务已启动。"
             onRetry={() => void statusQuery.refetch()}
           />
-        </div>
+        </section>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <section className="panel overflow-hidden">
-            <div className="panel-header">
-              <div className="flex items-center gap-2">
-                <Cpu size={17} className="text-accent-dark" />
-                <h3 className="text-sm font-semibold">服务配置</h3>
-              </div>
+        <div className="rc-we-grid rc-we-grid--2">
+          <section className="rc-we-card">
+            <div className="rc-we-card__head">
+              <h2 className="rc-we-card__title">
+                <Icon as={Cpu} size="md" tone="accent" />
+                服务配置
+              </h2>
+              <StatusBadge tone={connectionMeta[status.connection_status].tone}>
+                {connectionMeta[status.connection_status].label}
+              </StatusBadge>
             </div>
-            <div className="px-5 py-1">
-              <SpecRow label="服务提供方 (provider)">
-                <span className="mono text-[13px]">{status.provider}</span>
+            <div className="rc-we-card__body" style={{ paddingTop: 'var(--rc-space-2)' }}>
+              <SpecRow label="服务商">
+                <span className="rc-we-spec__v--mono">{status.provider}</span>
               </SpecRow>
-              <SpecRow label="模型 (model)">
-                <span className="mono block truncate text-[13px]" title={status.model}>
+              <SpecRow label="模型">
+                <span className="rc-we-spec__v--mono" title={status.model}>
                   {status.model}
                 </span>
               </SpecRow>
@@ -108,23 +179,32 @@ export default function LlmSettingsPage() {
             </div>
           </section>
 
-          <section className="panel overflow-hidden">
-            <div className="panel-header">
-              <div className="flex items-center gap-2">
-                <PlugZap size={17} className="text-accent-dark" />
-                <h3 className="text-sm font-semibold">最近一次调用</h3>
-              </div>
+          <section className="rc-we-card">
+            <div className="rc-we-card__head">
+              <h2 className="rc-we-card__title">
+                <Icon as={PlugZap} size="md" tone="accent" />
+                最近一次调用
+              </h2>
+              <StatusBadge tone={status.last_call_success == null ? 'neutral' : status.last_call_success ? 'success' : 'danger'}>
+                {status.last_call_success == null
+                  ? '暂无记录'
+                  : status.last_call_success
+                    ? '成功'
+                    : '失败'}
+              </StatusBadge>
             </div>
-            <div className="px-5 py-1">
+            <div className="rc-we-card__body" style={{ paddingTop: 'var(--rc-space-2)' }}>
               <SpecRow label="调用时间">
-                <span className="mono text-[13px]">{formatDateTime(status.last_call_at)}</span>
+                <span className="rc-we-spec__v--mono">{formatDateTime(status.last_call_at)}</span>
               </SpecRow>
               <SpecRow label="调用耗时">
-                <span className="mono text-[13px]">{formatDuration(status.last_call_duration_ms)}</span>
+                <span className="rc-we-spec__v--mono">
+                  {formatDuration(status.last_call_duration_ms)}
+                </span>
               </SpecRow>
               <SpecRow label="调用结果">
                 {status.last_call_success == null ? (
-                  <span className="text-ink-subtle">暂无记录</span>
+                  <span style={{ color: 'var(--rc-text-subtle)' }}>暂无记录</span>
                 ) : (
                   <StatusBadge tone={status.last_call_success ? 'success' : 'danger'}>
                     {status.last_call_success ? '成功' : '失败'}
@@ -133,14 +213,18 @@ export default function LlmSettingsPage() {
               </SpecRow>
               <SpecRow label="Token 用量">
                 {status.last_token_usage ? (
-                  <span className="mono text-[13px]">
-                    {formatCount(status.last_token_usage.total_tokens)} tokens
-                    <span className="ml-1 text-xs font-normal text-ink-subtle">
-                      (提示 {formatCount(status.last_token_usage.prompt_tokens)} / 补全 {formatCount(status.last_token_usage.completion_tokens)})
+                  <span className="rc-we-spec__v--mono">
+                    {formatCount(status.last_token_usage.total_tokens)} 个 Token
+                    <span
+                      className="ml-1"
+                      style={{ color: 'var(--rc-text-subtle)', fontWeight: 'var(--rc-fw-r)' }}
+                    >
+                      (提示 {formatCount(status.last_token_usage.prompt_tokens)} / 补全{' '}
+                      {formatCount(status.last_token_usage.completion_tokens)})
                     </span>
                   </span>
                 ) : (
-                  <span className="text-ink-subtle">暂无记录</span>
+                  <span style={{ color: 'var(--rc-text-subtle)' }}>暂无记录</span>
                 )}
               </SpecRow>
             </div>
@@ -149,9 +233,9 @@ export default function LlmSettingsPage() {
       )}
 
       {(testMutation.isSuccess || testMutation.isError) && (
-        <section className="panel overflow-hidden">
-          <div className="panel-header">
-            <h3 className="text-sm font-semibold">连接测试结果</h3>
+        <section className="rc-we-card">
+          <div className="rc-we-card__head">
+            <h2 className="rc-we-card__title">连接测试结果</h2>
             {testMutation.isSuccess && (
               <StatusBadge tone={testData?.success ? 'success' : 'danger'}>
                 {testData?.success ? '调用成功' : '调用未成功'}
@@ -159,39 +243,41 @@ export default function LlmSettingsPage() {
             )}
           </div>
           {testMutation.isError ? (
-            <ErrorState
-              compact
-              message={testError?.message ?? '模型连接测试失败。'}
-              code={testError?.code}
-              onRetry={() => testMutation.mutate()}
-            />
+            <div className="rc-we-card__body">
+              <ErrorState
+                compact
+                message={testError?.message ?? '模型连接测试失败。'}
+                code={testError?.code}
+                onRetry={() => testMutation.mutate()}
+              />
+            </div>
           ) : testData ? (
-            <div className="p-5">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-md border border-line-soft bg-canvas px-3 py-2">
-                  <p className="text-[11px] text-ink-subtle">模型</p>
-                  <p className="mono mt-0.5 truncate text-[13px] font-medium" title={testData.model}>
+            <div className="rc-we-card__body">
+              <div className="rc-we-grid rc-we-grid--3">
+                <div className="rc-we-kpi">
+                  <p className="rc-we-kpi__k">模型</p>
+                  <p className="rc-we-kpi__v" title={testData.model}>
                     {testData.model}
                   </p>
                 </div>
-                <div className="rounded-md border border-line-soft bg-canvas px-3 py-2">
-                  <p className="text-[11px] text-ink-subtle">耗时</p>
-                  <p className="mono mt-0.5 text-[13px] font-medium">{formatDuration(testData.duration_ms)}</p>
+                <div className="rc-we-kpi">
+                  <p className="rc-we-kpi__k">耗时</p>
+                  <p className="rc-we-kpi__v">{formatDuration(testData.duration_ms)}</p>
                 </div>
-                <div className="rounded-md border border-line-soft bg-canvas px-3 py-2">
-                  <p className="text-[11px] text-ink-subtle">Token 用量</p>
-                  <p className="mono mt-0.5 text-[13px] font-medium">
+                <div className="rc-we-kpi">
+                  <p className="rc-we-kpi__k">Token 用量</p>
+                  <p className="rc-we-kpi__v">
                     {testData.token_usage ? formatCount(testData.token_usage.total_tokens) : '—'}
                   </p>
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="rc-we-stack-tight" style={{ marginTop: 'var(--rc-space-5)' }}>
                 <p className="field-label">模型返回内容</p>
-                <pre className="mono max-h-72 overflow-auto whitespace-pre-wrap rounded-md border border-line bg-canvas p-4 text-[13px] leading-relaxed text-ink">
-                  {testData.reply}
-                </pre>
+                <pre className="rc-we-code">{testData.reply}</pre>
               </div>
-              <p className="mt-2 text-xs text-ink-subtle">测试时间：{formatDateTime(testData.tested_at)}</p>
+              <p className="rc-we-mono" style={{ marginTop: 'var(--rc-space-2)', color: 'var(--rc-text-subtle)' }}>
+                测试时间：{formatDateTime(testData.tested_at)}
+              </p>
             </div>
           ) : null}
         </section>

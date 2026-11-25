@@ -41,6 +41,15 @@ ReproCheck/
 
 ## 在 Windows 11 上启动
 
+### 一键启动（推荐）
+
+双击项目根目录的 **`一键启动.cmd`**。它会自动检查 8000/5173 端口，只拉起尚未运行的服务，等待后端健康检查与前端页面都真正就绪后再打开浏览器。
+
+- 两个服务窗口会最小化运行，标题分别为 `ReproCheck - 后端 :8000` 与 `ReproCheck - 前端 :5173`；关闭对应窗口即可停止服务。
+- 重复双击不会重复启动：已在运行的服务会被直接复用。
+- 若端口被其他程序占用或启动超过 90 秒，窗口会给出明确错误并保留现场，便于排查。
+- 首次使用前仍需按下方步骤完成后端虚拟环境与前端 `node_modules` 安装。
+
 ### 1. 后端
 
 ```powershell
@@ -78,6 +87,24 @@ npm run dev
 ```
 
 前端默认 `http://localhost:5173`，`/api` 代理到后端 8000。
+
+### 4. Bloom 三级科研复现工作台
+
+Bloom 不是单一动效首页，而是三个连续层级：绽放式功能入口 → 形变式单元面板 → 多模块复现工坊。
+
+```text
+一级绽放台：http://127.0.0.1:5173/projects/proj-209c77cd39f94212/workbench
+二级单卡：  ...?focus=materials
+三级工坊：  ...?view=atelier
+工坊装配：  ...?view=atelier&modules=materials,dataset,environment,runs,verification
+```
+
+- 10 个科研单元分为 `folio / lattice / instrument` 三族，分别使用纸页、格架、仪器三种材质、轮廓、尺寸和展开节奏。
+- 三级工坊把论文、数据集、代码、环境、运行、验证放进同一张真实状态图；支持 2–6 个模块装配、`?modules=` 持久化、真实 `UnitDetail` 详情与 readiness 读数。
+- 演示账号：`lead@reprocheck.demo` / `ReproCheck#2026`
+- 设计规范：[`docs/BLOOM_UI_DESIGN.md`](docs/BLOOM_UI_DESIGN.md)
+- 运行、验收步骤与已知边界：[`docs/BLOOM_UI_RUNBOOK.md`](docs/BLOOM_UI_RUNBOOK.md)
+- 既有路由、接口、权限与数据不变；工作台入口同时出现在首页星丛、项目列表、项目概览与复现概览。
 
 ## 推荐使用流程（主线）
 

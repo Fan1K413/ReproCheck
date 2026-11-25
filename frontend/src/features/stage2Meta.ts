@@ -22,6 +22,7 @@ export const materialTypeLabel: Record<MaterialType, string> = {
   text: '纯文本',
   csv: 'CSV 表格',
   xlsx: 'Excel 表格',
+  code_repository: '代码仓库链接',
   unknown: '未知类型',
 }
 
@@ -34,6 +35,7 @@ export function materialTypeTone(type: MaterialType): Tone {
     case 'python':
     case 'notebook':
     case 'requirements':
+    case 'code_repository':
       return 'success'
     case 'yaml':
     case 'json':

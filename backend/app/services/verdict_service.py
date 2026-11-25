@@ -18,7 +18,7 @@ from app.models.stage2 import EvidenceItem, FactRevision
 from app.models.stage4 import FailureDiagnostic, MetricComparison, ReproductionMetric
 from app.models.stage6 import BenchmarkCase
 
-# ---- 五态常量与中文标签 ----
+# 五态常量与中文标签
 VERIFIED = "VERIFIED"
 PARTIALLY_VERIFIED = "PARTIALLY_VERIFIED"
 INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
@@ -44,7 +44,7 @@ VERDICT_LABELS = {
 SCOPE_NOTE = "仅基于 ReproCheck 自身验证范围内的证据，未进行独立实验复现，不构成任何机构的认证。"
 FRAMEWORK_NOTE = "参考 ACM v1.1 评估框架设计自检项"
 
-# 旧枚举到五态的显式映射；未知值一律 Evidence 不足，不猜测。
+# 旧枚举到五态的显式映射；未知值归为 Evidence 不足。
 _STATUS_MAPS: dict[str, dict[str, str]] = {
     "comparison": {
         "conflict": CONFLICTING,
@@ -79,7 +79,7 @@ def _norm(value: Any) -> str:
 
 
 def map_to_verdict(source_system: str, raw_status: str) -> str:
-    """把既有子系统的原始状态映射为统一五态；未知来源或状态不猜测。"""
+    """把既有子系统的原始状态映射为统一五态；未知来源或状态归为 Evidence 不足。"""
     mapping = _STATUS_MAPS.get(_norm(source_system))
     if mapping is None:
         return INSUFFICIENT_EVIDENCE

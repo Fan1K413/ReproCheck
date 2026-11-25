@@ -100,7 +100,7 @@ def _seed_fact(db: AsyncSession, project_id: str, material_id: str,
     return fact
 
 
-# ---------------- map_to_verdict ----------------
+# map_to_verdict
 
 @pytest.mark.asyncio
 async def test_map_comparison_statuses():
@@ -135,7 +135,7 @@ async def test_map_benchmark_quality_statuses():
     assert map_to_verdict("benchmark_quality", "unverified") == UNVERIFIABLE
 
 
-# ---------------- build_project_verdict ----------------
+# build_project_verdict
 
 @pytest.mark.asyncio
 async def test_build_empty_project_returns_zero_counts_and_disclaimer(session_fixture):
@@ -246,7 +246,7 @@ async def test_build_tolerates_db_query_errors():
     assert any("RuntimeError" in note for note in result["notes"])
 
 
-# ---------------- API 认证与项目隔离 ----------------
+# API 认证与项目隔离
 
 @pytest.mark.asyncio
 async def test_api_requires_authentication(verdict_client, monkeypatch):

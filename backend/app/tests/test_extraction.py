@@ -195,3 +195,30 @@ async def test_no_key_fails_without_fake_facts(session_fixture, monkeypatch):
     assert ei.value.code == "LLM_KEY_NOT_CONFIGURED"
     facts = (await session_fixture.execute(select(ExtractedFact))).scalars().all()
     assert len(facts) == 0  # 无 Key 不产生任何事实
+
+
+@pytest.mark.asyncio
+async def test_program_fact_has_verified_source_evidence(session_fixture):
+    from app.schemas.parsing import SourceChunk as ParsedSourceChunk
+
+    project = Project(id="p-program", name="program evidence")
+    material = Material(id="m-program", project_id="p-program", source_name="config.yaml", material_type="yaml")
+    session_fixture.add_all([project, material])
+    await session_fixture.commit()
+    content = "learning_rate: 0.001"
+    parsed = ParsedSourceChunk(
+        chunk_id="chunk-program", material_id="m-program", material_type="yaml",
+        content=content, content_hash=ParsedSourceChunk.make_hash(content), parser_version="test-v1",
+        source_locator={"locator_type": "yaml", "field_path": "learning_rate", "original_key": "learning_rate"},
+    )
+    result = ParseResult(material_id="m-program", material_type="yaml", parser_version="test-v1",
+                         status="completed", chunks=[parsed])
+    created = await ExtractionService(session_fixture).add_program_facts(
+        material=material, parse_result=result, project_id="p-program")
+    assert created == 1
+    facts = (await session_fixture.execute(select(ExtractedFact))).scalars().all()
+    evidence = (await session_fixture.execute(select(EvidenceItem))).scalars().all()
+    assert len(facts) == 1 and len(evidence) == 1
+    assert evidence[0].fact_id == facts[0].fact_id
+    assert evidence[0].verification_status == "verified"
+    assert evidence[0].original_text == content

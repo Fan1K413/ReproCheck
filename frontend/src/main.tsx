@@ -3,7 +3,15 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+// Design Token 必须最先引入：全站唯一色源（深色默认 + 浅色皮肤 + 旧变量别名）
+import './styles/tokens.css'
 import './styles/index.css'
+import './styles/workbench.css'
+import './styles/workbench-petals.css'
+import './styles/rc-unified.css'
+import './styles/usability.css'
+import './styles/usability-guided.css'
+import './styles/usability-model-manual.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {

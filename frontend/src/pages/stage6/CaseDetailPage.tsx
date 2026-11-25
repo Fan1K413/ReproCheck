@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
-  Check,
   CheckCircle2,
   ClipboardCheck,
   Cpu,
@@ -17,10 +16,8 @@ import {
   Info,
   Link2,
   Lock,
-  Plus,
   RefreshCw,
   Scale,
-  Search,
   ShieldCheck,
   Target,
   User,
@@ -32,6 +29,7 @@ import { CopyButton } from '../../components/CopyButton'
 import { DataTable, type Column } from '../../components/DataTable'
 import { EmptyState } from '../../components/EmptyState'
 import { ErrorState } from '../../components/ErrorState'
+import { Icon } from '../../components/Icon'
 import { JsonBlock } from '../../components/JsonBlock'
 import { LoadingState } from '../../components/LoadingState'
 import { Modal } from '../../components/Modal'
@@ -52,6 +50,7 @@ import type {
   Traceability,
   VerificationCreated,
 } from '../../types/stage6'
+import '../../styles/wave-d-stage6.css'
 
 /* 与后端 benchmark_service.SOURCE_TYPES 完全一致 */
 const SOURCE_TYPES = [
@@ -99,9 +98,9 @@ const FACT_COLUMNS: Column<CaseFact>[] = [
     header: '字段',
     render: (fact) => (
       <div className="min-w-[150px]">
-        <p className="mono text-xs font-semibold text-accent-dark">{fact.field_key}</p>
-        <p className="mt-0.5 text-xs text-ink">{fact.label}{fact.is_standard ? '' : '（自定义）'}</p>
-        <p className="mt-0.5 text-[10px] text-ink-subtle">
+        <p className="mono text-xs font-semibold rcw-ink">{fact.field_key}</p>
+        <p className="mt-0.5 text-xs">{fact.label}{fact.is_standard ? '' : '（自定义）'}</p>
+        <p className="mt-0.5 text-[10px] rcw-faint">
           {fact.category_label}
           {fact.raw_field && fact.raw_field !== fact.field_key && <span className="mono"> · 原文 {fact.raw_field}</span>}
         </p>
@@ -114,7 +113,7 @@ const FACT_COLUMNS: Column<CaseFact>[] = [
     render: (fact) => (
       <span className="mono text-xs">
         {fact.raw_value}
-        {fact.unit && <span className="ml-1 rounded bg-canvas px-1 text-[10px] text-ink-subtle">{fact.unit}</span>}
+        {fact.unit && <span className="mono ml-1 rounded px-1 text-[10px] rcw-faint">{fact.unit}</span>}
       </span>
     ),
   },
@@ -123,9 +122,9 @@ const FACT_COLUMNS: Column<CaseFact>[] = [
     header: '归一值',
     render: (fact) =>
       fact.normalized_value ? (
-        <span className="mono text-xs text-success">{displayValue(fact.normalized_value, fact.unit)}</span>
+        <span className="mono text-xs" style={{ color: 'var(--rc-success)' }}>{displayValue(fact.normalized_value, fact.unit)}</span>
       ) : (
-        <span className="text-xs text-ink-subtle">—</span>
+        <span className="text-xs rcw-faint">—</span>
       ),
   },
   {
@@ -135,7 +134,7 @@ const FACT_COLUMNS: Column<CaseFact>[] = [
       <div className="min-w-[120px]">
         <StatusBadge tone="neutral" dot={false}>{sourceLabel(fact.source_type)}</StatusBadge>
         {fact.source_ref && (
-          <p className="mono mt-1 max-w-[200px] truncate text-[10px] text-ink-subtle" title={fact.source_ref}>{fact.source_ref}</p>
+          <p className="mono mt-1 max-w-[200px] truncate text-[10px] rcw-faint" title={fact.source_ref}>{fact.source_ref}</p>
         )}
       </div>
     ),
@@ -147,9 +146,9 @@ const FACT_COLUMNS: Column<CaseFact>[] = [
     render: (fact) => (
       <div className="flex flex-col items-end gap-1">
         <span className="mono text-xs">{formatConfidence(fact.confidence)}</span>
-        <span className="h-1 w-14 overflow-hidden rounded-full bg-canvas">
-          <span className="block h-full rounded-full bg-accent" style={{ width: `${Math.round(fact.confidence * 100)}%` }} />
-        </span>
+        <div className="rcw-bar" style={{ width: 56 }}>
+          <span style={{ transform: `scaleX(${Math.max(0.02, Math.min(1, fact.confidence))})` }} />
+        </div>
       </div>
     ),
   },
@@ -157,9 +156,9 @@ const FACT_COLUMNS: Column<CaseFact>[] = [
     key: 'experiment',
     header: '适用实验',
     render: (fact) => (
-      <div className="max-w-[170px] text-xs text-ink-muted">
+      <div className="max-w-[170px] text-xs rcw-muted">
         {fact.applicable_experiment || '—'}
-        {fact.context && <p className="mt-0.5 truncate text-[10px] text-ink-subtle" title={fact.context}>{fact.context}</p>}
+        {fact.context && <p className="mt-0.5 truncate text-[10px] rcw-faint" title={fact.context}>{fact.context}</p>}
       </div>
     ),
   },
@@ -170,28 +169,32 @@ function QualityBadge({ level }: { level: string }) {
   return <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>
 }
 
+/** 质量阶梯：竖向层级（4 级），当前级高亮、已过级用成功色。 */
 function Ladder({ current }: { current: string }) {
   const rank = qualityRank(current)
   return (
-    <div className="flex items-start">
+    <div className="rcw-ladder">
       {QUALITY_LEVELS.map((step, index) => (
         <Fragment key={step.key}>
-          {index > 0 && <div className={`mt-3.5 h-0.5 flex-1 ${index <= rank ? 'bg-accent' : 'bg-line'}`} />}
-          <div className="flex w-20 shrink-0 flex-col items-center gap-1.5 sm:w-28">
-            <div
-              className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
-                index < rank
-                  ? 'bg-success text-white'
-                  : index === rank
-                    ? 'bg-accent text-accent-dark ring-4 ring-accent-wash'
-                    : 'bg-canvas text-ink-subtle ring-1 ring-line'
-              }`}
-            >
-              {index < rank ? <Check size={14} strokeWidth={2.2} /> : index + 1}
+          <div className="rcw-ladder-step">
+            <div className="rcw-ladder-mark">
+              <span
+                className="rcw-ladder-dot"
+                data-done={index < rank ? 'true' : undefined}
+                data-current={index === rank ? 'true' : undefined}
+              >
+                {index < rank ? <Icon name="check" size="xs" tone="inverse" /> : index + 1}
+              </span>
+              {index < QUALITY_LEVELS.length - 1 && <span className="rcw-ladder-line" aria-hidden="true" />}
             </div>
-            <span className={`text-center text-[11px] leading-tight ${index === rank ? 'font-semibold text-accent-dark' : 'text-ink-subtle'}`}>
-              {step.label}
-            </span>
+            <div className="min-w-0 flex-1" style={{ paddingBottom: 'var(--rc-space-4)' }}>
+              <p className="text-sm font-semibold" style={{ color: index === rank ? 'var(--rcw-ink)' : 'var(--rc-text)' }}>
+                {step.label}
+              </p>
+              <p className="text-[11px] rcw-faint">
+                {index < rank ? '已达成' : index === rank ? '当前等级' : '尚未达成'}
+              </p>
+            </div>
           </div>
         </Fragment>
       ))}
@@ -203,13 +206,13 @@ type BasisItem = NonNullable<QualityEvidence['basis']>[number]
 
 function BasisList({ items, muted = false }: { items: BasisItem[]; muted?: boolean }) {
   return (
-    <ul className="space-y-1.5">
+    <ul className="rcw-stack-tight" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
       {items.map((item) => (
-        <li key={item.verification_id} className="flex items-start gap-2 text-xs">
-          <BadgeCheck size={14} className={`mt-0.5 shrink-0 ${muted ? 'text-ink-subtle' : 'text-success'}`} />
+        <li key={item.verification_id} className="rcw-row" style={{ gap: 'var(--rc-space-2)', alignItems: 'flex-start' }}>
+          <Icon as={BadgeCheck} size="xs" tone={muted ? 'subtle' : 'success'} style={{ marginTop: 3 }} />
           <div className="min-w-0">
-            <p className={muted ? 'text-ink-muted' : 'text-ink'}>{item.reason}</p>
-            <p className="mono mt-0.5 text-[10px] text-ink-subtle">
+            <p className={muted ? 'rcw-muted' : ''}>{item.reason}</p>
+            <p className="mono mt-0.5 text-[10px] rcw-faint">
               {VERIFICATION_TYPES[item.verification_type] ?? item.verification_type} · {VERIFICATION_RESULTS[item.result]?.label ?? item.result} · {formatDateTime(item.created_at)}
             </p>
           </div>
@@ -223,20 +226,20 @@ function EvidenceView({ evidence, full = false }: { evidence: QualityEvidence; f
   const counts = Object.entries(evidence.counts ?? {})
   const notes = evidence.notes ?? []
   return (
-    <div className="space-y-3">
+    <div className="rcw-stack-tight">
       {counts.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="rcw-row" style={{ gap: 'var(--rc-space-1)' }}>
           {counts.map(([key, value]) => (
-            <span key={key} className="rounded bg-canvas px-2 py-1 text-[11px] text-ink-muted ring-1 ring-line">
-              {COUNT_LABELS[key] ?? key} <b className="mono text-ink">{value}</b>
+            <span key={key} className="rcw-chip">
+              {COUNT_LABELS[key] ?? key} <b className="mono" style={{ color: 'var(--rc-text)' }}>{value}</b>
             </span>
           ))}
         </div>
       )}
       {(evidence.basis?.length ?? 0) > 0 && <BasisList items={evidence.basis ?? []} />}
       {full && (evidence.supporting?.length ?? 0) > 0 && (
-        <details className="rounded-md border border-line-soft bg-canvas/50 p-3">
-          <summary className="cursor-pointer text-xs font-medium text-ink-muted">辅助证据（{evidence.supporting?.length ?? 0} 条）</summary>
+        <details className="rounded-md p-3" style={{ border: 'var(--rc-stroke-hair)', backgroundColor: 'var(--rc-surface-2)' }}>
+          <summary className="cursor-pointer text-xs font-medium rcw-muted">辅助证据（{evidence.supporting?.length ?? 0} 条）</summary>
           <div className="mt-2"><BasisList items={evidence.supporting ?? []} muted /></div>
         </details>
       )}
@@ -247,19 +250,20 @@ function EvidenceView({ evidence, full = false }: { evidence: QualityEvidence; f
         </div>
       )}
       {full && evidence.independent_reviewer_user_id && (
-        <p className="text-[11px] text-ink-muted">独立复核人：<span className="mono">{evidence.independent_reviewer_user_id}</span></p>
+        <p className="text-[11px] rcw-muted">独立复核人：<span className="mono">{evidence.independent_reviewer_user_id}</span></p>
       )}
       {notes.length > 0 && (
-        <ul className="space-y-1">
+        <ul className="rcw-stack-tight" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {notes.map((note, index) => (
-            <li key={`${note}-${index}`} className="flex items-start gap-1.5 text-[11px] leading-relaxed text-ink-muted">
-              <Info size={13} className="mt-0.5 shrink-0 text-accent-dark" /> {note}
+            <li key={`${note}-${index}`} className="rcw-row" style={{ gap: 'var(--rc-space-2)', alignItems: 'flex-start' }}>
+              <Icon as={Info} size="xs" tone="accent" style={{ marginTop: 3 }} />
+              <span className="text-[11px] leading-relaxed rcw-muted">{note}</span>
             </li>
           ))}
         </ul>
       )}
       {full && (
-        <p className="mono text-[10px] text-ink-subtle">
+        <p className="mono text-[10px] rcw-faint">
           rule_version: {evidence.rule_version ?? '—'} · computed_at: {formatDateTime(evidence.computed_at)}
           {evidence.downgrade_blocked ? ' · 降级已拦截' : ''}
         </p>
@@ -270,16 +274,18 @@ function EvidenceView({ evidence, full = false }: { evidence: QualityEvidence; f
 
 function RecomputeResultPanel({ result }: { result: QualityRecomputeResult }) {
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="rcw-stack-tight">
+      <div className="rcw-row" style={{ gap: 'var(--rc-space-2)' }}>
         <QualityBadge level={result.previous_level} />
-        <ArrowRight size={15} strokeWidth={1.8} className="text-ink-subtle" />
+        <Icon as={ArrowRight} size="xs" tone="subtle" />
         <QualityBadge level={result.quality_level} />
         {result.changed ? <StatusBadge tone="success">等级已变更</StatusBadge> : <StatusBadge tone="neutral">等级未变化</StatusBadge>}
         {result.downgrade_blocked && <StatusBadge tone="danger">降级被拦截</StatusBadge>}
       </div>
-      <p className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted">
-        计算等级 <QualityBadge level={result.computed_level} /> · 纳入验证 <b className="mono">{result.verification_count}</b> 条
+      <p className="rcw-row" style={{ gap: 'var(--rc-space-2)' }}>
+        <span className="text-[11px] rcw-muted">计算等级</span>
+        <QualityBadge level={result.computed_level} />
+        <span className="text-[11px] rcw-muted">纳入验证 <b className="mono">{result.verification_count}</b> 条</span>
       </p>
       <EvidenceView evidence={result.quality_evidence} full />
     </div>
@@ -294,30 +300,39 @@ function TracePanel({ trace }: { trace: Traceability }) {
     { label: '许可声明', ok: trace.has_license },
   ]
   return (
-    <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="rcw-stack-tight">
+      <div className="rcw-grid rcw-grid-2">
         {flags.map((flag) => (
           <div
             key={flag.label}
-            className={`flex items-center gap-2 rounded-md border p-2.5 text-xs ${
-              flag.ok ? 'border-success/30 bg-success-wash text-success' : 'border-line bg-canvas text-ink-subtle'
-            }`}
+            className="rcw-row"
+            style={{
+              gap: 'var(--rc-space-2)',
+              padding: 'var(--rc-space-2) var(--rc-space-3)',
+              borderRadius: 'var(--rc-radius-sm)',
+              border: 'var(--rc-stroke-hair)',
+              backgroundColor: flag.ok ? 'var(--rc-success-wash)' : 'var(--rc-surface-2)',
+              color: flag.ok ? 'var(--rc-success)' : 'var(--rc-text-subtle)',
+              fontSize: 'var(--rc-fs-caption)',
+            }}
           >
-            {flag.ok ? <CheckCircle2 size={15} /> : <XCircle size={15} />} {flag.label}
+            {flag.ok ? <Icon as={CheckCircle2} size="xs" /> : <Icon as={XCircle} size="xs" />}
+            {flag.label}
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap items-center gap-2 text-[11px] text-ink-muted">
+      <div className="rcw-row" style={{ gap: 'var(--rc-space-2)' }}>
         <StatusBadge tone={trace.complete ? 'success' : 'warning'}>{trace.complete ? '追溯链完整' : '追溯链存在缺口'}</StatusBadge>
-        <span className="rounded bg-canvas px-2 py-0.5 ring-1 ring-line">
+        <span className="rcw-chip">
           分发策略：<span className="mono">{trace.redistribution}</span>（仅元数据与指针）
         </span>
       </div>
       {trace.warnings.length > 0 && (
-        <ul className="space-y-1">
+        <ul className="rcw-stack-tight" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {trace.warnings.map((warning, index) => (
-            <li key={`${warning}-${index}`} className="flex items-start gap-1.5 text-[11px] leading-relaxed text-warning">
-              <AlertTriangle size={13} className="mt-0.5 shrink-0" /> {warning}
+            <li key={`${warning}-${index}`} className="rcw-row" style={{ gap: 'var(--rc-space-2)', alignItems: 'flex-start' }}>
+              <Icon as={AlertTriangle} size="xs" tone="warning" style={{ marginTop: 3 }} />
+              <span className="text-[11px] leading-relaxed" style={{ color: 'var(--rc-warning)' }}>{warning}</span>
             </li>
           ))}
         </ul>
@@ -380,7 +395,9 @@ function FactModal({ open, onClose, caseId, schema }: { open: boolean; onClose: 
       footer={
         <>
           <button type="button" className="btn-ghost" onClick={onClose}>取消</button>
-          <button type="button" className="btn-primary" disabled={mutation.isPending} onClick={submit}><Plus size={15} strokeWidth={1.8} /> 录入事实</button>
+          <button type="button" className="btn-primary" disabled={mutation.isPending} onClick={submit}>
+            <Icon name="plus" size="xs" />录入事实
+          </button>
         </>
       }
     >
@@ -397,7 +414,7 @@ function FactModal({ open, onClose, caseId, schema }: { open: boolean; onClose: 
               </optgroup>
             ))}
           </select>
-          {errors.field && <p className="mt-1 text-xs text-danger">{errors.field}</p>}
+          {errors.field && <p className="mt-1 text-xs" style={{ color: 'var(--rc-danger)' }}>{errors.field}</p>}
         </div>
         <div>
           <label className="field-label">原文字段名（raw_field）</label>
@@ -406,7 +423,7 @@ function FactModal({ open, onClose, caseId, schema }: { open: boolean; onClose: 
         <div>
           <label className="field-label">原始值（raw_value）*</label>
           <input className="field-input" placeholder="如 76.13% / 1e-3 / 90 epochs" value={form.raw_value} onChange={(event) => setForm((prev) => ({ ...prev, raw_value: event.target.value }))} />
-          {errors.value && <p className="mt-1 text-xs text-danger">{errors.value}</p>}
+          {errors.value && <p className="mt-1 text-xs" style={{ color: 'var(--rc-danger)' }}>{errors.value}</p>}
         </div>
         <div>
           <label className="field-label">单位覆盖（可选）</label>
@@ -432,12 +449,12 @@ function FactModal({ open, onClose, caseId, schema }: { open: boolean; onClose: 
         </div>
         <div className="sm:col-span-2">
           <label className="field-label">置信度（辅助参考，非校准概率）</label>
-          <div className="flex items-center gap-3">
-            <input type="range" min={0} max={1} step={0.05} className="flex-1 cursor-pointer accent-accent" value={form.confidence} onChange={(event) => setForm((prev) => ({ ...prev, confidence: Number(event.target.value) }))} />
-            <span className="mono w-14 text-right text-sm font-semibold text-accent-dark">{formatConfidence(form.confidence)}</span>
+          <div className="rcw-row" style={{ gap: 'var(--rc-space-3)' }}>
+            <input type="range" min={0} max={1} step={0.05} className="flex-1 cursor-pointer" style={{ accentColor: 'var(--rc-accent)' }} value={form.confidence} onChange={(event) => setForm((prev) => ({ ...prev, confidence: Number(event.target.value) }))} />
+            <span className="mono w-14 text-right text-sm font-semibold rcw-ink">{formatConfidence(form.confidence)}</span>
           </div>
         </div>
-        <p className="text-[11px] leading-relaxed text-ink-subtle sm:col-span-2">
+        <p className="text-[11px] leading-relaxed rcw-faint sm:col-span-2">
           字段键由后端按原文字段名/别名自动归一化；未收录字段降级为 snake_case 并标记为非标准，不丢弃信息。
           {!schema && ' 标准字段目录暂不可用（加载中或请求失败），可直接填写原文字段名。'}
         </p>
@@ -514,7 +531,9 @@ function VerificationModal({ open, onClose, caseId, benchmark, onResult }: {
       footer={
         <>
           <button type="button" className="btn-ghost" onClick={onClose}>取消</button>
-          <button type="button" className="btn-primary" disabled={mutation.isPending} onClick={submit}><ClipboardCheck size={15} strokeWidth={1.8} /> 提交验证</button>
+          <button type="button" className="btn-primary" disabled={mutation.isPending} onClick={submit}>
+            <Icon name="clipboardCheck" size="xs" />提交验证
+          </button>
         </>
       }
     >
@@ -535,27 +554,27 @@ function VerificationModal({ open, onClose, caseId, benchmark, onResult }: {
         </div>
 
         {isExecution ? (
-          <div className="rounded-md border border-line bg-canvas/50 p-3">
-            <p className="text-xs font-semibold text-ink">运行环境声明（conditions_json）</p>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-ink-muted">
+          <div className="rounded-md p-3" style={{ border: 'var(--rc-stroke-hair)', backgroundColor: 'var(--rc-surface-2)' }}>
+            <p className="text-xs font-semibold">运行环境声明（conditions_json）</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed rcw-muted">
               以下键均来自后端 ENVIRONMENT_KEYS，任一非空即视为「声明运行环境」；execution pass ＋ 环境 → 执行验证。
             </p>
             <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
               {ENV_FIELDS.map((field) => (
                 <div key={field.key}>
-                  <label className="field-label">{field.label} <span className="mono font-normal text-ink-subtle">{field.key}</span></label>
+                  <label className="field-label">{field.label} <span className="mono font-normal rcw-faint">{field.key}</span></label>
                   <input className="field-input" placeholder={field.placeholder} value={env[field.key] ?? ''} onChange={(event) => setEnv((prev) => ({ ...prev, [field.key]: event.target.value }))} />
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <div className="rounded-md border border-line bg-canvas/50 p-3">
-            <p className="field-label mb-1">复核人身份（由登录会话决定，不可指定他人）</p>
-            <p className="text-sm font-medium text-ink">
-              {user?.display_name ?? '当前登录用户'} <span className="mono text-[10px] font-normal text-ink-subtle">{user?.id ?? ''}</span>
+          <div className="rounded-md p-3" style={{ border: 'var(--rc-stroke-hair)', backgroundColor: 'var(--rc-surface-2)' }}>
+            <p className="field-label" style={{ marginBottom: 'var(--rc-space-1)' }}>复核人身份（由登录会话决定，不可指定他人）</p>
+            <p className="text-sm font-medium">
+              {user?.display_name ?? '当前登录用户'} <span className="mono text-[10px] font-normal rcw-faint">{user?.id ?? ''}</span>
             </p>
-            <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">
+            <p className="mt-1 text-[11px] leading-relaxed rcw-muted">
               后端将当前账号记录为 verifier_user_id。仅当复核人 ≠ 执行验证人且 ≠ 案例创建者（{benchmark.created_by_name || benchmark.created_by}）时，
               review pass 才构成独立复核，可升级为「独立复核」。
             </p>
@@ -565,7 +584,7 @@ function VerificationModal({ open, onClose, caseId, benchmark, onResult }: {
         <div>
           <label className="field-label">附加条件 JSON（可选，合并进 conditions_json）</label>
           <textarea className="field-input mono resize-y text-xs" rows={2} placeholder='{"seed": 42, "batch_size": 256}' value={form.extraJson} onChange={(event) => setForm((prev) => ({ ...prev, extraJson: event.target.value }))} />
-          {errors.extra && <p className="mt-1 text-xs text-danger">{errors.extra}</p>}
+          {errors.extra && <p className="mt-1 text-xs" style={{ color: 'var(--rc-danger)' }}>{errors.extra}</p>}
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
@@ -577,9 +596,9 @@ function VerificationModal({ open, onClose, caseId, benchmark, onResult }: {
             <input className="field-input mono" placeholder="project_…" value={form.project_id} onChange={(event) => setForm((prev) => ({ ...prev, project_id: event.target.value }))} />
           </div>
         </div>
-        <div className="flex items-start gap-2 rounded-md border border-accent/30 bg-accent-wash p-3 text-[11px] leading-relaxed text-accent-dark">
-          <Info size={14} strokeWidth={1.8} className="mt-0.5 shrink-0" />
-          <span>
+        <div className="rcw-row" style={{ gap: 'var(--rc-space-2)', alignItems: 'flex-start' }}>
+          <Icon as={Info} size="xs" tone="accent" style={{ marginTop: 3 }} />
+          <span className="text-[11px] leading-relaxed rcw-ink">
             阶梯规则：review pass → 部分验证；execution pass＋环境键 → 执行验证；在此之上由不同用户 review pass → 独立复核；
             fail/partial 不升级。重算默认只升不降，降级需在「质量评估」页显式确认。
           </span>
@@ -631,33 +650,44 @@ export default function CaseDetailPage() {
   })
 
   const backLink = (
-    <Link to="/benchmark" className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-accent-dark">
-      <ArrowLeft size={16} strokeWidth={1.8} /> 基准案例库
+    <Link to="/benchmark" className="rcw-row" style={{ gap: 'var(--rc-space-2)', width: 'fit-content', fontSize: 'var(--rc-fs-body)', color: 'var(--rc-text-muted)' }}>
+      <Icon as={ArrowLeft} size="xs" />基准案例库
     </Link>
   )
 
   if (!caseId) {
     return (
-      <div className="space-y-5">
-        {backLink}
-        <section className="panel"><EmptyState title="缺少案例 ID" description="请从基准案例库选择一个案例查看详情。" /></section>
+      <div className="rcw-page">
+        <div className="rcw-stack">
+          {backLink}
+          <section className="rcw-card"><EmptyState title="缺少案例 ID" description="请从基准案例库选择一个案例查看详情。" /></section>
+        </div>
       </div>
     )
   }
   if (caseQuery.isPending) {
-    return <div className="space-y-5">{backLink}<section className="panel"><LoadingState message="正在读取案例详情…" /></section></div>
+    return (
+      <div className="rcw-page">
+        <div className="rcw-stack">
+          {backLink}
+          <section className="rcw-card"><LoadingState message="正在读取案例详情…" /></section>
+        </div>
+      </div>
+    )
   }
   if (caseQuery.isError) {
     return (
-      <div className="space-y-5">
-        {backLink}
-        <section className="panel">
-          <ErrorState
-            message={caseQuery.error.message}
-            code={caseQuery.error instanceof ApiError ? caseQuery.error.code : undefined}
-            onRetry={() => void caseQuery.refetch()}
-          />
-        </section>
+      <div className="rcw-page">
+        <div className="rcw-stack">
+          {backLink}
+          <section className="rcw-card">
+            <ErrorState
+              message={caseQuery.error.message}
+              code={caseQuery.error instanceof ApiError ? caseQuery.error.code : undefined}
+              onRetry={() => void caseQuery.refetch()}
+            />
+          </section>
+        </div>
       </div>
     )
   }
@@ -668,308 +698,333 @@ export default function CaseDetailPage() {
   const currentRequirement = standard?.levels.find((level) => level.key === benchmark.quality_level)?.requirement
   const doiHref = benchmark.doi.startsWith('http') ? benchmark.doi : `https://doi.org/${benchmark.doi}`
   const verifications = verificationsQuery.data?.items ?? []
-  const chipClass = 'inline-flex items-center gap-1.5 rounded-md bg-accent-wash px-2 py-1 text-[11px] font-medium text-accent-dark'
+  const chipClass = 'rcw-chip rcw-chip-accent'
 
   return (
-    <div className="space-y-5">
-      {backLink}
+    <div className="rcw-page">
+      <div className="rcw-stack">
+        {backLink}
 
-      <section className="panel p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-lg font-semibold leading-snug">{benchmark.title}</h2>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <StatusBadge tone={quality.tone}>{quality.label}</StatusBadge>
-              {benchmark.domain && <StatusBadge tone="navy" dot={false}>{benchmark.domain}</StatusBadge>}
-              <StatusBadge tone={benchmark.is_public ? 'success' : 'neutral'} dot={false}>
-                {benchmark.is_public ? <Globe size={12} /> : <Lock size={12} />}
-                {benchmark.is_public ? '公开' : '组织内'}
-              </StatusBadge>
-              {benchmark.license && <StatusBadge tone="neutral" dot={false}><Scale size={12} /> {benchmark.license}</StatusBadge>}
+        {/* ---------- 案例档案头 ---------- */}
+        <section className="rcw-card rcw-card-glass">
+          <div className="rcw-row-between" style={{ alignItems: 'flex-start' }}>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold leading-snug">{benchmark.title}</h2>
+              <div className="rcw-row" style={{ gap: 'var(--rc-space-1)', marginTop: 'var(--rc-space-3)' }}>
+                <StatusBadge tone={quality.tone}>{quality.label}</StatusBadge>
+                {benchmark.domain && <StatusBadge tone="navy" dot={false}>{benchmark.domain}</StatusBadge>}
+                <StatusBadge tone={benchmark.is_public ? 'success' : 'neutral'} dot={false}>
+                  {benchmark.is_public ? <Icon as={Globe} size="xs" /> : <Icon as={Lock} size="xs" />}
+                  {benchmark.is_public ? '公开' : '组织内'}
+                </StatusBadge>
+                {benchmark.license && <StatusBadge tone="neutral" dot={false}><Icon as={Scale} size="xs" /> {benchmark.license}</StatusBadge>}
+              </div>
+            </div>
+            <div className="rcw-stack-tight" style={{ alignItems: 'flex-end' }}>
+              {benchmark.doi && (
+                <a href={doiHref} target="_blank" rel="noreferrer" className="mono rcw-row" style={{ gap: 'var(--rc-space-1)' }}>
+                  <Icon as={ExternalLink} size="xs" /> {benchmark.doi}
+                </a>
+              )}
+              {benchmark.source_url && (
+                <a href={benchmark.source_url} target="_blank" rel="noreferrer" className="rcw-row" style={{ gap: 'var(--rc-space-1)' }}>
+                  <Icon as={ExternalLink} size="xs" /> 来源链接
+                </a>
+              )}
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1 text-xs">
-            {benchmark.doi && (
-              <a href={doiHref} target="_blank" rel="noreferrer" className="mono inline-flex items-center gap-1 text-accent-dark hover:underline">
-                <ExternalLink size={13} /> {benchmark.doi}
+          {(benchmark.model_architecture || benchmark.dataset_name || benchmark.research_task) && (
+            <div className="rcw-row" style={{ gap: 'var(--rc-space-2)', marginTop: 'var(--rc-space-3)' }}>
+              {benchmark.model_architecture && <span className={chipClass}><Icon as={Cpu} size="xs" /> {benchmark.model_architecture}</span>}
+              {benchmark.dataset_name && <span className={chipClass}><Icon as={Database} size="xs" /> {benchmark.dataset_name}</span>}
+              {benchmark.research_task && <span className={chipClass}><Icon as={Target} size="xs" /> {benchmark.research_task}</span>}
+            </div>
+          )}
+          {benchmark.summary && <p className="mt-3 text-sm leading-relaxed rcw-muted">{benchmark.summary}</p>}
+          {benchmark.code_repo_url && (
+            <div className="rcw-row mt-3" style={{ gap: 'var(--rc-space-2)', padding: 'var(--rc-space-2) var(--rc-space-3)', borderRadius: 'var(--rc-radius-sm)', border: 'var(--rc-stroke-hair)', backgroundColor: 'var(--rc-surface-2)' }}>
+              <Icon as={GitBranch} size="xs" tone="accent" />
+              <a href={benchmark.code_repo_url} target="_blank" rel="noreferrer" className="mb-source-link mono min-w-0 max-w-[46%] truncate rcw-ink">
+                {benchmark.code_repo_url}
               </a>
-            )}
-            {benchmark.source_url && (
-              <a href={benchmark.source_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent-dark hover:underline">
-                <ExternalLink size={13} /> 来源链接
-              </a>
-            )}
+              {benchmark.code_commit && (
+                <>
+                  <span className="rcw-chip">{benchmark.code_commit}</span>
+                  <CopyButton text={benchmark.code_commit} label="复制 commit" className="!px-2 !py-1 text-[11px]" />
+                </>
+              )}
+            </div>
+          )}
+          <div className="rcw-row" style={{ gap: 'var(--rc-space-4)', marginTop: 'var(--rc-space-3)', paddingTop: 'var(--rc-space-3)', borderTop: 'var(--rc-stroke-hair)' }}>
+            <span className="text-[11px] rcw-faint">创建者：{benchmark.created_by_name || benchmark.created_by}</span>
+            <span className="mono text-[11px] rcw-faint">创建 {formatDateTime(benchmark.created_at)}</span>
+            <span className="mono text-[11px] rcw-faint">更新 {formatDateTime(benchmark.updated_at)}</span>
+            <span className="mono text-[11px] rcw-faint">v{benchmark.version}</span>
+            <CopyButton text={benchmark.id} label="复制案例 ID" className="!px-2 !py-1 text-[11px]" />
           </div>
+        </section>
+
+        {/* ---------- 双栏透视：质量阶梯 + 来源可追溯性 ---------- */}
+        <div className="rcw-persp">
+          <section className="rcw-card rcw-persp-back">
+            <div className="rcw-row" style={{ gap: 'var(--rc-space-2)', paddingBottom: 'var(--rc-space-3)', borderBottom: 'var(--rc-stroke-hair)' }}>
+              <Icon as={FlaskConical} size="sm" tone="accent" />
+              <h3 className="text-sm font-semibold">质量阶梯</h3>
+              <span className="ml-auto rcw-chip"><span className="mono">{benchmark.quality_evidence.rule_version ?? 'stage6-b1'}</span></span>
+            </div>
+            <div style={{ paddingTop: 'var(--rc-space-4)' }}>
+              <Ladder current={benchmark.quality_level} />
+              {currentRequirement && <p className="text-xs leading-relaxed rcw-muted">当前等级要求：{currentRequirement}</p>}
+              <div style={{ marginTop: 'var(--rc-space-4)' }}>
+                <EvidenceView evidence={benchmark.quality_evidence} />
+              </div>
+              {standard && (
+                <details className="mt-3 rounded-md p-3" style={{ border: 'var(--rc-stroke-hair)', backgroundColor: 'var(--rc-surface-2)' }}>
+                  <summary className="cursor-pointer text-xs font-medium rcw-muted">等级判定标准（{standard.rule_version}）</summary>
+                  <ul className="rcw-stack-tight mt-2" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                    {standard.levels.map((level) => (
+                      <li key={level.key} className="text-[11px] leading-relaxed rcw-muted">
+                        <b style={{ color: 'var(--rc-text)' }}>{level.label}</b>：{level.requirement}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          </section>
+
+          <section className="rcw-card">
+            <div className="rcw-row" style={{ gap: 'var(--rc-space-2)', paddingBottom: 'var(--rc-space-3)', borderBottom: 'var(--rc-stroke-hair)' }}>
+              <Icon as={Link2} size="sm" tone="accent" />
+              <h3 className="text-sm font-semibold">来源可追溯性</h3>
+            </div>
+            <div style={{ paddingTop: 'var(--rc-space-4)' }}>
+              <TracePanel trace={benchmark.traceability} />
+            </div>
+          </section>
         </div>
-        {(benchmark.model_architecture || benchmark.dataset_name || benchmark.research_task) && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {benchmark.model_architecture && <span className={chipClass}><Cpu size={13} /> {benchmark.model_architecture}</span>}
-            {benchmark.dataset_name && <span className={chipClass}><Database size={13} /> {benchmark.dataset_name}</span>}
-            {benchmark.research_task && <span className={chipClass}><Target size={13} /> {benchmark.research_task}</span>}
+
+        {/* ---------- 事实 / 验证 / 质量评估 ---------- */}
+        <section className="rcw-card">
+          <div style={{ padding: '0 var(--rc-space-2) var(--rc-space-1)' }}>
+            <Tabs
+              active={tab}
+              onChange={setTab}
+              tabs={[
+                { key: 'facts', label: '事实', icon: FileText, count: benchmark.fact_count ?? factsQuery.data?.total },
+                { key: 'verifications', label: '验证记录', icon: ClipboardCheck, count: benchmark.verification_count ?? verificationsQuery.data?.total },
+                { key: 'quality', label: '质量评估', icon: ShieldCheck },
+              ]}
+            />
           </div>
-        )}
-        {benchmark.summary && <p className="mt-3 text-sm leading-relaxed text-ink-muted">{benchmark.summary}</p>}
-        {benchmark.code_repo_url && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-line bg-canvas/60 p-2.5 text-xs">
-            <GitBranch size={14} strokeWidth={1.8} className="shrink-0 text-accent-dark" />
-            <a href={benchmark.code_repo_url} target="_blank" rel="noreferrer" className="mono max-w-[46%] truncate text-accent-dark hover:underline">
-              {benchmark.code_repo_url}
-            </a>
-            {benchmark.code_commit && (
+
+          <div className="rcw-stack" style={{ marginTop: 'var(--rc-space-4)' }}>
+            {tab === 'facts' && (
               <>
-                <span className="mono rounded bg-surface px-1.5 py-0.5 text-[10px] ring-1 ring-line">{benchmark.code_commit}</span>
-                <CopyButton text={benchmark.code_commit} label="复制 commit" className="!px-2 !py-1 text-[11px]" />
+                <div className="rcw-row" style={{ gap: 'var(--rc-space-3)', alignItems: 'flex-end' }}>
+                  <div className="min-w-[180px] flex-1">
+                    <label className="field-label">字段键筛选（精确匹配）</label>
+                    <input
+                      className="field-input"
+                      placeholder="如 learning_rate，回车应用"
+                      value={factFieldInput}
+                      onChange={(event) => setFactFieldInput(event.target.value)}
+                      onKeyDown={(event) => { if (event.key === 'Enter') setFactFilters((prev) => ({ ...prev, fieldKey: factFieldInput.trim() })) }}
+                    />
+                  </div>
+                  <div className="min-w-[160px]">
+                    <label className="field-label">类别</label>
+                    {schemaQuery.data ? (
+                      <select className="field-input" value={factFilters.category} onChange={(event) => setFactFilters((prev) => ({ ...prev, category: event.target.value }))}>
+                        <option value="">全部类别</option>
+                        {schemaQuery.data.categories.map((category) => <option key={category.key} value={category.key}>{category.label}</option>)}
+                        <option value="other">其他（非标准字段）</option>
+                      </select>
+                    ) : (
+                      <input
+                        className="field-input"
+                        placeholder="类别键，如 metric"
+                        value={factFilters.category}
+                        onChange={(event) => setFactFilters((prev) => ({ ...prev, category: event.target.value }))}
+                      />
+                    )}
+                  </div>
+                  <button type="button" className="btn-ghost" onClick={() => setFactFilters((prev) => ({ ...prev, fieldKey: factFieldInput.trim() }))}>
+                    <Icon name="search" size="xs" />筛选
+                  </button>
+                  <button type="button" className="btn-primary" onClick={() => setFactOpen(true)}>
+                    <Icon name="plus" size="xs" />添加事实
+                  </button>
+                </div>
+                {factsQuery.isPending ? (
+                  <LoadingState compact message="正在读取案例事实…" />
+                ) : factsQuery.isError ? (
+                  <ErrorState
+                    compact
+                    message={factsQuery.error.message}
+                    code={factsQuery.error instanceof ApiError ? factsQuery.error.code : undefined}
+                    onRetry={() => void factsQuery.refetch()}
+                  />
+                ) : (
+                  <DataTable
+                    columns={FACT_COLUMNS}
+                    data={factsQuery.data.items}
+                    rowKey={(fact) => fact.id}
+                    empty={
+                      <EmptyState
+                        compact
+                        icon={FileText}
+                        title="尚无匹配的案例事实"
+                        description="录入论文/代码中的关键数值与配置，归一化后即可用于比对与检索。"
+                        action={
+                          <button type="button" className="btn-primary" onClick={() => setFactOpen(true)}>
+                            <Icon name="plus" size="xs" />添加事实
+                          </button>
+                        }
+                      />
+                    }
+                  />
+                )}
+              </>
+            )}
+
+            {tab === 'verifications' && (
+              <>
+                <div className="rcw-row-between">
+                  <p className="text-xs rcw-muted">共 {verificationsQuery.data?.total ?? 0} 条验证 · 按时间正序 · 验证人身份由登录会话记录</p>
+                  <button type="button" className="btn-primary" onClick={() => setVerifOpen(true)}>
+                    <Icon name="plus" size="xs" />添加验证
+                  </button>
+                </div>
+                {verificationsQuery.isPending ? (
+                  <LoadingState compact message="正在读取验证记录…" />
+                ) : verificationsQuery.isError ? (
+                  <ErrorState
+                    compact
+                    message={verificationsQuery.error.message}
+                    code={verificationsQuery.error instanceof ApiError ? verificationsQuery.error.code : undefined}
+                    onRetry={() => void verificationsQuery.refetch()}
+                  />
+                ) : verifications.length === 0 ? (
+                  <EmptyState
+                    compact
+                    icon={ClipboardCheck}
+                    title="尚无验证记录"
+                    description="提交执行复现或人工复核后，质量等级将按证据自动计算。"
+                    action={
+                      <button type="button" className="btn-primary" onClick={() => setVerifOpen(true)}>
+                        <Icon name="plus" size="xs" />添加验证
+                      </button>
+                    }
+                  />
+                ) : (
+                  <div className="rcw-timeline">
+                    {verifications.map((verification) => {
+                      const resultMeta = VERIFICATION_RESULTS[verification.result] ?? { label: verification.result, tone: 'neutral' as const }
+                      const dotTone = verification.result === 'pass' ? 'success' : verification.result === 'fail' ? 'danger' : 'warning'
+                      return (
+                        <div key={verification.id} className="rcw-timeline-item" style={{ marginBottom: 'var(--rc-space-3)' }}>
+                          <span className="rcw-timeline-dot" data-tone={dotTone} aria-hidden="true" />
+                          <article className="rcw-card rcw-card-tight">
+                            <div className="rcw-row-between" style={{ gap: 'var(--rc-space-2)' }}>
+                              <div className="rcw-row" style={{ gap: 'var(--rc-space-2)' }}>
+                                <span className="text-sm font-semibold">{VERIFICATION_TYPES[verification.verification_type] ?? verification.verification_type}</span>
+                                <StatusBadge tone={resultMeta.tone}>{resultMeta.label}</StatusBadge>
+                              </div>
+                              <span className="mono text-[11px] rcw-faint">{formatDateTime(verification.created_at)}</span>
+                            </div>
+                            <p className="rcw-row mt-2" style={{ gap: 'var(--rc-space-2)' }}>
+                              <Icon as={User} size="xs" tone="subtle" />
+                              <span className="text-xs rcw-muted">{verification.verifier_name || '未知用户'}</span>
+                              <span className="mono text-[10px] rcw-faint">{verification.verifier_user_id}</span>
+                            </p>
+                            {verification.notes && <p className="mt-2 text-xs leading-relaxed">{verification.notes}</p>}
+                            {Object.keys(verification.conditions).length > 0 && (
+                              <details className="mt-2">
+                                <summary className="cursor-pointer text-[11px] font-medium rcw-ink">条件 JSON（conditions）</summary>
+                                <div className="mt-1.5"><JsonBlock value={verification.conditions} maxHeight="max-h-48" /></div>
+                              </details>
+                            )}
+                          </article>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
+            {tab === 'quality' && (
+              <>
+                <section className="rcw-card rcw-card-tight">
+                  <div className="rcw-row-between" style={{ paddingBottom: 'var(--rc-space-3)' }}>
+                    <h4 className="text-sm font-semibold">等级判定规则</h4>
+                    {standard && <span className="rcw-chip"><span className="mono">{standard.rule_version}</span></span>}
+                  </div>
+                  <ol className="rcw-stack-tight" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                    {(standard?.levels ?? QUALITY_LEVELS.map((level) => ({ key: level.key, label: level.label, requirement: '' }))).map((level, index) => (
+                      <li key={level.key} className="rcw-row" style={{ gap: 'var(--rc-space-2)', alignItems: 'flex-start' }}>
+                        <span className="mono grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-semibold rcw-ink"
+                          style={{ backgroundColor: 'var(--rcw-tint)' }}>
+                          {index + 1}
+                        </span>
+                        <div>
+                          <QualityBadge level={level.key} />
+                          {level.requirement && <p className="mt-1 leading-relaxed rcw-muted">{level.requirement}</p>}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                  {standard && (
+                    <>
+                      <ul className="rcw-stack-tight mt-3" style={{ listStyle: 'none', margin: 0, padding: 'var(--rc-space-3) 0 0', borderTop: 'var(--rc-stroke-hair)' }}>
+                        {standard.principles.map((principle, index) => (
+                          <li key={`${principle}-${index}`} className="rcw-row" style={{ gap: 'var(--rc-space-2)', alignItems: 'flex-start' }}>
+                            <Icon as={ShieldCheck} size="xs" tone="success" style={{ marginTop: 3 }} />
+                            <span className="text-[11px] leading-relaxed rcw-muted">{principle}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <details className="mt-3">
+                        <summary className="cursor-pointer text-[11px] font-medium rcw-ink">
+                          环境键清单（{standard.environment_keys.length}）· 验证类型 {standard.verification_types.join(' / ')} · 结果 {standard.results.join(' / ')}
+                        </summary>
+                        <div className="rcw-row mt-2" style={{ gap: 'var(--rc-space-1)' }}>
+                          {standard.environment_keys.map((key) => (
+                            <span key={key} className="rcw-chip">{key}</span>
+                          ))}
+                        </div>
+                      </details>
+                    </>
+                  )}
+                </section>
+
+                <section className="rcw-card rcw-card-tight">
+                  <div className="rcw-row-between" style={{ gap: 'var(--rc-space-3)' }}>
+                    <div>
+                      <h4 className="text-sm font-semibold">重新计算质量等级</h4>
+                      <p className="mt-0.5 text-[11px] rcw-muted">默认只升不降；若计算等级低于当前等级，需显式确认降级（写入审计轨迹）。</p>
+                    </div>
+                    <button type="button" className="btn-primary" disabled={recomputeMutation.isPending} onClick={() => recomputeMutation.mutate(false)}>
+                      <Icon as={RefreshCw} size="xs" />重新计算质量
+                    </button>
+                  </div>
+                  {recomputeResult && (
+                    <div className="mt-4" style={{ paddingTop: 'var(--rc-space-4)', borderTop: 'var(--rc-stroke-hair)' }}>
+                      <RecomputeResultPanel result={recomputeResult} />
+                    </div>
+                  )}
+                </section>
+
+                <section className="rcw-card rcw-card-tight">
+                  <h4 className="text-sm font-semibold">当前质量证据</h4>
+                  <div className="mt-3"><EvidenceView evidence={benchmark.quality_evidence} full /></div>
+                </section>
               </>
             )}
           </div>
-        )}
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line-soft pt-3 text-[11px] text-ink-subtle">
-          <span>创建者：{benchmark.created_by_name || <span className="mono">{benchmark.created_by}</span>}</span>
-          <span className="mono">创建 {formatDateTime(benchmark.created_at)}</span>
-          <span className="mono">更新 {formatDateTime(benchmark.updated_at)}</span>
-          <span className="mono">v{benchmark.version}</span>
-          <CopyButton text={benchmark.id} label="复制案例 ID" className="!px-2 !py-1 text-[11px]" />
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel-header">
-          <div className="flex items-center gap-2">
-            <FlaskConical size={16} strokeWidth={1.8} className="text-accent-dark" />
-            <h3 className="text-sm font-semibold">质量阶梯</h3>
-          </div>
-          <StatusBadge tone="neutral" dot={false}><span className="mono">{benchmark.quality_evidence.rule_version ?? 'stage6-b1'}</span></StatusBadge>
-        </div>
-        <div className="space-y-4 p-5">
-          <Ladder current={benchmark.quality_level} />
-          {currentRequirement && <p className="text-xs leading-relaxed text-ink-muted">当前等级要求：{currentRequirement}</p>}
-          <EvidenceView evidence={benchmark.quality_evidence} />
-          {standard && (
-            <details className="rounded-md border border-line-soft bg-canvas/50 p-3">
-              <summary className="cursor-pointer text-xs font-medium text-ink-muted">等级判定标准（{standard.rule_version}）</summary>
-              <ul className="mt-2 space-y-1.5">
-                {standard.levels.map((level) => (
-                  <li key={level.key} className="text-[11px] leading-relaxed text-ink-muted">
-                    <b className="text-ink">{level.label}</b>：{level.requirement}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel-header">
-          <div className="flex items-center gap-2">
-            <Link2 size={16} strokeWidth={1.8} className="text-accent-dark" />
-            <h3 className="text-sm font-semibold">来源可追溯性</h3>
-          </div>
-        </div>
-        <div className="p-5"><TracePanel trace={benchmark.traceability} /></div>
-      </section>
-
-      <section className="panel overflow-hidden">
-        <div className="px-5 pt-3">
-          <Tabs
-            active={tab}
-            onChange={setTab}
-            tabs={[
-              { key: 'facts', label: '事实', icon: FileText, count: benchmark.fact_count ?? factsQuery.data?.total },
-              { key: 'verifications', label: '验证记录', icon: ClipboardCheck, count: benchmark.verification_count ?? verificationsQuery.data?.total },
-              { key: 'quality', label: '质量评估', icon: ShieldCheck },
-            ]}
-          />
-        </div>
-        <div className="p-5">
-          {tab === 'facts' && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="min-w-[180px] flex-1">
-                  <label className="field-label">字段键筛选（精确匹配）</label>
-                  <input
-                    className="field-input"
-                    placeholder="如 learning_rate，回车应用"
-                    value={factFieldInput}
-                    onChange={(event) => setFactFieldInput(event.target.value)}
-                    onKeyDown={(event) => { if (event.key === 'Enter') setFactFilters((prev) => ({ ...prev, fieldKey: factFieldInput.trim() })) }}
-                  />
-                </div>
-                <div className="min-w-[160px]">
-                  <label className="field-label">类别</label>
-                  {schemaQuery.data ? (
-                    <select className="field-input" value={factFilters.category} onChange={(event) => setFactFilters((prev) => ({ ...prev, category: event.target.value }))}>
-                      <option value="">全部类别</option>
-                      {schemaQuery.data.categories.map((category) => <option key={category.key} value={category.key}>{category.label}</option>)}
-                      <option value="other">其他（非标准字段）</option>
-                    </select>
-                  ) : (
-                    <input
-                      className="field-input"
-                      placeholder="类别键，如 metric"
-                      value={factFilters.category}
-                      onChange={(event) => setFactFilters((prev) => ({ ...prev, category: event.target.value }))}
-                    />
-                  )}
-                </div>
-                <button type="button" className="btn-ghost" onClick={() => setFactFilters((prev) => ({ ...prev, fieldKey: factFieldInput.trim() }))}>
-                  <Search size={15} strokeWidth={1.8} /> 筛选
-                </button>
-                <button type="button" className="btn-primary" onClick={() => setFactOpen(true)}><Plus size={16} strokeWidth={1.8} /> 添加事实</button>
-              </div>
-              {factsQuery.isPending ? (
-                <LoadingState compact message="正在读取案例事实…" />
-              ) : factsQuery.isError ? (
-                <ErrorState
-                  compact
-                  message={factsQuery.error.message}
-                  code={factsQuery.error instanceof ApiError ? factsQuery.error.code : undefined}
-                  onRetry={() => void factsQuery.refetch()}
-                />
-              ) : (
-                <DataTable
-                  columns={FACT_COLUMNS}
-                  data={factsQuery.data.items}
-                  rowKey={(fact) => fact.id}
-                  empty={
-                    <EmptyState
-                      compact
-                      icon={FileText}
-                      title="尚无匹配的案例事实"
-                      description="录入论文/代码中的关键数值与配置，归一化后即可用于比对与检索。"
-                      action={<button type="button" className="btn-primary" onClick={() => setFactOpen(true)}><Plus size={15} strokeWidth={1.8} /> 添加事实</button>}
-                    />
-                  }
-                />
-              )}
-            </div>
-          )}
-
-          {tab === 'verifications' && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-ink-muted">共 {verificationsQuery.data?.total ?? 0} 条验证 · 按时间正序 · 验证人身份由登录会话记录</p>
-                <button type="button" className="btn-primary" onClick={() => setVerifOpen(true)}><Plus size={16} strokeWidth={1.8} /> 添加验证</button>
-              </div>
-              {verificationsQuery.isPending ? (
-                <LoadingState compact message="正在读取验证记录…" />
-              ) : verificationsQuery.isError ? (
-                <ErrorState
-                  compact
-                  message={verificationsQuery.error.message}
-                  code={verificationsQuery.error instanceof ApiError ? verificationsQuery.error.code : undefined}
-                  onRetry={() => void verificationsQuery.refetch()}
-                />
-              ) : verifications.length === 0 ? (
-                <EmptyState
-                  compact
-                  icon={ClipboardCheck}
-                  title="尚无验证记录"
-                  description="提交执行复现或人工复核后，质量等级将按证据自动计算。"
-                  action={<button type="button" className="btn-primary" onClick={() => setVerifOpen(true)}><Plus size={15} strokeWidth={1.8} /> 添加验证</button>}
-                />
-              ) : (
-                <ol className="relative ml-2 space-y-4 border-l border-line pl-5">
-                  {verifications.map((verification) => {
-                    const resultMeta = VERIFICATION_RESULTS[verification.result] ?? { label: verification.result, tone: 'neutral' as const }
-                    const dotClass = verification.result === 'pass' ? 'bg-success' : verification.result === 'fail' ? 'bg-danger' : 'bg-warning'
-                    return (
-                      <li key={verification.id} className="relative">
-                        <span className={`absolute -left-[26px] top-4 h-2.5 w-2.5 rounded-full ring-4 ring-surface ${dotClass}`} />
-                        <div className="panel p-4">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold">{VERIFICATION_TYPES[verification.verification_type] ?? verification.verification_type}</span>
-                              <StatusBadge tone={resultMeta.tone}>{resultMeta.label}</StatusBadge>
-                            </div>
-                            <span className="mono text-[11px] text-ink-subtle">{formatDateTime(verification.created_at)}</span>
-                          </div>
-                          <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
-                            <User size={13} /> {verification.verifier_name || '未知用户'}
-                            <span className="mono text-[10px] text-ink-subtle">{verification.verifier_user_id}</span>
-                          </p>
-                          {verification.notes && <p className="mt-2 text-xs leading-relaxed text-ink">{verification.notes}</p>}
-                          {Object.keys(verification.conditions).length > 0 && (
-                            <details className="mt-2">
-                              <summary className="cursor-pointer text-[11px] font-medium text-accent-dark">条件 JSON（conditions）</summary>
-                              <div className="mt-1.5"><JsonBlock value={verification.conditions} maxHeight="max-h-48" /></div>
-                            </details>
-                          )}
-                        </div>
-                      </li>
-                    )
-                  })}
-                </ol>
-              )}
-            </div>
-          )}
-
-          {tab === 'quality' && (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-line p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h4 className="text-sm font-semibold">等级判定规则</h4>
-                  {standard && <StatusBadge tone="navy" dot={false}><span className="mono">{standard.rule_version}</span></StatusBadge>}
-                </div>
-                <ol className="mt-3 space-y-2">
-                  {(standard?.levels ?? QUALITY_LEVELS.map((level) => ({ key: level.key, label: level.label, requirement: '' }))).map((level, index) => (
-                    <li key={level.key} className="flex items-start gap-2.5 text-xs">
-                      <span className="mono mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-wash text-[10px] font-semibold text-accent-dark">{index + 1}</span>
-                      <div>
-                        <QualityBadge level={level.key} />
-                        {level.requirement && <p className="mt-1 leading-relaxed text-ink-muted">{level.requirement}</p>}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-                {standard && (
-                  <>
-                    <ul className="mt-3 space-y-1 border-t border-line-soft pt-3">
-                      {standard.principles.map((principle, index) => (
-                        <li key={`${principle}-${index}`} className="flex items-start gap-1.5 text-[11px] leading-relaxed text-ink-muted">
-                          <ShieldCheck size={13} className="mt-0.5 shrink-0 text-success" /> {principle}
-                        </li>
-                      ))}
-                    </ul>
-                    <details className="mt-3">
-                      <summary className="cursor-pointer text-[11px] font-medium text-accent-dark">
-                        环境键清单（{standard.environment_keys.length}）· 验证类型 {standard.verification_types.join(' / ')} · 结果 {standard.results.join(' / ')}
-                      </summary>
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {standard.environment_keys.map((key) => (
-                          <span key={key} className="mono rounded bg-canvas px-1.5 py-0.5 text-[10px] text-ink-muted ring-1 ring-line">{key}</span>
-                        ))}
-                      </div>
-                    </details>
-                  </>
-                )}
-              </div>
-
-              <div className="rounded-lg border border-line p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h4 className="text-sm font-semibold">重新计算质量等级</h4>
-                    <p className="mt-0.5 text-[11px] text-ink-muted">默认只升不降；若计算等级低于当前等级，需显式确认降级（写入审计轨迹）。</p>
-                  </div>
-                  <button type="button" className="btn-primary" disabled={recomputeMutation.isPending} onClick={() => recomputeMutation.mutate(false)}>
-                    <RefreshCw size={15} strokeWidth={1.8} /> 重新计算质量
-                  </button>
-                </div>
-                {recomputeResult && (
-                  <div className="mt-4 border-t border-line-soft pt-4">
-                    <RecomputeResultPanel result={recomputeResult} />
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-lg border border-line p-4">
-                <h4 className="text-sm font-semibold">当前质量证据</h4>
-                <div className="mt-3"><EvidenceView evidence={benchmark.quality_evidence} full /></div>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
+        </section>
+      </div>
 
       <FactModal open={factOpen} onClose={() => setFactOpen(false)} caseId={caseId} schema={schemaQuery.data} />
       <VerificationModal open={verifOpen} onClose={() => setVerifOpen(false)} caseId={caseId} benchmark={benchmark} onResult={setVerifResult} />
@@ -982,13 +1037,13 @@ export default function CaseDetailPage() {
         footer={<button type="button" className="btn-primary" onClick={() => setVerifResult(null)}>知道了</button>}
       >
         {verifResult && (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-canvas/60 p-3 text-xs">
+          <div className="rcw-stack-tight">
+            <div className="rcw-row" style={{ gap: 'var(--rc-space-2)', padding: 'var(--rc-space-3)', borderRadius: 'var(--rc-radius-sm)', border: 'var(--rc-stroke-hair)', backgroundColor: 'var(--rc-surface-2)' }}>
               <span className="font-medium">{VERIFICATION_TYPES[verifResult.verification.verification_type] ?? verifResult.verification.verification_type}</span>
               <StatusBadge tone={VERIFICATION_RESULTS[verifResult.verification.result]?.tone ?? 'neutral'}>
                 {VERIFICATION_RESULTS[verifResult.verification.result]?.label ?? verifResult.verification.result}
               </StatusBadge>
-              <span className="mono text-[10px] text-ink-subtle">{verifResult.verification.id}</span>
+              <span className="mono text-[10px] rcw-faint">{verifResult.verification.id}</span>
             </div>
             <RecomputeResultPanel result={verifResult} />
           </div>
@@ -1005,18 +1060,18 @@ export default function CaseDetailPage() {
             <button type="button" className="btn-ghost" onClick={() => setConfirmOpen(false)}>取消</button>
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 rounded-md bg-danger px-3 py-2 text-sm font-medium text-white transition hover:bg-danger/90 disabled:opacity-50"
+              className="rcw-danger"
               disabled={recomputeMutation.isPending}
               onClick={() => recomputeMutation.mutate(true)}
             >
-              <AlertTriangle size={15} strokeWidth={1.8} /> 确认降级
+              <Icon as={AlertTriangle} size="xs" />确认降级
             </button>
           </>
         }
       >
         {recomputeResult && (
-          <div className="space-y-3">
-            <div className="rounded-md border border-danger/30 bg-danger-wash p-3 text-xs leading-relaxed text-danger">
+          <div className="rcw-stack-tight">
+            <div className="rcw-note rcw-note--danger">
               系统按现有验证证据计算的等级为「{qualityMeta(recomputeResult.computed_level).label}」，低于当前等级「{qualityMeta(recomputeResult.previous_level).label}」。
               默认策略只升不降，本次重算已被拦截；确认后案例等级将降为计算值。
             </div>

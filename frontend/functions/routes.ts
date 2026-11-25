@@ -6,6 +6,7 @@ import { register as registerIdentity } from './domain_identity.ts';
 import { register as registerBenchmark } from './domain_benchmark.ts';
 import { register as registerRules } from './domain_rules.ts';
 import { register as registerIntegrations } from './domain_integrations.ts';
+import { register as registerModels } from './domain_models.ts';
 
 export function application(deps: Deps & { requireUser?: any; BackendError?: any }) {
   const { db } = deps;
@@ -14,6 +15,7 @@ export function application(deps: Deps & { requireUser?: any; BackendError?: any
   registerBenchmark(router, deps);
   registerRules(router, deps);
   registerIntegrations(router, deps);
+  registerModels(router);
 
   let seedState: Promise<void> | null = null;
   function ensureSeed(): Promise<void> {

@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-insecure-change-me"
     jwt_expire_hours: int = 12
     encryption_key: str = ""  # 生产必填；为空时由 jwt_secret 派生（仅开发）
+    # 第十一阶段：模型 API 凭据独立加密密钥（Fernet key 或口令）。
+    # 必须与数据库、JWT_SECRET、ENCRYPTION_KEY 分离；为空时拒绝保存用户 API Key。
+    model_credential_key: str = ""
+    # 仅开发/内网测试：允许 http://localhost 自定义模型端点。生产必须 false。
+    allow_local_model_endpoint: bool = False
     bootstrap_admin_email: str = ""
     bootstrap_admin_password: str = ""
     invitation_expire_days: int = 7
@@ -65,6 +70,12 @@ class Settings(BaseSettings):
     execution_max_memory_mb: int = 2048
     execution_max_pids: int = 128
     execution_allow_network: bool = False
+
+    # 第七阶段：科研工作流编排限制（策略上限；只读检查类处理器不消耗执行配额）
+    workflow_max_concurrent_nodes: int = Field(default=1, ge=1, le=8)
+    workflow_node_timeout_seconds: int = Field(default=300, gt=0)
+    workflow_max_auto_retries: int = Field(default=2, ge=0, le=5)
+    workflow_stale_minutes: int = Field(default=15, gt=0)
 
     @field_validator("llm_base_url")
     @classmethod
@@ -106,6 +117,10 @@ class Settings(BaseSettings):
             issues.append("jwt_secret 仍为开发默认值或长度不足 32：生产必须设置高强度随机密钥")
         if not self.encryption_key or len(self.encryption_key) < 16:
             issues.append("encryption_key 为空或过短：生产必须设置独立加密密钥（不能依赖 jwt_secret 派生）")
+        if not self.model_credential_key:
+            issues.append("model_credential_key 为空：用户级 API Key 无法安全加密存储，模型管理中心不可用")
+        if self.allow_local_model_endpoint:
+            issues.append("allow_local_model_endpoint=True：生产必须关闭，禁止访问本地模型端点")
         if "*" in self.cors_origins:
             issues.append("CORS allow_origins 含 '*'：生产必须收敛为前端域名")
         if not self.require_ai_consent:

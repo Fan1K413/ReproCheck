@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict
@@ -36,7 +36,7 @@ from app.reproduction.results import QualityEvaluator
 router = APIRouter(tags=["reproductions"])
 
 
-# ---------------- view helpers ----------------
+# view helpers
 
 def _task_view(t: ReproductionTask) -> dict[str, Any]:
     return {
@@ -60,7 +60,11 @@ def _plan_view(p: ReproductionPlan) -> dict[str, Any]:
         "plan_id": p.id, "project_id": p.project_id, "title": p.title,
         "status": p.status, "source": p.source, "ai_available": p.ai_available,
         "prompt_version": p.prompt_version or "", "model": p.model or "",
-        "feasibility_summary": summary, "task_count": sum(summary.values()) if summary else 0,
+        # 可行性摘要可能含描述性字段（如变更重审草稿的触发信息），只对数值项计数，
+        # 避免非数值字段导致 500（浏览器实测发现）。
+        "feasibility_summary": summary,
+        "task_count": sum(v for v in summary.values()
+                          if isinstance(v, (int, float)) and not isinstance(v, bool)) if summary else 0,
         "created_at": p.created_at.isoformat() if p.created_at else "",
     }
 
@@ -95,12 +99,13 @@ def _env_view(e: ExecutionEnvironment) -> dict[str, Any]:
     }
 
 
-# ---------------- request models ----------------
+# request models
 
 class PlanCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     project_id: str
     title: str | None = None
+    mode: Literal["ai", "manual"] = "ai"
 
 
 class TaskCreate(BaseModel):
@@ -146,11 +151,15 @@ class ReportCreate(BaseModel):
     run_ids: list[str] = []
 
 
-# ---------------- plans / tasks ----------------
+# plans / tasks
 
 @router.post("/reproductions/plans", dependencies=[Depends(require_admin)])
 async def create_plan(payload: PlanCreate, request: Request, db: AsyncSession = Depends(get_db)):
-    plan = await ReproductionPlanner(db).create_plan(payload.project_id, payload.title)
+    planner = ReproductionPlanner(db)
+    if payload.mode == "manual":
+        plan = await planner.create_manual_plan(payload.project_id, payload.title)
+    else:
+        plan = await planner.create_plan(payload.project_id, payload.title)
     return ok(_plan_view(plan), getattr(request.state, "request_id", "-"))
 
 
@@ -218,7 +227,7 @@ async def confirm_task(task_id: str, request: Request, db: AsyncSession = Depend
     return ok({"confirmed": True, "status": t.status}, getattr(request.state, "request_id", "-"))
 
 
-# ---------------- runs / env / logs / artifacts / metrics ----------------
+# runs / env / logs / artifacts / metrics
 
 @router.post("/reproductions/runs", dependencies=[Depends(require_admin)])
 async def create_run(payload: RunCreate, request: Request, db: AsyncSession = Depends(get_db)):
@@ -332,7 +341,7 @@ async def list_environments(project_id: str, request: Request, db: AsyncSession 
     return ok({"items": items, "total": len(items)}, getattr(request.state, "request_id", "-"))
 
 
-# ---------------- comparisons / quality ----------------
+# comparisons / quality
 
 @router.get("/reproductions/metric-comparisons")
 async def list_comparisons(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
@@ -381,7 +390,7 @@ async def get_quality(project_id: str, request: Request, db: AsyncSession = Depe
     return ok(result, getattr(request.state, "request_id", "-"))
 
 
-# ---------------- diagnostics / remediation ----------------
+# diagnostics / remediation
 
 @router.post("/reproductions/diagnostics", dependencies=[Depends(require_admin)])
 async def create_diagnostic(payload: DiagnosticCreate, request: Request,
@@ -414,7 +423,7 @@ async def review_remediation(proposal_id: str, payload: ReviewCreate, request: R
     }, getattr(request.state, "request_id", "-"))
 
 
-# ---------------- reports ----------------
+# reports
 
 @router.post("/reproductions/reports", dependencies=[Depends(require_admin)])
 async def create_report(payload: ReportCreate, request: Request, db: AsyncSession = Depends(get_db)):

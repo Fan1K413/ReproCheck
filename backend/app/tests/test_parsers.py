@@ -51,7 +51,7 @@ def assert_common(result, chunks, *, material_type=None, locator_cls=None):
             locator_cls(**c.source_locator)  # 必须能用对应 Pydantic 模型重建
 
 
-# ---------------------------------------------------------------- Python
+# Python
 
 def test_python_parser_basic_and_no_execution():
     result = parse("sample_project.py")
@@ -98,7 +98,7 @@ def test_python_syntax_error_not_fabricated():
     assert result.chunks == []
 
 
-# ---------------------------------------------------------------- Notebook
+# Notebook
 
 def test_notebook_markdown_and_code_cells():
     result = parse("sample.ipynb")
@@ -122,7 +122,7 @@ def test_notebook_invalid_json():
     assert result.chunks == []
 
 
-# ---------------------------------------------------------------- Config
+# Config
 
 @pytest.mark.parametrize("name,kind", [
     ("config.yaml", "yaml"),
@@ -166,7 +166,7 @@ def test_requirements_line_numbers():
             assert lines[item["line_number"] - 1].lower().startswith(item["original_key"].lower())
 
 
-# ---------------------------------------------------------------- README
+# README
 
 def test_readme_sections_and_commands_stored_not_executed():
     result = parse("README.md")
@@ -190,7 +190,7 @@ def test_readme_encoding_error(tmp_path):
     assert result.chunks == []
 
 
-# ---------------------------------------------------------------- PDF
+# PDF
 
 def test_pdf_three_page_numbers_and_sections():
     result = parse("sample.pdf")
@@ -229,7 +229,7 @@ def test_empty_pdf_gets_ocr_flag(tmp_path):
     assert any(w.code == "EMPTY_PAGE" for w in result.warnings)
 
 
-# ---------------------------------------------------------------- ZIP
+# ZIP
 
 def test_zip_normal_parse():
     result = parse("bundle_ok.zip")
@@ -282,7 +282,7 @@ def test_zip_blocked_extension_and_ignored_dir(tmp_path):
     assert statuses["__pycache__/cached.py"] == "skipped"
 
 
-# ---------------------------------------------------------------- Data
+# Data
 
 def test_csv_metadata_statistics():
     result = parse("data.csv")
@@ -310,7 +310,7 @@ def test_xlsx_metadata_statistics():
     assert sheet["duplicate_rows"] == 1
 
 
-# ---------------------------------------------------------------- Chunking
+# Chunking
 
 def test_split_text_basic_and_overlap():
     assert split_text("") == []
@@ -335,7 +335,7 @@ def test_split_text_preserves_content():
         assert any(sentence in c for c in chunks)
 
 
-# ---------------------------------------------------------------- Failures
+# Failures
 
 def test_empty_and_broken_files_return_failed():
     assert parse("empty.md").status == "failed"

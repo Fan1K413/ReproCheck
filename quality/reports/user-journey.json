@@ -1,0 +1,107 @@
+{
+  "started_at": "2026-11-24T10:47:51+08:00",
+  "finished_at": "2026-11-24T10:55:00+08:00",
+  "base": "http://127.0.0.1:5173",
+  "method": "Playwright(msedge headless) 真实 UI + 真实后端；前半段由 quality/tools/user_journey.mjs 执行，规划/任务/报告/持久化由同会话页面探针续跑。未使用 mock、未拦截响应。",
+  "environment": {
+    "frontend": "Vite dev server 5173",
+    "backend": "uvicorn 8000, SQLite backend/reprocheck.db",
+    "llm_configured": false,
+    "execution_backend": "none"
+  },
+  "project": {
+    "id": "proj-05c74171370e4bb5",
+    "name": "QA-AUDIT 复现主线走查 2026-11-24T02-47-51",
+    "note": "审计结束后已通过真实 DELETE /projects/{id} 清理；截图保留。"
+  },
+  "steps": [
+    {
+      "step": 1,
+      "name": "登录",
+      "status": "pass",
+      "evidence": "演示账号 林晚晴 登录后离开 /login，落到 /",
+      "screenshot": null
+    },
+    {
+      "step": 2,
+      "name": "创建科研项目",
+      "status": "pass",
+      "evidence": "UI 填写名称/领域/论文/描述，POST /projects 200；成功页返回项目 ID；约 852ms 完成",
+      "screenshot": "screens/01-project-created.png"
+    },
+    {
+      "step": 3,
+      "name": "上传论文/数据/代码/配置",
+      "status": "pass",
+      "evidence": "4 文件上传：sample.pdf、data.csv、sample_project.py、config.yaml；提示“上传成功”",
+      "screenshot": "screens/02-materials-uploaded.png"
+    },
+    {
+      "step": 4,
+      "name": "解析 PDF 并提取信息",
+      "status": "partial",
+      "evidence": "PDF 解析 completed（16 chunks / 3.73KB / 143–260ms）；AI 抽取因未配置 Key 跳过：task partially_completed / LLM_NOT_CONFIGURED / 0 facts。解析结果真实，事实为空。",
+      "screenshot": "screens/14-parse-task-partial.png"
+    },
+    {
+      "step": 5,
+      "name": "科研事实页",
+      "status": "pass (empty state)",
+      "evidence": "0 事实、0 有证据、0 待复核；页面明确“暂无事实分布”，未伪造事实",
+      "screenshot": "screens/04-facts.png"
+    },
+    {
+      "step": 6,
+      "name": "解析概览",
+      "status": "pass",
+      "evidence": "概览页正常渲染，KPI 来自后端统计",
+      "screenshot": "screens/05-overview.png"
+    },
+    {
+      "step": 7,
+      "name": "手动创建复现规划（不调用 AI）",
+      "status": "pass",
+      "evidence": "POST /reproductions/plans 创建 draft 规划 rplan-c39bf614e1724ea9；列表/透视台显示 1 份规划",
+      "screenshot": "screens/06-reproduction-overview.png"
+    },
+    {
+      "step": 8,
+      "name": "新增程序化任务",
+      "status": "pass",
+      "evidence": "UI 提交任务标题/说明，规划详情显示 任务 1 / T01 / 待执行 / 待人工确认",
+      "screenshot": "screens/07-plan-task.png"
+    },
+    {
+      "step": 9,
+      "name": "创建/执行实验运行",
+      "status": "blocked",
+      "evidence": "无安全沙箱，后端 execution_backend=none；UI 明确“禁用执行并阻塞运行”，本轮不创建运行，不伪造执行结果",
+      "screenshot": "screens/08-reports.png"
+    },
+    {
+      "step": 10,
+      "name": "生成审计报告",
+      "status": "pass",
+      "evidence": "生成 rreport-7e869aa8fc7b46：14 章、HTML 200/4,281B；PDF 501 PDF_UNAVAILABLE；报告来源字段来自 projects/plan 等真实数据",
+      "screenshot": "screens/10-report-generated.png"
+    },
+    {
+      "step": 11,
+      "name": "重新进入项目核对持久化",
+      "status": "pass",
+      "evidence": "项目列表仍可见；材料页 sample.pdf 仍在；4/4 材料；项目与规划数据未丢失",
+      "screenshot": "screens/09-reenter.png"
+    }
+  ],
+  "missing_capabilities": [
+    "真实 LLM 事实抽取（无 LLM_API_KEY）",
+    "真实代码执行/沙箱（execution_backend=none）",
+    "环境创建/锁定/销毁（API 仅 GET /reproductions/environments）",
+    "数据集前端入口（lifecycle API 存在，无 UI 路由）",
+    "仓库克隆/分支/commit 固定（仅 connect/sync/snapshot）"
+  ],
+  "defects_observed": [
+    "材料详情抽屉底部操作栏越界：footer y=1110 / bottom=1183（视口 900），页面需滚动 307px 才可达；根因祖先 identity transform 使 position:fixed 相对页面容器定位。",
+    "材料卡显示“已完成”，但 AI 抽取实际部分完成且 0 facts；材料层未直接呈现 LLM_NOT_CONFIGURED。"
+  ]
+}

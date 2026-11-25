@@ -17,6 +17,7 @@ def test_hardened_config_passes(monkeypatch):
     s.allow_unauth_test_endpoints = False
     s.jwt_secret = "x" * 48
     s.encryption_key = "y" * 32
+    s.model_credential_key = "z" * 32  # 第十一阶段新增：用户凭据独立加密密钥
     s.cors_allow_origins_raw = "https://lab.example.edu"
     s.require_ai_consent = True
     s.enable_code_execution = False
@@ -28,6 +29,7 @@ def test_code_execution_without_backend_flagged():
     s.allow_unauth_test_endpoints = False
     s.jwt_secret = "x" * 48
     s.encryption_key = "y" * 32
+    s.model_credential_key = "z" * 32
     s.cors_allow_origins_raw = "https://lab.example.edu"
     s.require_ai_consent = True
     s.enable_code_execution = True

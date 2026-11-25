@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.errors import AppError, app_error_handler, fail
 from app.core.logging import configure_logging, logger
 from app.db import init_db
+from app.modelhub.context import set_current, reset_current
 
 configure_logging()
 
@@ -65,7 +66,23 @@ async def request_context(request: Request, call_next):
             status_code=413,
             content=fail("VALIDATION_ERROR", "请求体过大。", request.state.request_id),
         )
-    return await call_next(request)
+    # 第十一阶段：把当前用户注入模型网关上下文（仅用于凭据归属解析；鉴权仍在路由层）。
+    tokens = [set_current(None, None)]
+    auth = request.headers.get("authorization", "")
+    if auth.lower().startswith("bearer "):
+        try:
+            from app.core.security import decode_access_token
+            claims = decode_access_token(auth.split(" ", 1)[1].strip())
+            uid = claims.get("sub")
+            if isinstance(uid, str):
+                tokens.append(set_current(uid, claims.get("org_id")))
+        except Exception:  # noqa: BLE001 - 无效令牌由路由层返回 401
+            pass
+    try:
+        return await call_next(request)
+    finally:
+        for token in reversed(tokens):
+            reset_current(token)
 
 
 @app.on_event("startup")

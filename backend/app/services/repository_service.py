@@ -124,7 +124,9 @@ async def _fetch_remote_commit(provider: str, token: str, repo_full_name: str, r
             r.raise_for_status()
             data = r.json()
             return {"commit_sha": data.get("sha", ""), "branch": ref or "HEAD",
-                    "default_branch": "", "message": (data.get("commit") or {}).get("message", "")}
+                    "default_branch": "", "message": (data.get("commit") or {}).get("message", ""),
+                    "files": [{"path": f.get("filename", ""), "status": f.get("status", "")}
+                              for f in (data.get("files") or []) if isinstance(f, dict)]}
     if provider == "gitlab":
         from urllib.parse import quote
         proj = quote(repo_full_name, safe="")
@@ -134,7 +136,10 @@ async def _fetch_remote_commit(provider: str, token: str, repo_full_name: str, r
             r.raise_for_status()
             data = r.json()
             return {"commit_sha": data.get("id", ""), "branch": ref or "HEAD",
-                    "default_branch": "", "message": data.get("message", "")}
+                    "default_branch": "", "message": data.get("message", ""),
+                    "files": [{"path": c.get("new_path") or c.get("old_path", ""),
+                               "status": c.get("action", "")}
+                              for c in (data.get("changes") or []) if isinstance(c, dict)]}
     if provider == "gitee":
         url = f"https://gitee.com/api/v5/repos/{repo_full_name}/commits/{ref or 'HEAD'}"
         async with httpx.AsyncClient(timeout=20) as client:
@@ -185,8 +190,11 @@ async def sync_repository(db: AsyncSession, user: User, conn_id: str,
     snapshot.commit_sha = info.get("commit_sha", "")
     snapshot.default_branch = info.get("default_branch", "")
     snapshot.branch = info.get("branch", ref or "")
-    snapshot.version_diff_json = json.dumps({"status": "synced", "message": info.get("message", "")},
-                                            ensure_ascii=False)
+    # 记录远端返回的变更文件清单；无变更返回空数组。
+    snapshot.version_diff_json = json.dumps({
+        "status": "synced", "message": info.get("message", ""),
+        "files": info.get("files", []),
+    }, ensure_ascii=False)
     db.add(snapshot)
     await record_trail(db, action="integration.sync", actor_user_id=user.id, org_id=conn.org_id,
                        target_type="repository_snapshot", target_id=snapshot.id,

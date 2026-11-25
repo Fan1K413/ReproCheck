@@ -40,7 +40,7 @@ CHECK_TYPES = {"field_compare", "unit_mismatch", "missing_evidence"}
 _RISK_LEVELS = {"low", "medium", "high", "critical"}
 
 
-# ============================ 权限 / 工具 ============================
+# 权限 / 工具
 
 async def resolve_rule_org(db: AsyncSession, user: User) -> str | None:
     """规则管理是 org 级权限。返回用户具备 rule.manage 的任一组织 id。
@@ -131,7 +131,7 @@ def _compare(key: str, va: Any, vb: Any, ua: str, ub: str, tol: float) -> bool |
     return sa == sb
 
 
-# ============================ 确定性评估器 ============================
+# 确定性评估器
 
 def run_check(check_logic: dict, sample_input: dict) -> dict:
     """对单条样本输入执行规则逻辑，返回真实预测（绝不硬编码）。"""
@@ -228,7 +228,7 @@ def sample_passes(expected: dict, prediction: dict) -> bool:
     return _equal(expected or {}, prediction or {})
 
 
-# ============================ 视图 ============================
+# 视图
 
 def rule_view(rule: AuditRule, active_logic: dict | None = None) -> dict:
     out = {
@@ -287,7 +287,7 @@ def _validate_samples(samples: list[dict]) -> None:
             raise AppError("VALIDATION_ERROR", "每条测试样本须包含 input 与 expected 对象。")
 
 
-# ============================ 默认规则种子 ============================
+# 默认规则种子
 
 def _default_rules() -> list[dict]:
     """镜像既有比对引擎的代表性规则（参数一致性 / 单位不一致 / 证据缺失）。"""
@@ -383,7 +383,7 @@ async def seed_default_rules(db: AsyncSession, user: User | None = None, request
     return {"seeded": seeded, "skipped": skipped, "total": len(seeded) + len(skipped)}
 
 
-# ============================ CRUD / 版本 ============================
+# CRUD / 版本
 
 async def create_rule(db: AsyncSession, user: User, payload: dict, request_id: str = "") -> dict:
     org_id = await resolve_rule_org(db, user)

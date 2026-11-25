@@ -182,7 +182,7 @@ class ReportGenerator:
 
     @staticmethod
     async def _try_pdf(title: str, html_text: str) -> str | None:
-        """尝试用可用库导出 PDF；不可用则返回 None（不伪造）。"""
+        """使用可用库导出 PDF；不可用时返回 None。"""
         try:
             from weasyprint import HTML  # type: ignore
             out = Path("./storage/reports")

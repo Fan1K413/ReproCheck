@@ -2,66 +2,48 @@ import { useQuery } from '@tanstack/react-query'
 import {
   Activity,
   ClipboardList,
-  Cpu,
   FileText,
   FolderKanban,
-  Hash,
   ListChecks,
+  Orbit,
   ShieldCheck,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
+import { Icon } from '../components/Icon'
 import { LoadingState } from '../components/LoadingState'
-import { StatusBadge } from '../components/StatusBadge'
 import { formatCount } from '../features/format'
 import { materialTypeLabel } from '../features/stage2Meta'
 import { useTrackProject } from '../hooks/useTrackProject'
 import { ApiError, api } from '../services/api'
-import type { MaterialType } from '../types/api'
+import type { MaterialType, ParseOverview } from '../types/api'
+import '../styles/overview-showcase.css'
+import '../styles/wave-b-material.css'
 
-type StatCardProps = {
+/** 后端 parse-overview 额外返回 tasks 聚合，局部扩展类型（不改共享 types） */
+type ParseOverviewExtra = ParseOverview & {
+  tasks?: { completed?: number; total?: number }
+}
+
+type Tone = 'success' | 'warning' | 'danger' | 'info' | 'violet' | 'neutral'
+
+/** 仪表盘几何（viewBox 1000×1000） */
+const CX = 500
+const CY = 500
+const R_ARC = 330
+const R_TICK_OUTER = 412
+const R_TICK_INNER = 384
+const C = 2 * Math.PI * R_ARC
+
+type Readout = {
+  id: string
   label: string
+  field: string
   value: number | null | undefined
-  hint: string
-  icon: typeof Hash
-  tone?: 'accent' | 'success' | 'warning'
-}
-
-function StatCard({ label, value, hint, icon: Icon, tone = 'accent' }: StatCardProps) {
-  const iconClass =
-    tone === 'success'
-      ? 'bg-success-wash text-success'
-      : tone === 'warning'
-        ? 'bg-warning-wash text-warning'
-        : 'bg-accent-wash text-accent-dark'
-  return (
-    <div className="panel p-4">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-ink-muted">{label}</span>
-        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${iconClass}`}>
-          <Icon size={15} strokeWidth={1.9} />
-        </span>
-      </div>
-      <p className="mono mt-2 text-2xl font-semibold leading-none text-ink">{formatCount(value)}</p>
-      <p className="mt-2 truncate text-[11px] text-ink-subtle">{hint}</p>
-    </div>
-  )
-}
-
-function Section({ title, icon: Icon, children }: { title: string; icon: typeof Hash; children: ReactNode }) {
-  return (
-    <section className="panel overflow-hidden">
-      <div className="panel-header">
-        <div className="flex items-center gap-2">
-          <Icon size={17} className="text-accent-dark" />
-          <h3 className="text-sm font-semibold">{title}</h3>
-        </div>
-      </div>
-      <div className="p-5">{children}</div>
-    </section>
-  )
+  tone: Tone
+  x: number
+  y: number
 }
 
 export default function OverviewPage() {
@@ -74,11 +56,11 @@ export default function OverviewPage() {
     enabled: !!projectId,
   })
 
-  const overview = overviewQuery.data
+  const overview = overviewQuery.data as ParseOverviewExtra | undefined
   const base = `/projects/${projectId}`
 
   if (overviewQuery.isPending) {
-    return <LoadingState message="正在读取解析概览…" hint="GET /projects/{id}/parse-overview" />
+    return <LoadingState message="正在读取解析概览…" hint="正在汇总材料与事实统计" />
   }
   if (overviewQuery.isError) {
     return (
@@ -93,99 +75,413 @@ export default function OverviewPage() {
     return <EmptyState title="暂无概览数据" description="后端未返回该项目的解析概览。" />
   }
 
+  const materials = overview.materials
+  const facts = overview.facts
+  const llm = overview.llm
+
   const typeEntries = Object.entries(overview.by_type ?? {}).sort((a, b) => b[1] - a[1])
   const maxTypeCount = typeEntries.reduce((max, [, count]) => Math.max(max, count), 0)
-  const noMaterials = (overview.materials?.total ?? 0) === 0
+  const materialTotal = materials?.total ?? 0
+  const noMaterials = materialTotal === 0
+
+  /** 仪表弧段：长度 ∝ 真实计数 */
+  const arcs = [
+    { key: 'completed', label: '解析成功', value: materials?.completed ?? 0, tone: 'success' },
+    {
+      key: 'partially_completed',
+      label: '部分完成',
+      value: materials?.partially_completed ?? 0,
+      tone: 'warning',
+    },
+    { key: 'failed', label: '解析失败', value: materials?.failed ?? 0, tone: 'danger' },
+    { key: 'pending', label: '等待解析', value: materials?.pending ?? 0, tone: 'info' },
+  ]
+  const arcTotal = arcs.reduce((sum, arc) => sum + arc.value, 0)
+  let arcOffset = 0
+  const arcSegments = arcs.map((arc) => {
+    const length = arcTotal > 0 ? (arc.value / arcTotal) * C : 0
+    const segment = { ...arc, length, offset: arcOffset }
+    arcOffset += length
+    return segment
+  })
+
+  /** 四角读数：全部绑定真实字段 */
+  const readouts: Readout[] = [
+    {
+      id: 'materials',
+      label: '材料总数',
+      field: 'materials.total',
+      value: materials?.total,
+      tone: 'neutral',
+      x: 360,
+      y: 360,
+    },
+    {
+      id: 'facts',
+      label: '事实总量',
+      field: 'facts.total',
+      value: facts?.total,
+      tone: 'violet',
+      x: 640,
+      y: 360,
+    },
+    {
+      id: 'evidence',
+      label: '证据已绑定',
+      field: 'facts.with_evidence',
+      value: facts?.with_evidence,
+      tone: 'success',
+      x: 360,
+      y: 640,
+    },
+    {
+      id: 'calls',
+      label: 'LLM 调用',
+      field: 'llm.total_calls',
+      value: llm?.total_calls,
+      tone: 'info',
+      x: 640,
+      y: 640,
+    },
+  ]
+
+  const cards: {
+    label: string
+    field: string
+    value: number | null | undefined
+    tone: Tone
+  }[] = [
+    { label: '材料总数', field: 'materials.total', value: materials?.total, tone: 'neutral' },
+    { label: '解析成功', field: 'materials.completed', value: materials?.completed, tone: 'success' },
+    {
+      label: '部分完成',
+      field: 'materials.partially_completed',
+      value: materials?.partially_completed,
+      tone: 'warning',
+    },
+    { label: '解析失败', field: 'materials.failed', value: materials?.failed, tone: 'danger' },
+    { label: '等待解析', field: 'materials.pending', value: materials?.pending, tone: 'info' },
+    { label: '事实总量', field: 'facts.total', value: facts?.total, tone: 'violet' },
+    {
+      label: '证据已绑定',
+      field: 'facts.with_evidence',
+      value: facts?.with_evidence,
+      tone: 'success',
+    },
+    { label: '待复核事实', field: 'facts.needs_review', value: facts?.needs_review, tone: 'warning' },
+    {
+      label: '人工修订',
+      field: 'facts.human_revised',
+      value: facts?.human_revised,
+      tone: 'info',
+    },
+    { label: 'LLM 调用', field: 'llm.total_calls', value: llm?.total_calls, tone: 'violet' },
+    { label: 'Token 总量', field: 'llm.total_tokens', value: llm?.total_tokens, tone: 'violet' },
+    ...(overview.tasks?.completed != null
+      ? [
+          {
+            label: '已完成任务',
+            field: 'tasks.completed',
+            value: overview.tasks.completed,
+            tone: 'success' as Tone,
+          },
+        ]
+      : []),
+  ]
+
+  const ticks = Array.from({ length: 36 }, (_, index) => index * 10)
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-dark">Parse Overview</p>
-          <h2 className="mt-1 text-lg font-semibold">解析概览</h2>
-          <p className="mt-1 text-sm text-ink-muted">
-            所有统计均来自 GET /projects/{'{id}'}/parse-overview 的数据库聚合，无前端推算。
+    <div className="mb-page">
+      <header className="mb-head">
+        <div className="min-w-0">
+          <p className="mb-head__eyebrow">解析概览 · 精密线框</p>
+          <h1 className="mb-head__title">解析概览</h1>
+          <p className="mb-head__desc">
+            所有统计均来自后端数据库聚合，无前端推算；仪表弧段长度严格等于各状态的真实占比。
           </p>
         </div>
-        <nav className="flex flex-wrap items-center gap-2">
-          <Link to={`${base}/materials`} className="btn-ghost"><FileText size={15} />材料管理</Link>
-          <Link to={`${base}/tasks`} className="btn-ghost"><ListChecks size={15} />解析任务</Link>
-          <Link to={`${base}/facts`} className="btn-ghost"><ClipboardList size={15} />科研事实</Link>
+        <nav className="mb-head__actions">
+          <Link to={`${base}/workbench`} className="btn-primary">
+            <Icon as={Orbit} size="sm" />
+            Bloom 账本
+          </Link>
+          <Link to={`${base}/materials`} className="btn-ghost">
+            <Icon name="file" size="sm" />
+            材料管理
+          </Link>
+          <Link to={`${base}/tasks`} className="btn-ghost">
+            <Icon name="listTree" size="sm" />
+            解析任务
+          </Link>
+          <Link to={`${base}/facts`} className="btn-ghost">
+            <Icon name="clipboardCheck" size="sm" />
+            科研事实
+          </Link>
+          <Link to={`${base}/data-audit`} className="btn-ghost">
+            <Icon name="shield" size="sm" />
+            数据质量审计
+          </Link>
         </nav>
-      </div>
+      </header>
 
       {noMaterials && (
-        <div className="panel p-5">
-          <EmptyState
-            compact
-            icon={FolderKanban}
-            title="该项目尚无材料"
-            description="上传材料并发起解析后，这里的统计与分布会由后端实时生成。"
-            action={
-              <Link to={`${base}/materials`} className="btn-primary">
-                去上传材料
-              </Link>
-            }
-          />
-        </div>
+        <section className="mb-panel">
+          <div className="mb-panel__body">
+            <EmptyState
+              compact
+              icon={FolderKanban}
+              title="该项目尚无材料"
+              description="上传材料并发起解析后，这里的统计与分布会由后端实时生成。"
+              action={
+                <Link to={`${base}/materials`} className="btn-primary">
+                  去上传材料
+                </Link>
+              }
+            />
+          </div>
+        </section>
       )}
 
-      <Section title="材料解析状态" icon={FileText}>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <StatCard label="材料总数" value={overview.materials?.total} hint="materials.total" icon={FolderKanban} />
-          <StatCard label="解析成功" value={overview.materials?.completed} hint="materials.completed" icon={ShieldCheck} tone="success" />
-          <StatCard label="部分完成" value={overview.materials?.partially_completed} hint="materials.partially_completed" icon={Activity} tone="warning" />
-          <StatCard label="解析失败" value={overview.materials?.failed} hint="materials.failed" icon={Activity} />
-          <StatCard label="待处理" value={overview.materials?.pending} hint="materials.pending" icon={Hash} />
-        </div>
-      </Section>
+      <div className="mb-split">
+        {/* 左 8 列：仪表 + 类型分布 */}
+        <div className="flex min-w-0 flex-col gap-6">
+          <section className="mb-panel mb-panel--grid" aria-label="解析状态仪表">
+            <div className="mb-panel__head">
+              <h3 className="mb-panel__title">
+                <Icon as={Activity} size="sm" tone="accent" />
+                材料状态仪表
+              </h3>
+              <span className="mb-panel__hint">弧长比例等于真实计数占比</span>
+            </div>
+            <div className="mb-panel__body">
+              <div className="ov-stage">
+                <svg
+                  className="ov-stage__svg"
+                  viewBox="0 0 1000 1000"
+                  role="img"
+                  aria-label={`材料状态仪表：共 ${materialTotal} 份材料`}
+                >
+                  {/* 基准环 */}
+                  <circle className="ov-ring" cx={CX} cy={CY} r={R_ARC} strokeWidth={46} />
+                  <circle className="ov-ring" cx={CX} cy={CY} r={250} />
+                  <circle className="ov-ring ov-ring--strong" cx={CX} cy={CY} r={108} />
 
-      <Section title="事实与证据" icon={ClipboardList}>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label="事实总数" value={overview.facts?.total} hint="facts.total" icon={ClipboardList} />
-          <StatCard label="有证据" value={overview.facts?.with_evidence} hint="facts.with_evidence" icon={ShieldCheck} tone="success" />
-          <StatCard label="待复核" value={overview.facts?.needs_review} hint="facts.needs_review" icon={Activity} tone="warning" />
-          <StatCard label="人工修订" value={overview.facts?.human_revised} hint="facts.human_revised" icon={Cpu} />
-        </div>
-      </Section>
+                  {/* 刻度 */}
+                  {ticks.map((deg) => {
+                    const rad = ((deg - 90) * Math.PI) / 180
+                    const major = deg % 90 === 0
+                    const outer = major ? R_TICK_OUTER : R_TICK_INNER
+                    return (
+                      <line
+                        key={deg}
+                        className={`ov-tick ${major ? 'ov-tick--major' : ''}`}
+                        x1={CX + Math.cos(rad) * R_ARC}
+                        y1={CY + Math.sin(rad) * R_ARC}
+                        x2={CX + Math.cos(rad) * outer}
+                        y2={CY + Math.sin(rad) * outer}
+                      />
+                    )
+                  })}
 
-      <Section title="模型调用" icon={Cpu}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <StatCard label="LLM 调用次数" value={overview.llm?.total_calls} hint="llm.total_calls" icon={Cpu} />
-          <StatCard label="LLM Token 总数" value={overview.llm?.total_tokens} hint="llm.total_tokens" icon={Hash} />
-        </div>
-      </Section>
+                  {/* 数据弧段（真实占比） */}
+                  {arcTotal > 0 &&
+                    arcSegments
+                      .filter((segment) => segment.length > 0)
+                      .map((segment) => (
+                        <circle
+                          key={segment.key}
+                          className={`ov-arc ov-arc--${segment.tone}`}
+                          cx={CX}
+                          cy={CY}
+                          r={R_ARC}
+                          strokeDasharray={`${segment.length} ${C - segment.length}`}
+                          strokeDashoffset={-segment.offset}
+                          transform={`rotate(-90 ${CX} ${CY})`}
+                        >
+                          <title>
+                            {segment.label}：{segment.value} 份（{arcTotal > 0 ? ((segment.value / arcTotal) * 100).toFixed(1) : '0.0'}%）
+                          </title>
+                        </circle>
+                      ))}
 
-      <Section title="材料类型分布" icon={Hash}>
-        {typeEntries.length === 0 ? (
-          <EmptyState
-            compact
-            icon={FolderKanban}
-            title="暂无类型分布数据"
-            description="上传材料后，按材料类型统计的分布会显示在这里。"
-          />
-        ) : (
-          <ul className="space-y-3">
-            {typeEntries.map(([type, count]) => {
-              const label =
-                materialTypeLabel[type as MaterialType] ?? type
-              const width = maxTypeCount > 0 ? Math.round((count / maxTypeCount) * 100) : 0
-              return (
-                <li key={type} className="flex flex-wrap items-center gap-3">
-                  <span className="w-28 shrink-0 truncate text-xs text-ink-muted" title={type}>{label}</span>
-                  <div className="h-2 min-w-[120px] flex-1 overflow-hidden rounded-full bg-neutral-wash">
-                    <div className="h-full rounded-full bg-accent" style={{ width: `${width}%` }} />
+                  {/* 四角锚点 */}
+                  {readouts.map((readout) => (
+                    <circle
+                      key={`dot-${readout.id}`}
+                      className="ov-dot ov-dot--muted"
+                      cx={readout.x}
+                      cy={readout.y}
+                      r={5}
+                    />
+                  ))}
+                </svg>
+
+                {/* 读数浮层（HTML 排印，字号走 --rc-fs-* 层级） */}
+                <div
+                  className="ov-float ov-float--core"
+                  style={{ left: '50%', top: '50%' }}
+                  aria-hidden="true"
+                >
+                  <span className="ov-float__value">{formatCount(facts?.total)}</span>
+                  <span className="ov-float__label">事实总量</span>
+                </div>
+
+                {readouts.map((readout) => (
+                  <div
+                    key={readout.id}
+                    className="ov-float"
+                    style={{ left: `${readout.x / 10}%`, top: `${readout.y / 10}%` }}
+                  >
+                    <span className="ov-float__value">{formatCount(readout.value)}</span>
+                    <span className="ov-float__label">{readout.label}</span>
                   </div>
-                  <span className="mono w-10 shrink-0 text-right text-xs text-ink">{count}</span>
-                  <StatusBadge tone="neutral" dot={false}>
-                    <span className="mono">{type}</span>
-                  </StatusBadge>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </Section>
+                ))}
+              </div>
+
+              {/* 弧段图例：数值同时以文字表达，不只靠颜色 */}
+              <ul className="mt-4 flex flex-wrap gap-2">
+                {arcSegments.map((segment) => (
+                  <li
+                    key={segment.key}
+                    className="mb-chip mb-chip--static"
+                    style={{ borderColor: 'var(--rc-border-hair)' }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 'var(--rc-radius-disc)',
+                        backgroundColor:
+                          segment.tone === 'success'
+                            ? 'var(--rc-success)'
+                            : segment.tone === 'warning'
+                              ? 'var(--rc-warning)'
+                              : segment.tone === 'danger'
+                                ? 'var(--rc-danger)'
+                                : 'var(--rc-info)',
+                      }}
+                    />
+                    {segment.label}
+                    <span className="mb-chip__count">
+                      {segment.value} ·{' '}
+                      {arcTotal > 0 ? ((segment.value / arcTotal) * 100).toFixed(1) : '0.0'}%
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          <section className="mb-panel" aria-label="材料类型分布">
+            <div className="mb-panel__head">
+              <h3 className="mb-panel__title">
+                <Icon name="grid" size="sm" tone="accent" />
+                材料类型分布
+              </h3>
+              <span className="mb-panel__hint">长度比例等于真实计数</span>
+            </div>
+            <div className="mb-panel__body">
+              {typeEntries.length === 0 ? (
+                <p className="text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
+                  后端未返回材料类型分布。
+                </p>
+              ) : (
+                <div className="ov-dist">
+                  {typeEntries.map(([type, count]) => {
+                    const percent = maxTypeCount > 0 ? (count / maxTypeCount) * 100 : 0
+                    return (
+                      <div key={type} className="ov-dist__row">
+                        <span className="ov-dist__name">
+                          {materialTypeLabel[type as MaterialType] ?? type}
+                        </span>
+                        <span className="ov-dist__track">
+                          <span className="ov-dist__bar" style={{ width: `${percent}%` }} />
+                        </span>
+                        <span className="ov-dist__n">{count}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* 右 4 列：概览卡 */}
+        <div className="flex min-w-0 flex-col gap-6">
+          <section className="mb-panel" aria-label="解析概览卡">
+            <div className="mb-panel__head">
+              <h3 className="mb-panel__title">
+                <Icon name="grid" size="sm" tone="accent" />
+                概览卡
+              </h3>
+              <span className="mb-panel__hint">{cards.length} 项读数</span>
+            </div>
+            <div className="mb-panel__body">
+              <div className="ov-readouts">
+                {cards.map((card) => (
+                  <div key={card.field} className="ov-readout">
+                    <p className="ov-readout__label">{card.label}</p>
+                    <p className={`ov-readout__value ov-readout__value--${card.tone}`}>
+                      {formatCount(card.value)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="mb-panel" aria-label="证据链说明">
+            <div className="mb-panel__head">
+              <h3 className="mb-panel__title">
+                <Icon as={ShieldCheck} size="sm" tone="accent" />
+                证据链说明
+              </h3>
+            </div>
+            <div className="mb-panel__body flex flex-col gap-3">
+              <p className="text-sm" style={{ color: 'var(--rc-text-muted)' }}>
+                当前登记 <strong className="mb-mono">{formatCount(facts?.total)}</strong> 条科研事实，
+                覆盖 <strong className="mb-mono">{formatCount(materialTotal)}</strong> 份材料，
+                其中 <strong className="mb-mono">{formatCount(facts?.with_evidence)}</strong> 条已绑定可核验原文。
+              </p>
+              <dl className="mb-dl">
+                <div className="mb-dl__row">
+                  <dt className="mb-dl__key">待复核事实</dt>
+                  <dd className="mb-dl__val">{formatCount(facts?.needs_review)}</dd>
+                </div>
+                <div className="mb-dl__row">
+                  <dt className="mb-dl__key">人工修订</dt>
+                  <dd className="mb-dl__val">{formatCount(facts?.human_revised)}</dd>
+                </div>
+                <div className="mb-dl__row">
+                  <dt className="mb-dl__key">项目 ID</dt>
+                  <dd className="mb-dl__val">{overview.project_id}</dd>
+                </div>
+              </dl>
+              <div className="flex flex-wrap gap-2">
+                <Link to={`${base}/facts`} className="btn-ghost">
+                  <Icon as={ClipboardList} size="sm" />
+                  科研事实
+                </Link>
+                <Link to={`${base}/tasks`} className="btn-ghost">
+                  <Icon as={ListChecks} size="sm" />
+                  解析任务
+                </Link>
+                <Link to={`${base}/materials`} className="btn-ghost">
+                  <Icon as={FileText} size="sm" />
+                  材料管理
+                </Link>
+                <Link to={`${base}/evidence-graph`} className="btn-ghost">
+                  <Icon name="network" size="sm" />
+                  证据图谱
+                </Link>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
   )
 }

@@ -3,90 +3,10 @@
 @tailwind utilities;
 
 /* ------------------------------------------------------------------
- * 全局设计变量 —— 颜色 / 字体 / 间距 / 圆角 / 阴影集中管理
+ * 全局设计变量已迁移至 ./tokens.css（全站唯一色源，main.tsx 中最先引入）。
+ * 本文件只保留基础层与组件层样式；所有颜色/间距/圆角/阴影均引用 --rc-* token。
+ * 旧 --accent / --surface / --navy-* 等在 tokens.css §1.10 中作为兼容别名存在。
  * ------------------------------------------------------------------ */
-:root {
-  /* 品牌与中性色 */
-  --navy-950: #0e0f0c;
-  --navy-900: #0e0f0c;
-  --navy-800: #1f211c;
-  --navy-700: #2c2f28;
-  --navy-600: #454745;
-  --navy-100: #e2f6d5;
-
-  --accent: #9fe870;
-  --accent-soft: #9fe870;
-  --accent-dark: #163300;
-  --accent-wash: #e2f6d5;
-
-  --surface: #ffffff;
-  --canvas: #f7f8f5;
-  --line: #dcdfd8;
-  --line-soft: #e8ebe6;
-
-  --ink: #0e0f0c;
-  --ink-muted: #454745;
-  --ink-subtle: #868685;
-
-  --success: #054d28;
-  --success-wash: #e2f6d5;
-  --danger: #d03238;
-  --danger-wash: #fdecea;
-  --warning: #8a5a00;
-  --warning-wash: #fff4c7;
-  --neutral: #454745;
-  --neutral-wash: #e8ebe6;
-
-  /* RGB 三元组：供 Tailwind 透明度修饰符（如 bg-accent/30）使用 */
-  --navy-950-rgb: 14 15 12;
-  --navy-900-rgb: 14 15 12;
-  --navy-800-rgb: 31 33 28;
-  --navy-700-rgb: 44 47 40;
-  --navy-600-rgb: 69 71 69;
-  --navy-100-rgb: 226 246 213;
-  --accent-rgb: 159 232 112;
-  --accent-soft-rgb: 159 232 112;
-  --accent-dark-rgb: 22 51 0;
-  --accent-wash-rgb: 226 246 213;
-  --surface-rgb: 255 255 255;
-  --canvas-rgb: 247 248 245;
-  --line-rgb: 220 223 216;
-  --line-soft-rgb: 232 235 230;
-  --ink-rgb: 14 15 12;
-  --ink-muted-rgb: 69 71 69;
-  --ink-subtle-rgb: 134 134 133;
-  --success-rgb: 5 77 40;
-  --success-wash-rgb: 226 246 213;
-  --danger-rgb: 208 50 56;
-  --danger-wash-rgb: 253 236 234;
-  --warning-rgb: 138 90 0;
-  --warning-wash-rgb: 255 244 199;
-  --neutral-rgb: 69 71 69;
-  --neutral-wash-rgb: 232 235 230;
-
-  /* 字体 */
-  --font-sans: 'Inter', 'PingFang SC', 'Microsoft YaHei', Helvetica, Arial, sans-serif;
-  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
-
-  /* 间距 */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-
-  /* 圆角 */
-  --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-panel: 30px;
-
-  /* 阴影 */
-  --shadow-panel: rgba(14, 15, 12, 0.12) 0 0 0 1px;
-  --shadow-pop: rgba(14, 15, 12, 0.12) 0 0 0 1px, 0 12px 32px rgba(14, 15, 12, 0.10);
-}
 
 @layer base {
   * {
@@ -99,13 +19,13 @@
 
   body {
     margin: 0;
-    font-family: var(--font-sans);
-    color: var(--ink);
-    background-color: var(--canvas);
+    font-family: var(--rc-font-body, var(--font-sans));
+    color: var(--rc-text, var(--ink));
+    background-color: var(--rc-bg, var(--canvas));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-size: 14px;
-    line-height: 1.55;
+    font-size: var(--rc-fs-body, 14px);
+    line-height: var(--rc-lh-body, 1.6);
     font-feature-settings: "calt";
   }
 
@@ -113,8 +33,7 @@
   h2,
   h3,
   h4 {
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-weight: var(--rc-fw-sb, 600);
   }
 
   button,
@@ -125,55 +44,72 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--accent-dark);
+    outline: 2px solid var(--rc-focus, var(--accent-dark));
     outline-offset: 2px;
   }
 }
 
 @layer components {
   .panel {
-    background-color: var(--surface);
-    border: none;
-    border-radius: var(--radius-panel);
-    box-shadow: var(--shadow-panel);
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(145deg, rgba(246, 240, 252, 0.085), rgba(246, 240, 252, 0.035)),
+      var(--rc-surface);
+    border: var(--rc-stroke);
+    border-radius: var(--rc-radius-lg);
+    box-shadow: var(--rc-shadow-panel);
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, rgba(233, 213, 255, 0.34), transparent);
   }
 
   .panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
-    padding: var(--space-5) var(--space-6);
-    border-bottom: 1px solid var(--line-soft);
+    gap: var(--rc-space-3);
+    padding: var(--rc-space-5) var(--rc-space-6);
+    border-bottom: var(--rc-stroke-hair);
   }
 
   .field-label {
     display: block;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--ink-muted);
-    margin-bottom: 6px;
+    font-size: var(--rc-fs-caption);
+    font-weight: var(--rc-fw-sb);
+    letter-spacing: var(--rc-ls-caption);
+    color: var(--rc-text-muted);
+    margin-bottom: var(--rc-space-2);
   }
 
   .field-input {
     width: 100%;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
-    background-color: var(--surface);
-    color: var(--ink);
+    height: 42px;
+    border: var(--rc-stroke);
+    border-radius: var(--rc-radius-sm);
+    background: linear-gradient(145deg, rgba(8, 4, 15, 0.30), rgba(8, 4, 15, 0.18)), var(--rc-surface);
+    color: var(--rc-text);
     padding: 9px 12px;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: border-color var(--rc-dur-base) var(--rc-ease-hover),
+      box-shadow var(--rc-dur-base) var(--rc-ease-hover),
+      background-color var(--rc-dur-base) var(--rc-ease-hover);
   }
 
   .field-input::placeholder {
-    color: var(--ink-subtle);
+    color: var(--rc-text-subtle);
   }
 
   .field-input:focus {
     outline: none;
-    border-color: var(--accent-dark);
-    box-shadow: 0 0 0 3px var(--accent-wash);
+    border-color: var(--rc-accent);
+    box-shadow: 0 0 0 3px var(--rc-accent-wash);
   }
 
   .btn-primary,
@@ -181,75 +117,92 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    border-radius: 9999px;
-    padding: 9px 18px;
-    font-weight: 600;
+    gap: var(--rc-icon-gap);
+    min-height: 40px;
+    border-radius: var(--rc-radius-pill);
+    padding: 8px 18px;
+    font-weight: var(--rc-fw-sb);
     cursor: pointer;
-    transition: transform 0.15s ease, background-color 0.15s ease;
+    transition: transform var(--rc-dur-base) var(--rc-ease-hover),
+      background-color var(--rc-dur-base) var(--rc-ease-hover),
+      border-color var(--rc-dur-base) var(--rc-ease-hover),
+      box-shadow var(--rc-dur-base) var(--rc-ease-hover);
   }
 
   .btn-primary {
-    background-color: var(--accent);
-    color: var(--accent-dark);
-    border: 1px solid var(--accent);
+    background-color: var(--rc-accent);
+    color: var(--rc-hi);
+    border: 1px solid var(--rc-accent);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--rc-violet);
+    box-shadow: var(--rc-glow-violet);
   }
 
   .btn-ghost {
-    background-color: rgba(22, 51, 0, 0.08);
-    color: var(--ink);
-    border: 1px solid transparent;
+    background-color: var(--rc-accent-wash);
+    color: var(--rc-text);
+    border: var(--rc-stroke);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background-color: var(--rc-accent-wash);
+    border-color: var(--rc-border-strong);
+    box-shadow: var(--rc-glow-magenta);
   }
 
   .btn-primary:hover:not(:disabled),
   .btn-ghost:hover:not(:disabled) {
-    transform: scale(1.05);
+    transform: scale(1.04);
   }
 
   .btn-primary:active:not(:disabled),
   .btn-ghost:active:not(:disabled) {
-    transform: scale(0.95);
-  }
-
-  .btn-ghost:hover:not(:disabled) {
-    background-color: rgba(211, 242, 192, 0.6);
+    transform: scale(0.96);
+    transition-duration: var(--rc-dur-instant);
   }
 
   .btn-primary:disabled,
   .btn-ghost:disabled {
-    opacity: 0.55;
+    opacity: 0.4;
     cursor: not-allowed;
+    color: var(--rc-text-subtle);
+    box-shadow: none;
   }
 
   .data-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
+    color: var(--rc-text);
   }
 
   .data-table th {
     text-align: left;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
+    font-family: var(--rc-font-mono);
+    font-size: var(--rc-fs-micro);
+    font-weight: var(--rc-fw-sb);
+    letter-spacing: var(--rc-ls-mono);
     text-transform: uppercase;
-    color: var(--ink-muted);
-    padding: 12px 16px;
-    background-color: var(--line-soft);
-    border-bottom: 1px solid var(--line);
+    color: var(--rc-text-subtle);
+    padding: var(--rc-space-3) var(--rc-space-4);
+    background-color: var(--rc-surface-2);
+    border-bottom: var(--rc-stroke);
     white-space: nowrap;
   }
 
   .data-table td {
-    padding: 11px 14px;
-    border-bottom: 1px solid var(--line-soft);
-    vertical-align: top;
-    color: var(--ink);
+    height: 44px;
+    padding: var(--rc-space-3) var(--rc-space-4);
+    border-bottom: var(--rc-stroke-hair);
+    vertical-align: middle;
+    color: var(--rc-text);
   }
 
   .data-table-dense th,
   .data-table-dense td {
-    padding: 8px 8px;
+    padding: var(--rc-space-2) var(--rc-space-3);
   }
 
   .data-table tbody tr:last-child td {
@@ -257,19 +210,20 @@
   }
 
   .data-table tbody tr:hover td {
-    background-color: #f4f9ef;
+    background-color: rgba(124, 47, 207, .08);
   }
 
   .mono {
-    font-family: var(--font-mono);
+    font-family: var(--rc-font-mono);
     font-variant-ligatures: none;
+    font-variant-numeric: tabular-nums;
   }
 }
 
-/* 细滚动条，避免抢占内容空间 */
+/* 细滚动条，避免抢占内容空间（Phase 1 §1.11 迁移表） */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #c9ccc4 transparent;
+  scrollbar-color: rgba(233, 213, 255, .28) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -278,10 +232,33 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #c9ccc4;
-  border-radius: 999px;
+  background-color: rgba(233, 213, 255, .28);
+  border-radius: var(--rc-radius-pill);
 }
 
 *::-webkit-scrollbar-track {
   background-color: transparent;
+}
+
+/* prefers-reduced-motion：保留 120ms 淡入淡出，取消位移/缩放/无限循环（交互规范 §3.5） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: var(--rc-dur-fast) !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: var(--rc-dur-fast) !important;
+  }
+
+  .animate-spin {
+    animation: none !important;
+  }
+
+  .btn-primary:hover:not(:disabled),
+  .btn-ghost:hover:not(:disabled),
+  .btn-primary:active:not(:disabled),
+  .btn-ghost:active:not(:disabled) {
+    transform: none;
+  }
 }
