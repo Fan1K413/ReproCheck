@@ -58,6 +58,7 @@ _METRIC_ALIASES: tuple[tuple[str, str], ...] = (
     ("损失", "loss"),
     ("acc", "accuracy"),
 )
+_EXACT_METRIC_ALIASES = dict(_METRIC_ALIASES)
 
 # 绘图调用识别（AST 静态分析）
 _PLOT_LIBS = {"matplotlib", "plotly", "seaborn", "pandas", "mpl_toolkits"}
@@ -150,7 +151,9 @@ def _parse_spaced_row(line: str) -> tuple[str, list[float]] | None:
     return (label, values) if values else None
 
 
-def extract_table_claims(chunks: list[str], locators: list[dict]) -> list[dict]:
+def extract_table_claims(
+    chunks: list[str], locators: list[dict], *, exact_metrics: bool = False,
+) -> list[dict]:
     """从论文文本块中提取表格行数值主张；无匹配返回空列表。"""
     claims: list[dict] = []
     for chunk_index, raw_chunk in enumerate(chunks or []):
@@ -164,7 +167,9 @@ def extract_table_claims(chunks: list[str], locators: list[dict]) -> list[dict]:
             if parsed is None:
                 continue
             label, values = parsed
-            canonical = _canonical_metric(label)
+            canonical = _EXACT_METRIC_ALIASES.get(label.lower()) if exact_metrics else _canonical_metric(label)
+            if exact_metrics and canonical is None:
+                continue
             metric_name = canonical or label.strip().lower()
             confidence = 0.92 if canonical else (0.8 if len(values) >= 2 else 0.7)
             claims.append({
@@ -296,8 +301,11 @@ def _metric_from_key(key: str) -> str | None:
     return None
 
 
-def find_result_files(material_texts: dict[str, str]) -> list[dict]:
+def find_result_files(material_texts: dict[str, str], *, exact_metrics: bool = False) -> list[dict]:
     """从材料文本中提取 CSV/JSON/日志形式的真实指标数值（纯函数）。"""
+    def metric_for(key: str) -> str | None:
+        return _EXACT_METRIC_ALIASES.get(key.strip().lower()) if exact_metrics else _metric_from_key(key)
+
     found: list[dict] = []
     for file_name, raw_text in (material_texts or {}).items():
         if not isinstance(raw_text, str) or not raw_text.strip():
@@ -320,7 +328,9 @@ def find_result_files(material_texts: dict[str, str]) -> list[dict]:
                         walk(value, f"{path}[{index}]")
                 elif isinstance(obj, (int, float)) and not isinstance(obj, bool):
                     leaf = path.rsplit(".", 1)[-1]
-                    metric = _metric_from_key(leaf)
+                    if exact_metrics:
+                        leaf = leaf.split("[", 1)[0]
+                    metric = metric_for(leaf)
                     if metric:
                         found.append({
                             "file_name": name, "metric": metric,
@@ -336,7 +346,7 @@ def find_result_files(material_texts: dict[str, str]) -> list[dict]:
             csv_items: list[dict] = []
             for row in reader:
                 for key, value in row.items():
-                    metric = _metric_from_key(key or "")
+                    metric = metric_for(key or "")
                     if not metric:
                         continue
                     try:
@@ -346,6 +356,7 @@ def find_result_files(material_texts: dict[str, str]) -> list[dict]:
                     csv_items.append({
                         "file_name": name, "metric": metric, "value": numeric,
                         "source": f"{name}#csv:{key}",
+                        **({"line": reader.line_num} if exact_metrics else {}),
                     })
             if fieldnames and csv_items:
                 found.extend(csv_items)
@@ -363,6 +374,8 @@ def find_result_files(material_texts: dict[str, str]) -> list[dict]:
                 found.append({
                     "file_name": name, "metric": metric, "value": numeric,
                     "source": f"{name}#text:{matched.group(0)[:60]}",
+                    **({"percentage": text[matched.end():matched.end() + 8].lstrip().startswith(("%", "％"))}
+                       if exact_metrics else {}),
                 })
     return found
 

@@ -58,7 +58,8 @@ class RequestBodyLimit:
         limit = settings.max_request_bytes
         if request.method == "POST":
             path = request.url.path.rstrip("/")
-            if path in ("/api/v1/materials/upload", "/api/open/v1/materials"):
+            paper_upload = path.startswith("/api/v1/papers/") and path.endswith("/materials")
+            if paper_upload or path in ("/api/v1/materials/upload", "/api/open/v1/materials", "/api/v1/papers"):
                 limit = MAX_SINGLE_FILE_BYTES + _MULTIPART_OVERHEAD
             elif path.startswith("/api/v1/projects/") and path.endswith("/handoff/validate"):
                 limit = MAX_BUNDLE_BYTES + _MULTIPART_OVERHEAD

@@ -118,6 +118,11 @@ def _parse_pdf(path: Path, *, material_id: str, project_id: str) -> ParseResult:
 
     try:
         page_count = document.page_count
+        if document.needs_pass:
+            return ParseResult(
+                **base, status="failed", error_code="PDF_PASSWORD_REQUIRED",
+                error_message="请上传解除密码保护后的 PDF。",
+            )
         if page_count > MAX_PDF_PAGES:
             return ParseResult(
                 **base, status="failed", error_code="PDF_TOO_MANY_PAGES",

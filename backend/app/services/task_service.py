@@ -42,6 +42,34 @@ DEFAULT_TIMEOUT_SECONDS = 600
 DEFAULT_STALE_MINUTES = 15
 
 
+def parsed_chunks(material: Material, parsed: ParseResult) -> list[SourceChunk]:
+    return [
+        SourceChunk(
+            material_id=material.id, chunk_id=chunk.chunk_id,
+            chunk_index=chunk.chunk_index, original_text=chunk.content,
+            locator_type=parsed.material_type,
+            page_number=(chunk.source_locator or {}).get("viewer_page_number"),
+            line_number=(chunk.source_locator or {}).get("start_line"),
+            project_id=material.project_id, material_type=chunk.material_type,
+            content_hash=chunk.content_hash, parser_version=chunk.parser_version,
+            source_locator_json=json.dumps(chunk.source_locator, ensure_ascii=False),
+            token_estimate=chunk.token_estimate,
+        )
+        for chunk in parsed.chunks
+    ]
+
+
+def update_parse_metadata(material: Material, parsed: ParseResult) -> None:
+    material.parse_status = parsed.status
+    material.parser_version = parsed.parser_version
+    material.page_count = parsed.metadata.get("page_count")
+    material.needs_ocr = parsed.needs_ocr
+    material.parse_metadata_json = json.dumps(parsed.metadata, ensure_ascii=False, default=str)
+    material.warnings_json = json.dumps([w.model_dump() for w in parsed.warnings], ensure_ascii=False)
+    material.parse_error_code = parsed.error_code
+    material.parse_error_message = parsed.error_message
+
+
 def _now() -> datetime:
     """统一使用 UTC 时间，避免 SQLite 无时区返回导致的比较错误。"""
     return datetime.now(timezone.utc)
@@ -202,31 +230,8 @@ class TaskService:
             await self.db.execute(
                 delete(SourceChunk).where(SourceChunk.material_id == material.id)
             )
-            for sc in parse_result.chunks:
-                self.db.add(SourceChunk(
-                    material_id=material.id, chunk_id=sc.chunk_id,
-                    chunk_index=sc.chunk_index, original_text=sc.content,
-                    locator_type=parse_result.material_type,
-                    page_number=(sc.source_locator or {}).get("viewer_page_number"),
-                    line_number=(sc.source_locator or {}).get("start_line"),
-                    project_id=material.project_id,
-                    material_type=sc.material_type, content_hash=sc.content_hash,
-                    parser_version=sc.parser_version,
-                    source_locator_json=json.dumps(sc.source_locator, ensure_ascii=False),
-                    token_estimate=sc.token_estimate,
-                ))
-
-            # 更新材料解析状态与元信息
-            material.parse_status = parse_result.status
-            material.parser_version = parse_result.parser_version
-            material.page_count = parse_result.metadata.get("page_count")
-            material.needs_ocr = parse_result.needs_ocr
-            material.parse_metadata_json = json.dumps(parse_result.metadata, ensure_ascii=False, default=str)
-            material.warnings_json = json.dumps(
-                [w.model_dump() for w in parse_result.warnings], ensure_ascii=False
-            )
-            material.parse_error_code = parse_result.error_code
-            material.parse_error_message = parse_result.error_message
+            self.db.add_all(parsed_chunks(material, parse_result))
+            update_parse_metadata(material, parse_result)
             self.db.add(material)
 
             parse_run.parser_status = parse_result.status

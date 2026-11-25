@@ -57,30 +57,7 @@ async def create_project(payload: ProjectCreate, request: Request, db: AsyncSess
                          user: User | None = Depends(get_optional_user)):
     rid = getattr(request.state, "request_id", "-")
     try:
-        org_id = payload.org_id
-        if user is not None and not org_id:
-            om = (await db.execute(select(OrgMember).where(OrgMember.user_id == user.id))).scalars().first()
-            org_id = om.org_id if om else None
-        if org_id and (user is None or not await user_has_permission(db, user, "project.create", org_id=org_id)):
-            raise AppError("FORBIDDEN", "无权在指定组织创建项目。")
-        if payload.workspace_id:
-            workspace = await db.get(Workspace, payload.workspace_id)
-            if not org_id or workspace is None or workspace.org_id != org_id:
-                raise AppError("NOT_FOUND", "工作空间不存在或无权访问。")
-        p = Project(
-            id=f"proj-{uuid.uuid4().hex[:16]}",
-            name=payload.name, domain=payload.domain,
-            paper_title=payload.paper_title, description=payload.description,
-            owner_user_id=user.id if user else None, org_id=org_id, workspace_id=payload.workspace_id,
-        )
-        db.add(p)
-        await db.flush()
-        if user is not None:
-            db.add(ProjectMember(id=f"pm-{uuid.uuid4().hex[:16]}", project_id=p.id,
-                                 user_id=user.id, role_key="project_lead", added_by=user.id))
-            await record_trail(db, action="project.create", actor_user_id=user.id, org_id=org_id,
-                               project_id=p.id, target_type="project", target_id=p.id,
-                               after={"name": payload.name}, summary="创建项目", request_id=rid)
+        p = await stage_project(db, payload, user, rid)
         await db.commit()
         await db.refresh(p)
         return ok(_to_view(p), rid)
@@ -89,6 +66,38 @@ async def create_project(payload: ProjectCreate, request: Request, db: AsyncSess
     except Exception:  # noqa: BLE001
         await db.rollback()
         raise AppError("DB_SAVE_FAILED", "项目保存失败。")
+
+
+async def stage_project(
+    db: AsyncSession, payload: ProjectCreate, user: User | None, request_id: str, *,
+    inherit_org: bool = True, project_id: str | None = None,
+) -> Project:
+    """创建项目及成员关系，由调用方决定何时提交。"""
+    org_id = payload.org_id
+    if inherit_org and user is not None and not org_id:
+        om = (await db.execute(select(OrgMember).where(OrgMember.user_id == user.id))).scalars().first()
+        org_id = om.org_id if om else None
+    if org_id and (user is None or not await user_has_permission(db, user, "project.create", org_id=org_id)):
+        raise AppError("FORBIDDEN", "无权在指定组织创建项目。")
+    if payload.workspace_id:
+        workspace = await db.get(Workspace, payload.workspace_id)
+        if not org_id or workspace is None or workspace.org_id != org_id:
+            raise AppError("NOT_FOUND", "工作空间不存在或无权访问。")
+    project = Project(
+        id=project_id or f"proj-{uuid.uuid4().hex[:16]}",
+        name=payload.name, domain=payload.domain,
+        paper_title=payload.paper_title, description=payload.description,
+        owner_user_id=user.id if user else None, org_id=org_id, workspace_id=payload.workspace_id,
+    )
+    db.add(project)
+    await db.flush()
+    if user is not None:
+        db.add(ProjectMember(id=f"pm-{uuid.uuid4().hex[:16]}", project_id=project.id,
+                             user_id=user.id, role_key="project_lead", added_by=user.id))
+        await record_trail(db, action="project.create", actor_user_id=user.id, org_id=org_id,
+                           project_id=project.id, target_type="project", target_id=project.id,
+                           after={"name": payload.name}, summary="创建项目", request_id=request_id)
+    return project
 
 
 @router.delete("/projects/{project_id}")

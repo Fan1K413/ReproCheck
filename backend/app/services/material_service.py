@@ -48,6 +48,10 @@ def _safe_filename(name: str) -> str:
     name = name.replace("\\", "_").replace("/", "_")
     name = re.sub(r"[\x00-\x1f]", "_", name)
     name = re.sub(r"[<>:\"|?*]", "_", name).strip(" .")
+    if len(name) > 200:
+        suffix = Path(name).suffix
+        if suffix.lower() in ALLOWED_EXTENSIONS:
+            return name[:200 - len(suffix)] + suffix
     return name[:200] or "unnamed"
 
 
@@ -63,7 +67,9 @@ class MaterialService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def upload(self, project_id: str, filename: str, data: bytes) -> Material:
+    async def upload(
+        self, project_id: str, filename: str, data: bytes, *, commit: bool = True,
+    ) -> Material:
         if len(data) > MAX_SINGLE_FILE_BYTES:
             raise AppError("VALIDATION_ERROR", "单个材料文件超过 20 MiB。", status_code=413)
         # 项目存在性
@@ -78,13 +84,6 @@ class MaterialService:
         if ext not in ALLOWED_EXTENSIONS:
             raise AppError("VALIDATION_ERROR", f"不支持的文件类型：{ext or '(无扩展名)'}")
 
-        # 数量限制
-        count = (await self.db.execute(
-            select(Material.id).where(Material.project_id == project_id)
-        )).all()
-        if len(count) >= MAX_PROJECT_MATERIALS:
-            raise AppError("VALIDATION_ERROR", f"单项目材料数已达上限 {MAX_PROJECT_MATERIALS}。")
-
         digest = hashlib.sha256(data).hexdigest()
         # 同项目内哈希去重：复用已存在材料，不重复解析
         dup = (await self.db.execute(
@@ -95,13 +94,17 @@ class MaterialService:
         if dup is not None:
             return dup
 
+        count = (await self.db.execute(
+            select(Material.id).where(Material.project_id == project_id)
+        )).all()
+        if len(count) >= MAX_PROJECT_MATERIALS:
+            raise AppError("VALIDATION_ERROR", f"单项目材料数已达上限 {MAX_PROJECT_MATERIALS}。")
+
         project_dir = STORAGE_ROOT / project_id
         project_dir.mkdir(parents=True, exist_ok=True)
         material_id = f"mat-{uuid.uuid4().hex[:16]}"
         stored = project_dir / f"{material_id}{ext}"
         stored = safe_resolve_within(STORAGE_ROOT, stored)
-        stored.write_bytes(data)
-
         from app.parsers.registry import detect_material_type
         mtype = detect_material_type(safe_name)
         material = Material(
@@ -111,9 +114,18 @@ class MaterialService:
             mime_type=mimetypes.guess_type(safe_name)[0] or "application/octet-stream",
             parse_status="uploaded", raw_text="",
         )
-        self.db.add(material)
-        await self.db.commit()
-        await self.db.refresh(material)
+        try:
+            stored.write_bytes(data)
+            self.db.add(material)
+            if commit:
+                await self.db.commit()
+            else:
+                await self.db.flush()
+        except BaseException:
+            stored.unlink(missing_ok=True)
+            raise
+        if commit:
+            await self.db.refresh(material)
         return material
 
     async def link_repository(self, project_id: str, url: str, name: str = "") -> Material:

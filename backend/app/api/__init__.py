@@ -35,6 +35,7 @@ from app.api.v1 import (
     orgs,
     orchestration,
     overview,
+    papers,
     recovery,
     parse_tasks,
     projects,
@@ -64,6 +65,7 @@ api_router.include_router(materials.router, dependencies=_iso)
 api_router.include_router(parse_tasks.router, dependencies=_iso)
 api_router.include_router(facts.router, dependencies=_iso)
 api_router.include_router(overview.router, dependencies=_iso)
+api_router.include_router(papers.router)
 # 第四阶段
 api_router.include_router(reproductions.router, dependencies=_iso)
 # 第六阶段
