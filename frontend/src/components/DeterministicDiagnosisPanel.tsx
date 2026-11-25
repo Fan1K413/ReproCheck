@@ -33,7 +33,7 @@ export function DeterministicDiagnosisPanel() {
             <Cpu size={16} className="text-accent-dark" /> 确定性诊断（无需 AI 密钥）
           </h3>
           <p className="mt-1 text-xs text-ink-muted">
-            依据原始日志按确定性规则推断候选原因，不调用大模型；结果均为候选，需人工核实。
+            基于原始日志匹配确定性规则，推断结果仅供参考。
           </p>
         </div>
         {categoriesQuery.data && (

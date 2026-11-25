@@ -12,7 +12,6 @@ import { useMutation } from '@tanstack/react-query'
 import {
   Braces,
   CheckCircle2,
-  Info,
   ScanSearch,
 } from 'lucide-react'
 import { DataTable, type Column } from '../components/DataTable'
@@ -175,10 +174,10 @@ export default function DemoAuditPage() {
         <div className="rc-we-head__text">
           <p className="rc-we-eyebrow">Demo Audit · 审计演示</p>
           <h1 className="rc-we-title">审计演示</h1>
-          <p className="rc-we-lead">
-            对两段材料执行结构化参数抽取与一致性比对，所有结果均由后端分析实时返回。
-            分析完成后可在多个分析方案之间透视切换，查看同一批结果的不同切面。
-          </p>
+          <p className="rc-we-lead">双材料参数抽取与一致性比对</p>
+        </div>
+        <div className="rc-we-actions">
+          <StatusBadge tone="warning">合成样例</StatusBadge>
         </div>
       </header>
 
@@ -217,10 +216,6 @@ export default function DemoAuditPage() {
                 spellCheck={false}
                 aria-label={`${item.label} 内容`}
               />
-              <p className="mt-2 flex items-center gap-1.5 text-xs" style={{ color: 'var(--rc-warning)' }}>
-                <Icon name="triangleAlert" size="xs" />
-                合成测试材料，非真实论文
-              </p>
             </div>
           </section>
         ))}
@@ -229,9 +224,9 @@ export default function DemoAuditPage() {
       <section className="rc-we-card">
         <div className="rc-we-card__body rc-we-card__body--tight">
           <div className="rc-we-row-between">
-            <p style={{ maxWidth: '36rem', fontSize: 'var(--rc-fs-caption)', color: 'var(--rc-text-muted)' }}>
-              开始分析将调用后端 LLM 服务，对输入材料进行参数抽取、一致性比对与风险说明。
-            </p>
+            <span className="rc-we-mono text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
+              paper_excerpt.txt ↔ config.yaml
+            </span>
             <div className="rc-we-row" style={{ gap: 'var(--rc-space-2)' }}>
               <button type="button" className="btn-ghost" onClick={restoreDefaults} disabled={mutation.isPending}>
                 <Icon name="rotate" size="sm" />
@@ -331,12 +326,7 @@ export default function DemoAuditPage() {
           {/* ---------- 方案透视卡组 ---------- */}
           <div className="rc-we-deck">
             <div className="rc-we-row-between">
-              <div>
-                <p className="rc-we-eyebrow">Analysis Schemes · 分析方案</p>
-                <p className="rc-we-lead" style={{ marginTop: 4 }}>
-                  同一批后端结果的三种切面，切换时沿透视轴滑入滑出。
-                </p>
-              </div>
+              <p className="rc-we-eyebrow">Analysis Schemes · 分析方案</p>
             </div>
 
             <div className="rc-we-deck__tabs" role="tablist" aria-label="分析方案切换">
@@ -590,22 +580,11 @@ export default function DemoAuditPage() {
             <EmptyState
               icon={ScanSearch}
               title="尚未运行审计"
-              description="确认两段材料后点击「开始分析」，抽取结果、一致性比较与风险说明将显示在这里。"
+              description="确认材料后点击「开始分析」查看抽取与比对结果。"
             />
           </div>
         </section>
       )}
-
-      <div className="rc-we-note">
-        <Icon as={Info} size="md" className="rc-we-note__icon" />
-        <div>
-          <p className="rc-we-note__title">演示数据说明</p>
-          <p>
-            页面内置的是<strong>合成测试材料</strong>（非真实论文），用于展示抽取与比对链路；
-            所有结构化结果与风险说明均由后端 LLM 实时生成，页面不预置任何结论。
-          </p>
-        </div>
-      </div>
     </div>
   )
 }

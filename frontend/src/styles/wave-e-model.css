@@ -39,11 +39,10 @@
   }
 }
 
-/* 浅色皮肤可读性修正：
-   浅底上 --rc-violet / --rc-lilac / --rc-magenta 原值对比度不足，
-   StatusBadge(accent)、Icon(tone=accent)、focus ring 都会命中。
-   仅在本组页面作用域内覆盖，不改动 tokens.css 与公共组件实现。 */
-.rc-we-page[data-rc-skin='light'] {
+/* 浅色皮肤可读性修正（兼容 html[data-rc-skin='light'] 与容器级 data-rc-skin='light'）：
+   保证 StatusBadge(accent)、Icon(tone=accent)、focus ring 在暖纸底上保持高对比度。 */
+.rc-we-page[data-rc-skin='light'],
+[data-rc-skin='light'] .rc-we-page {
   --rc-violet: var(--rc-accent);
   --rc-lilac: var(--rc-purple-dark);
   --rc-magenta: var(--rc-purple);
@@ -176,12 +175,16 @@
  * -------------------------------------------------------------------------- */
 .rc-we-card {
   position: relative;
-  overflow: hidden;
+  overflow: clip;
   min-width: 0;
   border: var(--rc-stroke);
   border-radius: var(--rc-radius-lg);
   background-color: var(--rc-surface);
   box-shadow: var(--rc-shadow-panel);
+}
+
+.rc-we-card:has(.rc-we-report__layout) {
+  overflow: visible;
 }
 
 .rc-we-card--glass {
@@ -682,7 +685,7 @@
 }
 
 /* --------------------------------------------------------------------------
- * 7. 登录页：紫黑玻璃登录卡
+ * 7. 登录页：主题双态登录卡
  * -------------------------------------------------------------------------- */
 .rc-we-login {
   position: relative;
@@ -705,8 +708,8 @@
   pointer-events: none;
   background:
     radial-gradient(720px 420px at 12% -8%, rgb(var(--rc-accent-rgb) / .34), transparent 62%),
-    radial-gradient(560px 380px at 108% 22%, rgb(var(--rc-violet-rgb, 168 85 247) / .22), transparent 60%),
-    radial-gradient(640px 420px at 40% 118%, rgb(var(--rc-magenta-rgb, 192 132 252) / .20), transparent 64%);
+    radial-gradient(560px 380px at 108% 22%, rgb(var(--rc-violet-rgb) / .22), transparent 60%),
+    radial-gradient(640px 420px at 40% 118%, rgb(var(--rc-magenta-rgb) / .20), transparent 64%);
 }
 
 .rc-we-login__grid {
@@ -715,8 +718,8 @@
   pointer-events: none;
   opacity: .05;
   background-image:
-    linear-gradient(rgb(var(--rc-hi-rgb, 255 255 255) / .6) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(var(--rc-hi-rgb, 255 255 255) / .6) 1px, transparent 1px);
+    linear-gradient(rgb(var(--rc-hi-rgb) / .6) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--rc-hi-rgb) / .6) 1px, transparent 1px);
   background-size: 44px 44px;
 }
 
@@ -762,7 +765,7 @@
 .rc-we-login__brandsub {
   margin-top: 2px;
   font-size: var(--rc-fs-caption);
-  color: rgb(var(--rc-lilac-rgb, 233 213 255) / .58);
+  color: rgb(var(--rc-lilac-rgb) / .58);
 }
 
 .rc-we-login__hero {
@@ -784,7 +787,7 @@
   margin-top: var(--rc-space-4);
   font-size: var(--rc-fs-body);
   line-height: var(--rc-lh-body);
-  color: rgb(var(--rc-lilac-rgb, 233 213 255) / .62);
+  color: rgb(var(--rc-lilac-rgb) / .62);
 }
 
 .rc-we-login__features {
@@ -808,7 +811,7 @@
   width: 32px;
   height: 32px;
   border-radius: var(--rc-radius-sm);
-  background-color: rgb(var(--rc-hi-rgb, 255 255 255) / .08);
+  background-color: rgb(var(--rc-hi-rgb) / .08);
   color: var(--rc-magenta);
 }
 
@@ -822,21 +825,21 @@
   margin-top: 2px;
   font-size: var(--rc-fs-caption);
   line-height: 1.5;
-  color: rgb(var(--rc-lilac-rgb, 233 213 255) / .55);
+  color: rgb(var(--rc-lilac-rgb) / .55);
 }
 
 .rc-we-login__safety {
   padding: var(--rc-space-4);
   border: var(--rc-stroke);
   border-radius: var(--rc-radius-md);
-  background-color: rgb(var(--rc-hi-rgb, 255 255 255) / .04);
+  background-color: rgb(var(--rc-hi-rgb) / .04);
 }
 
 .rc-we-login__safetytext {
   margin-top: var(--rc-space-2);
   font-size: var(--rc-fs-micro);
   line-height: 1.6;
-  color: rgb(var(--rc-lilac-rgb, 233 213 255) / .52);
+  color: rgb(var(--rc-lilac-rgb) / .52);
 }
 
 .rc-we-login__aside {
@@ -892,7 +895,7 @@
   gap: var(--rc-space-1);
   padding: var(--rc-space-1);
   border-radius: var(--rc-radius-md);
-  background-color: rgb(var(--rc-ink-rgb, 8 4 15) / .5);
+  background-color: rgb(var(--rc-ink-rgb) / .5);
 }
 
 .rc-we-login__switchbtn {
@@ -960,7 +963,7 @@
   padding: 9px 12px 9px var(--rc-space-8);
   border: var(--rc-stroke);
   border-radius: var(--rc-radius-sm);
-  background-color: rgb(var(--rc-ink-rgb, 8 4 15) / .42);
+  background-color: rgb(var(--rc-ink-rgb) / .42);
   color: var(--rc-text);
   transition: border-color var(--rc-dur-base) var(--rc-ease-hover),
     box-shadow var(--rc-dur-base) var(--rc-ease-hover);
@@ -994,7 +997,7 @@
   padding: var(--rc-space-5);
   border: var(--rc-stroke);
   border-radius: var(--rc-radius-lg);
-  background-color: rgb(var(--rc-hi-rgb, 255 255 255) / .04);
+  background-color: rgb(var(--rc-hi-rgb) / .04);
 }
 
 .rc-we-login__demogrid {
@@ -1014,7 +1017,7 @@
   padding: var(--rc-space-2) var(--rc-space-3);
   border: var(--rc-stroke);
   border-radius: var(--rc-radius-md);
-  background-color: rgb(var(--rc-hi-rgb, 255 255 255) / .04);
+  background-color: rgb(var(--rc-hi-rgb) / .04);
   color: var(--rc-text);
   text-align: left;
   cursor: pointer;
@@ -1077,4 +1080,83 @@
   .rc-we-login__demobtn:hover {
     transform: none !important;
   }
+}
+
+/* --------------------------------------------------------------------------
+ * 9. 浅色模式 · 类纸编排覆写
+ * -------------------------------------------------------------------------- */
+[data-rc-skin='light'] .rc-we-card--glass,
+[data-rc-skin='light'] .rc-we-deck__panel--glass,
+[data-rc-skin='light'] .rc-we-login__card {
+  background-color: var(--rc-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-rc-skin='light'] .rc-we-tab[aria-selected='true'] {
+  color: var(--rc-text-inverse);
+  box-shadow: var(--rc-shadow-near);
+}
+
+[data-rc-skin='light'] .rc-we-duo__card--back {
+  background-color: var(--rc-bg-2);
+}
+
+[data-rc-skin='light'] .rc-we-login {
+  background-color: var(--rc-bg);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .rc-we-login__aura {
+  background:
+    radial-gradient(720px 420px at 12% -8%, rgb(var(--rc-accent-rgb) / .09), transparent 62%),
+    radial-gradient(560px 380px at 108% 22%, rgb(var(--rc-accent-rgb) / .06), transparent 60%);
+}
+
+[data-rc-skin='light'] .rc-we-login__grid {
+  opacity: 1;
+  background-image:
+    linear-gradient(var(--rc-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rc-grid-line) 1px, transparent 1px);
+}
+
+[data-rc-skin='light'] .rc-we-login__logomark {
+  color: var(--rc-text-inverse);
+  box-shadow: var(--rc-shadow-near);
+}
+
+[data-rc-skin='light'] .rc-we-login__brandname,
+[data-rc-skin='light'] .rc-we-login__hero,
+[data-rc-skin='light'] .rc-we-login__featuretitle {
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .rc-we-login__brandsub,
+[data-rc-skin='light'] .rc-we-login__herotext,
+[data-rc-skin='light'] .rc-we-login__featuretext,
+[data-rc-skin='light'] .rc-we-login__safetytext {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .rc-we-login__featureicon {
+  background-color: var(--rc-accent-wash);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .rc-we-login__safety,
+[data-rc-skin='light'] .rc-we-login__demo,
+[data-rc-skin='light'] .rc-we-login__demobtn {
+  background-color: var(--rc-surface);
+}
+
+[data-rc-skin='light'] .rc-we-login__switch {
+  background-color: var(--rc-bg-2);
+}
+
+[data-rc-skin='light'] .rc-we-login__switchbtn[aria-pressed='true'] {
+  background-color: var(--rc-surface);
+}
+
+[data-rc-skin='light'] .rc-we-login__input {
+  background-color: var(--rc-input-bg);
 }

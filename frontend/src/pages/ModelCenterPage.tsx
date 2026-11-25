@@ -296,10 +296,7 @@ export default function ModelCenterPage() {
         <div className="rc-we-head__text">
           <p className="rc-we-eyebrow">AI 模型服务 · 可按需配置</p>
           <h1 className="rc-we-title">连接 AI 助手</h1>
-          <p className="rc-we-lead">
-            不会配置也没关系：选择服务商、粘贴密钥、确认模型、真实测试，再保存。
-            不配置也不影响项目、材料、对照和报告等本地功能。
-          </p>
+          <p className="rc-we-lead">配置并测试 AI 模型连接</p>
         </div>
         <div className="rc-we-actions">
           <Link to="/manual#api" className="btn-ghost">查看图文说明</Link>
@@ -339,9 +336,9 @@ export default function ModelCenterPage() {
 
           {section !== 'setup' && section !== 'providers' && (
             <div className="ux-advanced-banner">
-              <strong>你正在高级管理模式</strong>
-              <span>这里的选项用于排错、批量管理和精细控制。第一次配置请用“连接 AI 助手”向导，避免改错。</span>
-              <button type="button" className="ux-text-link" onClick={() => changeSection('setup')}>回到简单配置</button>
+              <strong>高级模式</strong>
+              <span>用于凭据、模型参数与任务路由控制</span>
+              <button type="button" className="ux-text-link" onClick={() => changeSection('setup')}>返回向导</button>
             </div>
           )}
 
@@ -378,9 +375,8 @@ export default function ModelCenterPage() {
                       </tbody>
                     </table>
                   </div>
-                  <p style={{ marginTop: 'var(--rc-space-3)', fontSize: 'var(--rc-fs-caption)', lineHeight: 1.6, color: 'var(--rc-text-muted)' }}>
-                    适配层均按官方 API 文档实现并通过协议级模拟测试；本环境未取得任何厂商真实 API Key，
-                    因此不宣称真实联调成功。连接测试会在你保存自己的 Key 后真实调用目标 API。
+                  <p style={{ marginTop: 'var(--rc-space-3)', fontSize: 'var(--rc-fs-caption)', color: 'var(--rc-text-muted)' }}>
+                    保存个人 API Key 后可发起真实连接测试。
                   </p>
                 </>
               )}
@@ -399,14 +395,7 @@ export default function ModelCenterPage() {
             >
               <div className="rc-we-note">
                 <Icon name="shield" size="md" className="rc-we-note__icon" />
-                <div>
-                  <p className="rc-we-note__title">密钥边界</p>
-                  <ul className="rc-we-note__list">
-                    <li>Key 只提交到授权后端，以独立密钥加密；列表仅显示脱敏提示，创建后无法再次查看明文。</li>
-                    <li>浏览器草稿只保存供应商 / 名称 / 接口地址，<b>API Key 永不写入 sessionStorage</b>，提交后立即清空。</li>
-                    <li>支持撤销与彻底删除，不同用户严格隔离。</li>
-                  </ul>
-                </div>
+                <p>密钥加密存储于服务端，列表仅展示脱敏提示，明文不落盘。</p>
               </div>
               {credsQ.isPending ? <LoadingState message="读取凭据…" /> : creds.length === 0 ? (
                 <p className="rc-we-empty">还没有凭据。点击「添加凭据」配置自己的 API Key。</p>
@@ -617,7 +606,7 @@ export default function ModelCenterPage() {
                 </div>
               )}
               <p style={{ marginTop: 'var(--rc-space-3)', fontSize: 'var(--rc-fs-caption)', color: 'var(--rc-text-muted)' }}>
-                备用模型仅在用户显式绑定后参与故障切换，并记录切换原因；不会静默切换到未授权供应商。
+                仅使用已显式设置的备用模型，不静默切换供应商。
               </p>
             </Panel>
           )}
@@ -633,7 +622,7 @@ export default function ModelCenterPage() {
               }
             >
               <p style={{ marginBottom: 'var(--rc-space-3)', fontSize: 'var(--rc-fs-caption)', color: 'var(--rc-text-muted)' }}>
-                默认行为：未绑定的任务继续使用服务端环境变量配置；绑定后严格使用你选择的模型，不静默替换。
+                未绑定任务使用系统默认配置；绑定后按指定模型执行。
               </p>
               {bindsQ.isPending ? <LoadingState message="读取绑定…" /> : (bindsQ.data ?? []).length === 0 ? (
                 <p className="rc-we-empty">尚未配置任务级绑定。</p>

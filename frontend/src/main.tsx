@@ -4,9 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { useAuthStore } from './stores/authStore'
-// Design Token 必须最先引入：全站唯一色源（深色默认 + 浅色皮肤 + 旧变量别名）
+import { initThemeSync } from './stores/uiStore'
+// Design Token 必须最先引入：全站唯一色源（黑绿深色默认 + 类纸浅色皮肤 + 旧变量别名）
 import './styles/tokens.css'
 import './styles/index.css'
+import './styles/motion.css'
 import './styles/workbench.css'
 import './styles/workbench-petals.css'
 import './styles/rc-unified.css'
@@ -19,7 +21,8 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
-      staleTime: 30_000,
+      staleTime: 60_000,
+      gcTime: 10 * 60_000,
     },
   },
 })
@@ -27,6 +30,8 @@ const queryClient = new QueryClient({
 useAuthStore.subscribe((state, previous) => {
   if (state.token !== previous.token) queryClient.clear()
 })
+
+initThemeSync()
 
 const rootElement = document.getElementById('root')
 if (!rootElement) {

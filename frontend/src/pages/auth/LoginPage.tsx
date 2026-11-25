@@ -1,45 +1,33 @@
 /**
- * V3 · 原生登录 / 注册页
- *
- * 设计基准与 / 主工作台一致：紫黑折叠场、玻璃圆盘、精密轨道与空间浮层。
- * 全部为 React + CSS + SVG 原生实现；不使用旧 UI 截图或静态图片冒充界面。
- * 业务保持不变：登录 / 注册、真实接口、表单校验、演示账号一键填充。
+ * ReproCheck · 极简空间登录 / 注册页
+ * 以精密轨道动效与建筑感留白替代大段功能宣讲，聚焦登录与快速体验。
  */
 import { useMutation } from '@tanstack/react-query'
-import {
-  ArrowRight,
-  BookOpenCheck,
-  FlaskConical,
-  Mail,
-  ScanSearch,
-  ShieldCheck,
-  UserRound,
-  Users,
-} from 'lucide-react'
+import { ArrowRight, Mail, ScanSearch, UserRound } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { Icon } from '../../components/Icon'
+import { ThemeToggle } from '../../components/ThemeToggle'
 import { ApiError } from '../../services/api'
 import { stage6Api } from '../../services/stage6Api'
 import { useAuthStore } from '../../stores/authStore'
 import '../../styles/rc-unified.css'
 
 const DEMO_ACCOUNTS = [
-  { role: '项目负责人', name: '林晚晴', email: 'lead@reprocheck.demo' },
+  { role: '负责人', name: '林晚晴', email: 'lead@reprocheck.demo' },
   { role: '研究员', name: '陈叙', email: 'researcher@reprocheck.demo' },
   { role: '复核员', name: '沈知微', email: 'reviewer@reprocheck.demo' },
   { role: '观察者', name: '顾远', email: 'viewer@reprocheck.demo' },
 ]
 const DEMO_PASSWORD = 'ReproCheck#2026'
 
-const FEATURES = [
-  { icon: Users, title: '组织 · 团队 · RBAC', text: '组织隔离、项目角色与权限矩阵，重要操作全程留痕。' },
-  { icon: BookOpenCheck, title: '科研复现基准库', text: '标准化事实与四级质量阶梯，等级只由验证证据计算。' },
-  { icon: FlaskConical, title: '规则生命周期', text: '版本、测试、离线评估与回滚，单条反馈绝不自动改规则。' },
-  { icon: ShieldCheck, title: '受控 RAG 与治理', text: '当前证据永远优先；数据分级、AI 授权与本人数据导出。' },
+const ORBIT_NODES = [
+  { icon: 'file' as const, label: '论文' },
+  { icon: 'database' as const, label: '数据' },
+  { icon: 'terminal' as const, label: '运行' },
+  { icon: 'network' as const, label: '证据' },
+  { icon: 'shield' as const, label: '裁决' },
 ]
-
-const ORBIT_ICONS = ['sparkles', 'folder', 'file', 'network', 'settings'] as const
 
 export default function LoginPage() {
   const token = useAuthStore((state) => state.token)
@@ -97,46 +85,46 @@ export default function LoginPage() {
 
   return (
     <div className="rc-auth-stage">
+      <div className="rc-auth-topbar">
+        <ThemeToggle />
+      </div>
+
       <div className="rc-auth-layout">
-        <section className="rc-auth-brand" aria-label="ReproCheck 能力说明">
+        <section className="rc-auth-brand" aria-label="ReproCheck">
           <div className="rc-auth-logo">
             <span className="rc-auth-logomark">
-              <Icon as={ScanSearch} size="lg" />
+              <Icon as={ScanSearch} size="md" />
             </span>
             <div>
               <p className="rc-auth-brandname">ReproCheck</p>
-              <p className="rc-auth-brandsub">科研复现审计官 · 团队协作平台</p>
+              <p className="rc-auth-brandsub">科研复现审计官</p>
             </div>
           </div>
 
           <div className="rc-auth-orbit" aria-hidden="true">
-            {ORBIT_ICONS.map((icon, index) => (
-              <span key={icon} className={`rc-auth-orbit-node rc-auth-orbit-node--${'abcde'[index]}`}>
-                <Icon name={icon} size="sm" />
+            <span className="rc-auth-orbit-sweep" />
+            {ORBIT_NODES.map((node, index) => (
+              <span
+                key={node.label}
+                className={`rc-auth-orbit-node rc-auth-orbit-node--${'abcde'[index]}`}
+                title={node.label}
+              >
+                <Icon name={node.icon} size="sm" />
               </span>
             ))}
             <div className="rc-auth-orbit-disc">
               <div className="rc-auth-orbit-copy">
-                <span className="rc-auth-orbit-sub">审计工作台</span>
                 <span className="rc-auth-orbit-name">ReproCheck</span>
-                <span className="rc-auth-orbit-sub">证据 · 角色 · 追溯</span>
+                <span className="rc-auth-orbit-sub">EVIDENCE · VERIFY</span>
               </div>
             </div>
           </div>
 
-          <ul className="rc-auth-claims">
-            {FEATURES.map((feature) => (
-              <li key={feature.title} className="rc-auth-claim">
-                <span className="rc-auth-claim-icon">
-                  <Icon as={feature.icon} size="sm" />
-                </span>
-                <div className="min-w-0">
-                  <p className="rc-auth-claim-title">{feature.title}</p>
-                  <p className="rc-auth-claim-text">{feature.text}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="rc-auth-pills" aria-hidden="true">
+            <span>证据溯源</span>
+            <span>交叉核对</span>
+            <span>可复核裁决</span>
+          </div>
         </section>
 
         <section className="rc-auth-panel" aria-label="登录或注册 ReproCheck">
@@ -152,7 +140,13 @@ export default function LoginPage() {
             </div>
 
             <div className="rc-auth-card">
-              <div className="rc-auth-switch" role="group" aria-label="登录或注册">
+              <div
+                className="rc-auth-switch"
+                data-mode={mode}
+                role="group"
+                aria-label="登录或注册"
+              >
+                <span className="rc-auth-switch-thumb" aria-hidden="true" />
                 {(['login', 'register'] as const).map((item) => (
                   <button
                     key={item}
@@ -164,19 +158,14 @@ export default function LoginPage() {
                       setFormError('')
                     }}
                   >
-                    {item === 'login' ? '登录' : '注册新账户'}
+                    {item === 'login' ? '登录' : '注册'}
                   </button>
                 ))}
               </div>
 
               <h1 className="rc-auth-title">
-                {mode === 'login' ? '回到审计工作台' : '创建科研工作空间'}
+                {mode === 'login' ? '进入工作台' : '创建工作空间'}
               </h1>
-              <p className="rc-auth-sub">
-                {mode === 'login'
-                  ? '登录后进入团队工作台，项目、材料与证据按组织隔离。'
-                  : '注册会创建个人组织，可立即建立第一个复现审计项目。'}
-              </p>
 
               <form onSubmit={submit} className="rc-auth-form">
                 <div>
@@ -197,15 +186,15 @@ export default function LoginPage() {
                 </div>
 
                 {mode === 'register' && (
-                  <div>
-                    <label htmlFor="auth-name" className="field-label">显示名称（可选）</label>
+                  <div className="rc-auth-reveal">
+                    <label htmlFor="auth-name" className="field-label">称呼（可选）</label>
                     <div className="rc-auth-fieldwrap">
                       <Icon as={UserRound} size="sm" className="rc-auth-fieldicon" />
                       <input
                         id="auth-name"
                         type="text"
                         className="rc-auth-input"
-                        placeholder="例如：林晚晴"
+                        placeholder="林晚晴"
                         value={displayName}
                         onChange={(event) => setDisplayName(event.target.value)}
                       />
@@ -238,35 +227,39 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                <button type="submit" className="btn-primary w-full justify-center" disabled={authMutation.isPending}>
+                <button
+                  type="submit"
+                  className="btn-primary mt-1 w-full justify-center"
+                  disabled={authMutation.isPending}
+                >
                   {authMutation.isPending ? (
                     <Icon name="loader" size="sm" className="animate-spin" />
                   ) : (
                     <Icon as={ArrowRight} size="sm" />
                   )}
-                  {mode === 'login' ? '登录工作台' : '注册并进入'}
+                  {mode === 'login' ? '登录' : '注册并进入'}
                 </button>
               </form>
-            </div>
 
-            <div className="rc-auth-demo">
-              <p className="rc-auth-demo-title">演示账户（种子数据）</p>
-              <p className="rc-auth-demo-text">
-                点击自动填充，密码统一为 <span className="mono">{DEMO_PASSWORD}</span>
-              </p>
-              <div className="rc-auth-demogrid">
-                {DEMO_ACCOUNTS.map((account) => (
-                  <button
-                    key={account.email}
-                    type="button"
-                    onClick={() => fillDemo(account.email)}
-                    aria-pressed={email === account.email}
-                    className="rc-auth-demobtn"
-                  >
-                    <span className="rc-auth-demobtn-name">{account.name}</span>
-                    <span className="rc-auth-demobtn-role">{account.role}</span>
-                  </button>
-                ))}
+              <div className="rc-auth-demo-inline">
+                <div className="rc-auth-demo-head">
+                  <span>演示账号</span>
+                  <span className="mono">{DEMO_PASSWORD}</span>
+                </div>
+                <div className="rc-auth-demogrid">
+                  {DEMO_ACCOUNTS.map((account) => (
+                    <button
+                      key={account.email}
+                      type="button"
+                      onClick={() => fillDemo(account.email)}
+                      aria-pressed={email === account.email}
+                      className="rc-auth-demobtn"
+                    >
+                      <span className="rc-auth-demobtn-name">{account.name}</span>
+                      <span className="rc-auth-demobtn-role">{account.role}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

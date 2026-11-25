@@ -109,9 +109,7 @@ export default function ReproductionEnvironmentPage() {
           <div className="rc-wa-head__text">
             <p className="rc-wa-eyebrow">复现环境</p>
             <h1 className="rc-wa-title">复现环境</h1>
-            <p className="rc-wa-lede">
-              全部字段来自后端环境数据，由后端依据材料解析与静态分析生成。
-            </p>
+            <p className="rc-wa-lede">Python 版本、依赖与运行入口</p>
           </div>
           <div className="rc-wa-head__actions">
             <Link to={`/projects/${pid}/reproduction`} className="btn-ghost">
@@ -141,10 +139,7 @@ export default function ReproductionEnvironmentPage() {
         <div className="rc-wa-head__text">
           <p className="rc-wa-eyebrow">Reproduction Environment</p>
           <h1 className="rc-wa-title">复现环境</h1>
-          <p className="rc-wa-lede">
-            全部字段来自后端环境数据，由后端依据材料解析与静态分析生成，每个区块标注来源字段。
-            悬停或聚焦任一依赖可高亮该项并淡化其余依赖（200ms）。
-          </p>
+          <p className="rc-wa-lede">Python 版本、依赖与运行入口</p>
         </div>
         <div className="rc-wa-head__actions">
           <Link to={`/projects/${pid}/reproduction`} className="btn-ghost">
@@ -163,7 +158,7 @@ export default function ReproductionEnvironmentPage() {
               <Icon as={Server} size="sm" tone="accent" />
               环境实例
             </div>
-            <span className="rc-wa-source">environments[].environment_id</span>
+            <span className="rc-wa-source">{environments.length} 个环境</span>
           </div>
           <div className="rc-wa-panel__body">
             <div className="rc-wa-picklist" role="group" aria-label="环境实例列表">
@@ -294,7 +289,6 @@ export default function ReproductionEnvironmentPage() {
                 <Icon as={Package} size="sm" tone="accent" />
                 依赖聚焦图
               </div>
-              <span className="rc-wa-source">dependencies[] / missing[] / warnings[]</span>
             </div>
             <div className="rc-wa-panel__body">
               <DependencyGraph env={env} focusedDep={focusedDep} onFocus={setFocusedDep} />
@@ -310,9 +304,6 @@ export default function ReproductionEnvironmentPage() {
             <Icon as={ListChecks} size="sm" tone="accent" />
             版本偏差表
           </div>
-          <span className="rc-wa-source">
-            missing[] / warnings[] / changed_from_original[]
-          </span>
         </div>
         <div className="rc-wa-panel__body rc-wa-panel__body--flush rc-wa-tablehost">
           <DeviationTable env={env} />

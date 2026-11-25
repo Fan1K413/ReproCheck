@@ -1,30 +1,17 @@
 /**
- * 背景控制器：持有 WebGL 上下文、渲染循环、可见性/降级与资源回收。
- *
- * 工程模式参考 godwire/react-aurora-background 与 TheNaubit/react-aurora-background
- * （均为 MIT，署名与许可全文见同目录 ATTRIBUTION.md）：
- * - 低离屏分辨率渲染，浏览器放大承担柔和质感；
- * - 帧率上限 + 帧步长截断，后台恢复不跳变；
- * - IntersectionObserver / visibilitychange / reduced-motion 三路停循环；
- * - 上下文丢失可恢复，卸载时完整释放 GL 资源与监听。
+ * 背景控制器：持有 WebGL 上下文、渲染循环、双主题即时切换与资源回收。
  */
-
-import {
-  FIELD_LOBES,
-  FIELD_PERF,
-  TOKEN_HEX,
-  hexToRgb01,
-} from './fieldTokens'
+import type { ThemeMode } from '../../stores/uiStore'
+import { FIELD_LOBES, FIELD_PERF, FIELD_THEMES } from './fieldTokens'
 import { FRAGMENT_SHADER, MAX_LOBES, VERTEX_SHADER } from './fieldShader'
 
 export interface FieldControllerCallbacks {
-  /** WebGL 上下文建立并完成首帧后回调。 */
   onReady?: () => void
-  /** 浏览器不支持 WebGL 时回调，CSS 静态背景保持可见。 */
   onUnavailable?: () => void
 }
 
 export interface FieldController {
+  setTheme: (theme: ThemeMode) => void
   destroy: () => void
 }
 
@@ -36,6 +23,14 @@ interface UniformLocations {
   colors: WebGLUniformLocation | null
   softness: WebGLUniformLocation | null
   time: WebGLUniformLocation | null
+  silkDeep: WebGLUniformLocation | null
+  silkLight: WebGLUniformLocation | null
+  ambientLow: WebGLUniformLocation | null
+  ambientHigh: WebGLUniformLocation | null
+  fiberColor: WebGLUniformLocation | null
+  ridgeColor: WebGLUniformLocation | null
+  vignetteColor: WebGLUniformLocation | null
+  isLight: WebGLUniformLocation | null
 }
 
 const SOFTNESS = 0.08
@@ -56,6 +51,7 @@ function compileShader(gl: WebGLRenderingContext, type: number, source: string) 
 export function createFieldController(
   canvas: HTMLCanvasElement,
   callbacks: FieldControllerCallbacks = {},
+  initialTheme: ThemeMode = 'dark',
 ): FieldController {
   let gl: WebGLRenderingContext | null = null
   let program: WebGLProgram | null = null
@@ -69,6 +65,14 @@ export function createFieldController(
     colors: null,
     softness: null,
     time: null,
+    silkDeep: null,
+    silkLight: null,
+    ambientLow: null,
+    ambientHigh: null,
+    fiberColor: null,
+    ridgeColor: null,
+    vignetteColor: null,
+    isLight: null,
   }
 
   let unavailable = false
@@ -76,6 +80,7 @@ export function createFieldController(
   let inViewport = true
   let pageVisible = !document.hidden
   let reducedMotion = false
+  let currentTheme: ThemeMode = initialTheme
 
   let animating = false
   let rafHandle: number | null = null
@@ -88,16 +93,20 @@ export function createFieldController(
 
   const blobData = new Float32Array(MAX_LOBES * 3)
   const colorData = new Float32Array(MAX_LOBES * 4)
-  const backgroundRgb = hexToRgb01(TOKEN_HEX.ink)
 
-  // 颜色在建立上下文前解析一次；运行期不再做字符串解析。
-  FIELD_LOBES.forEach((lobe, index) => {
-    const [r, g, b] = hexToRgb01(lobe.color)
-    colorData[index * 4] = r
-    colorData[index * 4 + 1] = g
-    colorData[index * 4 + 2] = b
-    colorData[index * 4 + 3] = lobe.weight
-  })
+  function syncPaletteData(theme: ThemeMode) {
+    currentTheme = theme
+    const palette = FIELD_THEMES[theme]
+    FIELD_LOBES.forEach((lobe, index) => {
+      const [r, g, b] = palette.lobeColors[index] ?? palette.silkLight
+      colorData[index * 4] = r
+      colorData[index * 4 + 1] = g
+      colorData[index * 4 + 2] = b
+      colorData[index * 4 + 3] = lobe.weight
+    })
+  }
+
+  syncPaletteData(initialTheme)
 
   function setupResources(): boolean {
     if (!gl) return false
@@ -131,6 +140,14 @@ export function createFieldController(
       colors: gl.getUniformLocation(program, 'uColors'),
       softness: gl.getUniformLocation(program, 'uSoftness'),
       time: gl.getUniformLocation(program, 'uTime'),
+      silkDeep: gl.getUniformLocation(program, 'uSilkDeep'),
+      silkLight: gl.getUniformLocation(program, 'uSilkLight'),
+      ambientLow: gl.getUniformLocation(program, 'uAmbientLow'),
+      ambientHigh: gl.getUniformLocation(program, 'uAmbientHigh'),
+      fiberColor: gl.getUniformLocation(program, 'uFiberColor'),
+      ridgeColor: gl.getUniformLocation(program, 'uRidgeColor'),
+      vignetteColor: gl.getUniformLocation(program, 'uVignetteColor'),
+      isLight: gl.getUniformLocation(program, 'uIsLight'),
     }
     return true
   }
@@ -183,26 +200,35 @@ export function createFieldController(
     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0)
 
     updateBlobData(elapsed)
+    const palette = FIELD_THEMES[currentTheme]
 
     gl.uniform2f(locations.resolution, canvas.width, canvas.height)
-    gl.uniform4f(locations.background, backgroundRgb[0], backgroundRgb[1], backgroundRgb[2], 1)
+    gl.uniform4f(
+      locations.background,
+      palette.background[0],
+      palette.background[1],
+      palette.background[2],
+      1,
+    )
     gl.uniform1i(locations.count, FIELD_LOBES.length)
     gl.uniform3fv(locations.blobs, blobData)
     gl.uniform4fv(locations.colors, colorData)
     gl.uniform1f(locations.softness, SOFTNESS)
     gl.uniform1f(locations.time, elapsed)
+    gl.uniform3fv(locations.silkDeep, palette.silkDeep)
+    gl.uniform3fv(locations.silkLight, palette.silkLight)
+    gl.uniform3fv(locations.ambientLow, palette.ambientLow)
+    gl.uniform3fv(locations.ambientHigh, palette.ambientHigh)
+    gl.uniform3fv(locations.fiberColor, palette.fiberColor)
+    gl.uniform3fv(locations.ridgeColor, palette.ridgeColor)
+    gl.uniform3fv(locations.vignetteColor, palette.vignetteColor)
+    gl.uniform1f(locations.isLight, palette.isLight)
 
     gl.drawArrays(gl.TRIANGLES, 0, 6)
   }
 
   function shouldAnimate(): boolean {
-    return (
-      !unavailable &&
-      !contextLost &&
-      inViewport &&
-      pageVisible &&
-      !reducedMotion
-    )
+    return !unavailable && !contextLost && inViewport && pageVisible && !reducedMotion
   }
 
   function stopLoop() {
@@ -223,7 +249,6 @@ export function createFieldController(
       }
     } else {
       stopLoop()
-      // 静止时保留一帧可见画面，而不是留下空白画布。
       drawFrame()
     }
   }
@@ -278,7 +303,6 @@ export function createFieldController(
     positionBuffer = null
   }
 
-  // 初始化：依次尝试 WebGL2 / WebGL1
   const contextOptions: WebGLContextAttributes = {
     alpha: true,
     antialias: false,
@@ -287,8 +311,7 @@ export function createFieldController(
     preserveDrawingBuffer: false,
     powerPreference: 'low-power',
   }
-  gl =
-    canvas.getContext('webgl2', contextOptions) as WebGLRenderingContext | null
+  gl = canvas.getContext('webgl2', contextOptions) as WebGLRenderingContext | null
   if (!gl) {
     gl = canvas.getContext('webgl', contextOptions) as WebGLRenderingContext | null
   }
@@ -297,6 +320,9 @@ export function createFieldController(
     unavailable = true
     callbacks.onUnavailable?.()
     return {
+      setTheme(theme: ThemeMode) {
+        syncPaletteData(theme)
+      },
       destroy() {
         destroyResources()
       },
@@ -331,6 +357,10 @@ export function createFieldController(
   syncAnimation()
 
   return {
+    setTheme(theme: ThemeMode) {
+      syncPaletteData(theme)
+      drawFrame()
+    },
     destroy() {
       stopLoop()
       resizeObserver.disconnect()

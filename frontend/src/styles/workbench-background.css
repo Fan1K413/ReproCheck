@@ -1,9 +1,6 @@
 /* ==========================================================================
- * ReproCheck 一级工作台 · 背景层（第二轮：丝绸光场）
- *
- * 颜色只引用 tokens.css 的 --rc-* 品牌紫阶；本文件不定义新主色。
- * 背景层位于 .rc-stage 之内、业务组件之下，不拦截指针事件。
- * ========================================================================== */
+   ReproCheck 一级工作台背景层（黑绿深色丝绸场 & 仿 Anthropic 类纸日光场）
+   ========================================================================== */
 
 .rc-field {
   position: absolute;
@@ -11,71 +8,90 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  isolation: isolate;
+  background: var(--rc-bg);
 }
 
-/* ---- 静态降级：深墨紫底 + 两条斜向折痕，不做径向光束 ------------------- */
-
-.rc-field__fallback {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(66% 58% at 78% 10%, rgba(59, 16, 102, 0.5) 0%, transparent 72%),
-    radial-gradient(62% 56% at 14% 72%, rgba(30, 10, 53, 0.72) 0%, transparent 76%),
-    radial-gradient(36% 30% at 92% 84%, rgba(124, 47, 208, 0.16) 0%, transparent 72%),
-    var(--rc-ink);
-  transition: opacity var(--rc-dur-base) var(--rc-ease-out);
-}
-
-/* 丝绸折痕：线性渐变 + 大半径模糊，避免出现「放射条纹」的机械感。 */
-.rc-field__fallback::before {
-  content: '';
-  position: absolute;
-  inset: -24%;
-  background:
-    linear-gradient(
-      112deg,
-      transparent 18%,
-      rgba(124, 47, 208, 0.16) 34%,
-      rgba(233, 213, 255, 0.035) 41%,
-      transparent 48%,
-      rgba(30, 10, 53, 0.5) 60%,
-      transparent 68%,
-      rgba(168, 85, 247, 0.08) 79%,
-      transparent 90%
-    ),
-    linear-gradient(
-      106deg,
-      transparent 8%,
-      rgba(59, 16, 102, 0.32) 30%,
-      transparent 44%,
-      rgba(196, 132, 252, 0.05) 63%,
-      transparent 76%
-    );
-  filter: blur(46px);
-  transform: rotate(-8deg) scale(1.25, 0.92);
-  opacity: 0.9;
-}
-
-/* WebGL 接手后，静态网格只留最深的一层底色，避免两套光影叠加。 */
-.rc-field--live .rc-field__fallback {
-  opacity: 0.28;
-}
-
-.rc-field--live .rc-field__fallback::before {
-  opacity: 0;
-}
-
-/* WebGL 不可用时画布为空，直接隐藏，避免默认 300×150 空白层。 */
-.rc-field:not(.rc-field--live) .rc-field__canvas {
-  visibility: hidden;
-}
-
-/* ---- 微弱几何：两条大椭圆环，只在画面两侧露出一段，不做刻度 ------------- */
-
+.rc-field__fallback,
+.rc-field__canvas,
 .rc-field__echo {
   position: absolute;
   inset: 0;
+}
+
+/* 深色兜底：黑曜石底 + 深松林/翡翠绿斜向光折 */
+.rc-field__fallback {
+  background:
+    radial-gradient(58% 48% at 72% 18%, rgba(21, 128, 61, 0.34), transparent 68%),
+    radial-gradient(54% 46% at 18% 70%, rgba(10, 32, 20, 0.78), transparent 70%),
+    radial-gradient(32% 28% at 88% 82%, rgba(34, 197, 94, 0.14), transparent 72%),
+    var(--rc-bg);
+  opacity: 1;
+  transition: opacity 420ms var(--rc-ease-out);
+}
+
+[data-rc-skin='light'] .rc-field__fallback {
+  background:
+    radial-gradient(58% 48% at 74% 18%, rgba(215, 198, 175, 0.42), transparent 68%),
+    radial-gradient(52% 44% at 18% 72%, rgba(226, 214, 196, 0.48), transparent 70%),
+    radial-gradient(34% 28% at 86% 80%, rgba(184, 84, 53, 0.08), transparent 72%),
+    var(--rc-bg);
+}
+
+.rc-field__fallback::before {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  background:
+    linear-gradient(
+      118deg,
+      transparent 0 28%,
+      rgba(21, 128, 61, 0.14) 37%,
+      rgba(187, 247, 208, 0.04) 41%,
+      rgba(10, 28, 18, 0.5) 52%,
+      transparent 66%
+    ),
+    linear-gradient(
+      104deg,
+      transparent 0 46%,
+      rgba(34, 197, 94, 0.08) 54%,
+      rgba(16, 52, 32, 0.30) 62%,
+      rgba(74, 222, 128, 0.05) 68%,
+      transparent 78%
+    );
+  filter: blur(28px);
+}
+
+[data-rc-skin='light'] .rc-field__fallback::before {
+  background:
+    linear-gradient(
+      118deg,
+      transparent 0 30%,
+      rgba(184, 84, 53, 0.045) 40%,
+      rgba(255, 255, 255, 0.38) 46%,
+      rgba(220, 208, 190, 0.25) 58%,
+      transparent 70%
+    );
+}
+
+.rc-field__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 420ms var(--rc-ease-out);
+}
+
+.rc-field--live .rc-field__canvas {
+  opacity: 1;
+}
+
+.rc-field--live .rc-field__fallback {
+  opacity: 0;
+}
+
+/* 同心回响细弧 */
+.rc-field__echo {
+  z-index: 1;
   pointer-events: none;
 }
 
@@ -84,43 +100,45 @@
   left: 50%;
   top: 50%;
   border-radius: 50%;
-  border: 1px solid rgba(196, 132, 252, 0.075);
-  transform: translate(-50%, -50%) rotate(-13deg);
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    transparent 0%,
-    #000 16%,
-    #000 84%,
-    transparent 100%
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(74, 222, 128, 0.10);
+  -webkit-mask-image: conic-gradient(
+    from 18deg,
+    transparent 0 110deg,
+    #000 160deg 225deg,
+    transparent 275deg 360deg
   );
-  mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%);
+  mask-image: conic-gradient(
+    from 18deg,
+    transparent 0 110deg,
+    #000 160deg 225deg,
+    transparent 275deg 360deg
+  );
+}
+
+[data-rc-skin='light'] .rc-field__echo-ring {
+  border-color: rgba(25, 24, 21, 0.10);
 }
 
 .rc-field__echo-ring--outer {
-  width: 132vmin;
-  height: 92vmin;
+  width: min(86vw, 134vh);
+  aspect-ratio: 1;
 }
 
 .rc-field__echo-ring--inner {
-  width: 96vmin;
-  height: 68vmin;
-  border-color: rgba(233, 213, 255, 0.055);
-  transform: translate(-50%, -50%) rotate(9deg);
+  width: min(64vw, 98vh);
+  aspect-ratio: 1;
+  border-color: rgba(187, 247, 208, 0.07);
+  transform: translate(-50%, -50%) rotate(155deg);
 }
 
-/* ---- WebGL 丝绸光场画布 ------------------------------------------------ */
-
-.rc-field__canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
+[data-rc-skin='light'] .rc-field__echo-ring--inner {
+  border-color: rgba(184, 84, 53, 0.14);
 }
 
-/* 减少动态效果偏好：背景保持静态首帧，不做任何漂移。 */
 @media (prefers-reduced-motion: reduce) {
-  .rc-field__fallback {
-    animation: none;
+  .rc-field__fallback,
+  .rc-field__canvas {
+    transition-duration: 120ms;
   }
 }

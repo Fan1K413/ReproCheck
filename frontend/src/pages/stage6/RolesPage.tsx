@@ -76,7 +76,7 @@ export default function RolesPage() {
       <div className="rcw-stack">
         <PageHeader
           title="角色权限"
-          description="平台 RBAC 目录：角色、权限与授权矩阵的只读档案视图，数据来自 GET /roles、GET /permissions 与各角色授权清单。"
+          description="角色、权限与授权矩阵"
         />
 
         {/* ---------- 权限判定优先级链 ---------- */}
@@ -104,9 +104,6 @@ export default function RolesPage() {
                   </li>
                 ))}
               </ol>
-              <p className="mt-2 text-[11px] leading-relaxed rcw-faint">
-                所有判定在后端执行，前端隐藏按钮不构成权限；越权请求将收到 FORBIDDEN 错误并留痕。
-              </p>
             </div>
           </div>
         </section>
@@ -134,7 +131,7 @@ export default function RolesPage() {
             return (
               <>
                 {/* ---------- KPI 磁贴 ---------- */}
-                <div className="rcw-grid rcw-grid-4">
+                <div className="rcw-grid rcw-grid-4 rc-stagger">
                   {stats.map((stat) => (
                     <div key={stat.label} className="rcw-kpi">
                       <span className="rcw-kpi-icon">
@@ -307,9 +304,6 @@ export default function RolesPage() {
                           </tbody>
                         </table>
                       </div>
-                      <p className="mt-3 text-[11px] leading-relaxed rcw-faint">
-                        矩阵与后端 app/core/rbac.py 种子一致，组织管理员默认拥有全部权限；所有判定在后端执行。
-                      </p>
                     </section>
                   </div>
                 </div>

@@ -301,9 +301,7 @@ export default function ReproductionConsolePage() {
         <div className="rc-wa-head__text">
           <p className="rc-wa-eyebrow">执行控制台</p>
           <h1 className="rc-wa-title">执行控制台</h1>
-          <p className="rc-wa-lede">
-            日志、产物、指标与状态全部来自后端真实接口；波形由运行日志中的 epoch 行解析而来，无数据时不绘制任何曲线。
-          </p>
+          <p className="rc-wa-lede">实时日志、指标波形与产物</p>
         </div>
         <div className="rc-wa-head__actions">
           <Link to={planLink} className="btn-ghost">
@@ -366,19 +364,18 @@ export default function ReproductionConsolePage() {
             <Icon as={Clock3} size="sm" tone="accent" />
             运行元信息
           </div>
-          <span className="rc-wa-source">来源：后端运行记录</span>
         </div>
         <div className="rc-wa-panel__body">
           <div className="rc-wa-persp__meta">
             <MetaCell k="开始时间" v={formatDateTime(run.started_at)} />
             <MetaCell k="结束时间" v={formatDateTime(run.finished_at)} />
-            <MetaCell k="耗时 duration_ms" v={formatRunDuration(run.duration_ms)} />
+            <MetaCell k="耗时" v={formatRunDuration(run.duration_ms)} />
             <MetaCell
               k="资源用量"
               v={`${safeText(run.resource_usage?.cpu_seconds ?? '—')}s / ${safeText(run.resource_usage?.memory_mb ?? '—')}MB`}
             />
             <MetaCell k="安全预检" v={run.security_check?.passed ? '通过' : '未通过'} />
-            <MetaCell k="环境 environment_id" v={run.environment_id ?? '—'} />
+            <MetaCell k="环境" v={run.environment_id ?? '—'} />
           </div>
 
           {run.error_message && (
@@ -450,9 +447,9 @@ export default function ReproductionConsolePage() {
                   当前环境不支持安全代码执行，未运行任何代码
                 </p>
                 <p style={{ marginTop: 4, fontSize: 'var(--rc-fs-caption)', color: 'var(--rc-text-muted)' }}>
-                  execution_enabled=false。状态 {run.status} 由后端返回，不是伪造的成功结果。
+                  状态：{run.status}
                   {run.security_reason || run.security_check?.reason
-                    ? ` 原因：${run.security_reason || run.security_check?.reason}`
+                    ? ` · 原因：${run.security_reason || run.security_check?.reason}`
                     : ''}
                 </p>
                 {findings.length > 0 && (
@@ -505,7 +502,7 @@ export default function ReproductionConsolePage() {
                     {SERIES_LABEL[key]}
                   </span>
                 ))}
-                <span className="rc-wa-source">来源 GET .../logs（epoch 行解析）· 点数 {points.length}</span>
+                <span className="rc-wa-source">{points.length} 个点</span>
               </div>
             </div>
 
@@ -527,7 +524,7 @@ export default function ReproductionConsolePage() {
                 compact
                 icon={Gauge}
                 title="暂无运行数据"
-                description="后端未返回可用于绘图的指标序列（日志中没有 epoch 记录，且指标接口为空）。系统不会绘制任何伪造曲线。"
+                description="日志中暂无可绘制的指标序列。"
               />
             </div>
           ) : (
@@ -562,7 +559,7 @@ export default function ReproductionConsolePage() {
                   越界点 <b>{countOutOfRange(points, baselines, seriesKeys)}</b>
                 </span>
                 <span>
-                  数据点 <b>{points.length}</b>（真实日志解析）
+                  数据点 <b>{points.length}</b>
                 </span>
               </div>
             </>
@@ -575,7 +572,7 @@ export default function ReproductionConsolePage() {
               <Icon as={Terminal} size="sm" tone="accent" />
               实时日志
             </div>
-            <span className="rc-wa-source">GET .../logs · {logsQuery.data?.total ?? 0}</span>
+            <span className="rc-wa-source">{logsQuery.data?.total ?? 0} 条</span>
           </div>
           <div className="rc-wa-panel__body rc-wa-panel__body--tight">
             {logsQuery.isPending ? (
@@ -625,7 +622,7 @@ export default function ReproductionConsolePage() {
       {/* 底部 3 张指标卡 */}
       <section className="rc-wa-gauges">
         <article className="rc-wa-gauge">
-          <span className="rc-wa-kpi__label">耗时 duration_ms</span>
+          <span className="rc-wa-kpi__label">耗时</span>
           <span className="rc-wa-gauge__value">{formatRunDuration(run.duration_ms)}</span>
           <span className="rc-wa-gauge__hint">
             开始 {formatDateTime(run.started_at)} · 结束 {formatDateTime(run.finished_at)}
@@ -646,8 +643,8 @@ export default function ReproductionConsolePage() {
           </div>
           <span className="rc-wa-gauge__hint">
             {scopedTasks.length > 0
-              ? `run.task_ids ∩ plan.tasks：${doneTasks}/${scopedTasks.length} 已完成`
-              : '后端未返回 run.task_ids，无法计算完成度'}
+              ? `已完成 ${doneTasks} / ${scopedTasks.length} 项任务`
+              : '暂无关联任务'}
           </span>
         </article>
 
@@ -658,8 +655,8 @@ export default function ReproductionConsolePage() {
           </span>
           <span className="rc-wa-gauge__hint">
             {maxDeviation == null
-              ? '对照表没有与本次运行指标匹配的 diff_relative'
-              : '取自后端指标对照中匹配指标的最大相对偏差'}
+              ? '暂无匹配指标偏差'
+              : '匹配指标的最大相对偏差'}
           </span>
         </article>
       </section>
@@ -687,7 +684,7 @@ export default function ReproductionConsolePage() {
                 <Icon as={Gauge} size="sm" tone="accent" />
                 运行指标
               </div>
-              <span className="rc-wa-source">GET .../metrics · {metricsQuery.data?.total ?? 0}</span>
+              <span className="rc-wa-source">{metricsQuery.data?.total ?? 0} 项</span>
             </div>
             <div className="rc-wa-panel__body rc-wa-panel__body--flush rc-wa-tablehost">
               {metricsQuery.isPending ? (
@@ -763,7 +760,7 @@ export default function ReproductionConsolePage() {
                 <Icon as={Box} size="sm" tone="accent" />
                 运行产物
               </div>
-              <span className="rc-wa-source">GET .../artifacts · {artifactsQuery.data?.total ?? 0}</span>
+              <span className="rc-wa-source">{artifactsQuery.data?.total ?? 0} 项</span>
             </div>
             <div className="rc-wa-panel__body rc-wa-panel__body--flush rc-wa-tablehost">
               {artifactsQuery.isPending ? (

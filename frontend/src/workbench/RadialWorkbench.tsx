@@ -12,6 +12,7 @@ import PetalStage from './PetalStage'
 import { buildSlots, RING_PERCENT, slotStyle } from './radialLayout'
 import { useRadialInteraction } from './useRadialInteraction'
 import PageHelpButton from '../ux/PageHelpDrawer'
+import { ThemeToggle } from '../components/ThemeToggle'
 
 const HINT_KEY = 'rc:workbench-hint'
 
@@ -72,13 +73,7 @@ export default function RadialWorkbench({ onReopenGuide }: { onReopenGuide?: () 
     if (leaving) return
     setLeaving(true)
     setFanIndex(null)
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    navigateTimer.current = window.setTimeout(
-      () => {
-        launch(feature)
-      },
-      reduced ? 120 : 280,
-    )
+    launch(feature)
   }
 
   const interaction = useRadialInteraction({
@@ -89,6 +84,20 @@ export default function RadialWorkbench({ onReopenGuide }: { onReopenGuide?: () 
   })
   const { phase, activeIndex, focusIndex, dimOpacity } = interaction
   const activeEntry = activeIndex === null ? null : ENTRIES[activeIndex]
+  const activeSlot = activeIndex === null ? null : SLOTS[activeIndex]
+
+  // 连续最短路径旋转角：跨过 12 点钟方向（320° ↔ 0°）时就近转 40° 而非倒转 320°
+  const continuousAngleRef = useRef<number>(0)
+  let pointerAngle = continuousAngleRef.current
+  if (activeSlot) {
+    const current = continuousAngleRef.current
+    const mod = ((current % 360) + 360) % 360
+    let delta = activeSlot.angle - mod
+    if (delta > 180) delta -= 360
+    if (delta < -180) delta += 360
+    pointerAngle = current + delta
+    continuousAngleRef.current = pointerAngle
+  }
 
   /** 关闭卡组时一并清掉入口的选中/悬停态，避免气泡与高亮残留。 */
   const closeFan = () => {
@@ -142,6 +151,7 @@ export default function RadialWorkbench({ onReopenGuide }: { onReopenGuide?: () 
           <Link to="/manual" className="rc-utility-btn">
             <BookOpen size={16} /><span>中文手册</span>
           </Link>
+          <ThemeToggle compact />
           <PageHelpButton compact />
         </div>
       </header>
@@ -152,6 +162,8 @@ export default function RadialWorkbench({ onReopenGuide }: { onReopenGuide?: () 
         data-phase={phase}
         data-leaving={leaving ? 'true' : 'false'}
         data-fan={fanIndex !== null ? 'true' : 'false'}
+        data-pointed={activeSlot ? 'true' : 'false'}
+        style={{ '--rc-pointer-angle': `${pointerAngle}deg` } as CSSProperties}
         role="menu"
         aria-label="主功能入口"
         onClick={(event) => {
@@ -160,6 +172,7 @@ export default function RadialWorkbench({ onReopenGuide }: { onReopenGuide?: () 
       >
         <div className="rc-disc-halo" aria-hidden="true" />
         <div className="rc-disc" aria-hidden="true" />
+        <div className="rc-compass-beam" aria-hidden="true" />
         <div
           className="rc-track rc-track--entry"
           style={{ width: `${RING_PERCENT.entry}%`, height: `${RING_PERCENT.entry}%` }}
@@ -191,9 +204,10 @@ export default function RadialWorkbench({ onReopenGuide }: { onReopenGuide?: () 
               data-dimmed={activeIndex !== null && !isActive ? 'true' : 'false'}
               style={{
                 ...slotStyle(slot),
+                '--rc-node-i': index,
                 opacity:
                   fanIndex !== null && !isActive ? 0.22 : isActive ? 1 : dimOpacity,
-              }}
+              } as CSSProperties}
               onPointerEnter={() => {
                 if (fanIndex === null) interaction.onEntryEnter(index)
               }}
@@ -270,16 +284,13 @@ export default function RadialWorkbench({ onReopenGuide }: { onReopenGuide?: () 
                 {phase === 'S3' && <span className="rc-core__drag">松手展开</span>}
               </>
             ) : (
-              <>
-                <span className="rc-core__name">科研复现审计工作台</span>
-                <span className="rc-core__hint">选择或拖动功能入口</span>
-              </>
+              <span className="rc-core__name">复现审计</span>
             )}
           </div>
 
           {!activeEntry && contextParts.length > 0 && (
             <div className="rc-core__context">
-              <span className="rc-core__context-text">上次：{contextParts.join(' · ')}</span>
+              <span className="rc-core__context-text">{contextParts.join(' · ')}</span>
               <button type="button" className="rc-core__clear" onClick={clearContext}>
                 清除
               </button>
@@ -298,9 +309,8 @@ export default function RadialWorkbench({ onReopenGuide }: { onReopenGuide?: () 
         </div>
 
         {hintVisible && (
-          <div className="rc-hint" role="status">
-            <span className="rc-hint__dot" aria-hidden="true" />
-            点击图标，或按住中心向方向拖动
+          <div className="rc-hint" role="status" aria-hidden="true">
+            <span className="rc-hint__dot" />
           </div>
         )}
       </div>

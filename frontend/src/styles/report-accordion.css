@@ -82,8 +82,8 @@
 @media (min-width: 640px) {
   .rc-we-report__toc {
     position: sticky;
-    top: calc(var(--rc-header-h) + var(--rc-space-4));
-    max-height: calc(100vh - var(--rc-header-h) - var(--rc-space-7));
+    top: 16px;
+    max-height: calc(100vh - var(--rc-header-h) - 36px);
     overflow-y: auto;
     padding-right: var(--rc-space-2);
   }
@@ -295,8 +295,8 @@
 @media (min-width: 1024px) {
   .rc-we-report__evidence {
     position: sticky;
-    top: calc(var(--rc-header-h) + var(--rc-space-4));
-    max-height: calc(100vh - var(--rc-header-h) - var(--rc-space-7));
+    top: 16px;
+    max-height: calc(100vh - var(--rc-header-h) - 36px);
     overflow-y: auto;
     padding-right: var(--rc-space-2);
   }

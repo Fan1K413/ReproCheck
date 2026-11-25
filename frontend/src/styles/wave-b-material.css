@@ -698,7 +698,6 @@
   min-height: 48px;
   border: var(--rc-stroke-hair);
   border-radius: var(--rc-radius-xs);
-  overflow: hidden;
   background-color: var(--rc-surface-2);
 }
 
@@ -719,6 +718,18 @@
   transition:
     background-color var(--rc-dur-base) var(--rc-ease-hover),
     filter var(--rc-dur-base) var(--rc-ease-hover);
+}
+
+.mb-ribbon__seg:first-child {
+  border-radius: var(--rc-radius-pill) 0 0 var(--rc-radius-pill);
+}
+
+.mb-ribbon__seg:last-child {
+  border-radius: 0 var(--rc-radius-pill) var(--rc-radius-pill) 0;
+}
+
+.mb-ribbon__seg:only-child {
+  border-radius: var(--rc-radius-pill);
 }
 
 .mb-ribbon__seg:hover,

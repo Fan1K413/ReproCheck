@@ -147,12 +147,6 @@ function FactCard({ fact, materialName, projectId }: FactCardProps) {
         </div>
       </div>
 
-      {humanRevised && (
-        <p className="mt-3 text-xs" style={{ color: 'var(--rc-violet)' }}>
-          该值已经人工修订（{fact.revision_count} 次），非 AI 原始输出。
-        </p>
-      )}
-
       <div className="mt-4 flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs" style={{ color: 'var(--rc-text-muted)' }}>
           <span className="mb-label">来源材料</span>
@@ -167,10 +161,17 @@ function FactCard({ fact, materialName, projectId }: FactCardProps) {
           <span className="mb-label shrink-0">证据位置</span>
           <SourceLocatorView locator={firstEvidence?.source_locator} compact />
         </div>
-        <p className="text-xs" style={{ color: 'var(--rc-text-subtle)' }} title="该数值为辅助置信度，非校准概率">
-          辅助置信度 {formatConfidence(fact.confidence)}（非校准概率，仅供排序参考）· 抽取来源{' '}
-          {fact.parser_source} · <span className="mb-mono">{formatDateTime(fact.created_at)}</span>
-        </p>
+        <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
+          <span
+            className="mb-chip mb-chip--static mb-mono"
+            title="辅助置信度（非校准概率，仅供排序参考）"
+          >
+            置信度 {formatConfidence(fact.confidence)}
+          </span>
+          <span>
+            {fact.parser_source} · <span className="mb-mono">{formatDateTime(fact.created_at)}</span>
+          </span>
+        </div>
       </div>
 
       <div className="mb-fact__actions">
@@ -281,9 +282,6 @@ function FactCard({ fact, materialName, projectId }: FactCardProps) {
             revisionMutation.mutate()
           }}
         >
-          <p className="text-xs" style={{ color: 'var(--rc-text-muted)' }}>
-            修订将留痕，提交后本条事实标记为人工确认/修订，不再冒充 AI 原始输出。
-          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="field-label">字段标签</span>
@@ -485,10 +483,7 @@ export default function FactsPage() {
           </Link>
           <p className="mb-head__eyebrow mt-3">Facts · 结构透视</p>
           <h1 className="mb-head__title">科研事实</h1>
-          <p className="mb-head__desc">
-            事实、证据与人工修订均来自后端接口；置信度仅为辅助信息，非校准概率。
-            下方结构透视条的宽度严格等于各类型的真实占比，点击即筛选。
-          </p>
+          <p className="mb-head__desc">结构化事实、证据与修订记录</p>
         </div>
         <nav className="mb-head__actions">
           <Link to={`/projects/${projectId}/evidence-graph`} className="btn-primary">
@@ -502,7 +497,7 @@ export default function FactsPage() {
         </nav>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 rc-stagger">
         {statItems.map((item) => (
           <div key={item.label} className="mb-stat">
             <p className="mb-stat__label">{item.label}</p>
@@ -530,7 +525,7 @@ export default function FactsPage() {
             事实类型结构透视
           </h3>
           <span className="mb-panel__hint">
-            宽度 ∝ 真实占比 · 当前：{factTypeLabel[effectiveType]}
+            当前：{factTypeLabel[effectiveType]}
           </span>
         </div>
         <div className="mb-panel__body">

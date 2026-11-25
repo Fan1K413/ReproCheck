@@ -450,10 +450,7 @@ export default function MaterialsPage() {
         <div className="min-w-0">
           <p className="mb-head__eyebrow">项目材料 · 上传与自动处理</p>
           <h1 className="mb-head__title">论文与材料</h1>
-          <p className="mb-head__desc">
-            这里放项目的论文、数据、代码和说明文件。上传后可自动提取原文；代码仓库只登记网址，不会下载或执行。
-            所有数量与状态都来自真实接口，没有数据时显示空状态。
-          </p>
+          <p className="mb-head__desc">管理论文、数据、代码与仓库</p>
         </div>
         <nav className="mb-head__actions">
           <Link to={`/start/reproduce?project=${projectId}&step=3`} className="btn-ghost">
@@ -481,7 +478,7 @@ export default function MaterialsPage() {
             <Icon name="upload" size="sm" tone="accent" />
             上传材料
           </h3>
-          <span className="mb-panel__hint">支持多文件 · 状态由服务器返回</span>
+          <span className="mb-panel__hint">支持多文件</span>
         </div>
         <div className="mb-panel__body">
           <div
@@ -499,9 +496,6 @@ export default function MaterialsPage() {
             <Icon as={UploadCloud} size="xl" tone="accent" />
             <p className="mt-3 text-sm font-semibold" style={{ color: 'var(--rc-text)' }}>
               拖拽文件到此处，或点击选择文件
-            </p>
-            <p className="mt-1 text-xs" style={{ color: 'var(--rc-text-muted)' }}>
-              上传状态与解析状态均由服务器返回，不在前端伪造进度。
             </p>
             <input
               ref={fileInputRef}
@@ -571,7 +565,7 @@ export default function MaterialsPage() {
                     role="status"
                   >
                     <Icon name="loader" size="sm" className="animate-spin" />
-                    上传中…（真实进度由服务器返回后刷新列表）
+                    上传中…
                   </span>
                 )}
               </div>
@@ -743,12 +737,6 @@ export default function MaterialsPage() {
                     })}
                   </div>
                 </div>
-                <p
-                  className="px-4 pb-4 text-xs md:hidden"
-                  style={{ color: 'var(--rc-text-subtle)' }}
-                >
-                  左右滑动可切换材料档案卡。
-                </p>
               </>
             )}
           </section>

@@ -41,10 +41,10 @@ export type Entry = EntrySeed & {
 const SEEDS: EntrySeed[] = [
   {
     id: 'audit',
-    name: '检查论文问题',
-    ariaLabel: '检查论文问题，打开审计演示',
-    title: '检查论文问题',
-    desc: '看结论是否有依据',
+    name: '论文核验',
+    ariaLabel: '论文核验，打开审计演示',
+    title: '论文核验',
+    desc: '证据与诊断',
     features: [
       { label: '审计演示', route: '/demo/audit' },
       { label: 'AI 诊断', route: '/projects/:pid/reproduction/diagnostics' },
@@ -53,14 +53,14 @@ const SEEDS: EntrySeed[] = [
   },
   {
     id: 'projects',
-    name: '我的科研项目',
-    ariaLabel: '我的科研项目，打开项目列表',
-    title: '我的科研项目',
-    desc: '一个项目装一篇论文',
+    name: '项目档案',
+    ariaLabel: '项目档案，打开项目列表',
+    title: '项目档案',
+    desc: '管理与总览',
     features: [
-      { label: '项目列表', route: '/projects', hint: '查看全部项目档案' },
-      { label: '新建项目', route: '/projects/new', hint: '创建新的审计项目' },
-      { label: '项目总览图', route: '/projects/:id/workbench', hint: '用一张图看项目状态' },
+      { label: '项目列表', route: '/projects' },
+      { label: '新建项目', route: '/projects/new' },
+      { label: '项目总览图', route: '/projects/:id/workbench' },
     ],
   },
   {
@@ -68,7 +68,7 @@ const SEEDS: EntrySeed[] = [
     name: '论文与材料',
     ariaLabel: '论文与材料，打开材料管理',
     title: '论文与材料',
-    desc: '上传论文、数据与代码',
+    desc: '上传与解析',
     features: [
       { label: '论文与材料', route: '/projects/:id/materials' },
       { label: '材料详情', route: '/materials/:materialId' },
@@ -80,14 +80,14 @@ const SEEDS: EntrySeed[] = [
   },
   {
     id: 'repro',
-    name: '做一次复现',
-    ariaLabel: '做一次复现，打开复现总览',
-    title: '做一次复现',
-    desc: '拆步骤、跑实验、看差异',
+    name: '复现实验',
+    ariaLabel: '复现实验，打开复现总览',
+    title: '复现实验',
+    desc: '规划与运行',
     features: [
       { label: '复现总览', route: '/projects/:pid/reproduction' },
-      { label: '复现步骤清单', route: '/reproductions/plans/:planId', hint: '查看步骤与依赖' },
-      { label: '实验环境', route: '/projects/:pid/reproduction/environment', hint: '检查软件版本与依赖' },
+      { label: '复现步骤清单', route: '/reproductions/plans/:planId' },
+      { label: '实验环境', route: '/projects/:pid/reproduction/environment' },
       { label: '执行控制台', route: '/reproductions/runs/:runId' },
       { label: '结果对照', route: '/projects/:pid/reproduction/comparison' },
       { label: '审计报告', route: '/projects/:pid/reproduction/reports' },
@@ -95,10 +95,10 @@ const SEEDS: EntrySeed[] = [
   },
   {
     id: 'rules',
-    name: '检查标准',
-    ariaLabel: '检查标准，打开事实字段目录',
-    title: '检查标准',
-    desc: '团队统一抽取与判定',
+    name: '审计标准',
+    ariaLabel: '审计标准，打开事实字段目录',
+    title: '审计标准',
+    desc: '字段与规则',
     features: [
       { label: '事实字段目录', route: '/fact-schema' },
       { label: '审计规则', route: '/rules' },
@@ -107,10 +107,10 @@ const SEEDS: EntrySeed[] = [
   },
   {
     id: 'delivery',
-    name: '结果与交付',
-    ariaLabel: '结果与交付，打开项目验证',
-    title: '结果与交付',
-    desc: '验证、交接、出报告',
+    name: '验证交付',
+    ariaLabel: '验证交付，打开项目验证',
+    title: '验证交付',
+    desc: '核验与交接',
     features: [
       { label: '项目验证', route: '/projects/:id/verification' },
       { label: '交接包', route: '/projects/:id/handoff' },
@@ -120,10 +120,10 @@ const SEEDS: EntrySeed[] = [
   },
   {
     id: 'diff',
-    name: '差异与数据检查',
-    ariaLabel: '差异与数据检查，打开实验差异分析',
-    title: '差异与数据检查',
-    desc: '比较实验、发现异常',
+    name: '差异审计',
+    ariaLabel: '差异审计，打开实验差异分析',
+    title: '差异审计',
+    desc: '监控与统计',
     features: [
       { label: '实验差异', route: '/projects/:id/experiments/diff' },
       { label: '变化监控', route: '/projects/:id/change-monitor' },
@@ -133,10 +133,10 @@ const SEEDS: EntrySeed[] = [
   },
   {
     id: 'collab',
-    name: '团队与连接',
-    ariaLabel: '团队与连接，打开组织与成员',
-    title: '团队与连接',
-    desc: '成员、权限、外部工具',
+    name: '团队连接',
+    ariaLabel: '团队连接，打开组织与成员',
+    title: '团队连接',
+    desc: '组织与集成',
     features: [
       { label: '组织与成员', route: '/orgs' },
       { label: '角色权限', route: '/roles' },
@@ -148,13 +148,13 @@ const SEEDS: EntrySeed[] = [
   },
   {
     id: 'models',
-    name: '连接 AI 助手',
-    ariaLabel: '连接 AI 助手，打开模型配置向导',
-    title: '连接 AI 助手',
-    desc: '可选增强，真实测试',
+    name: 'AI 助手',
+    ariaLabel: 'AI 助手，打开模型配置向导',
+    title: 'AI 助手',
+    desc: '模型与连通',
     features: [
-      { label: '连接 AI 助手', route: '/settings/models', hint: '五步向导，先测试再保存' },
-      { label: '系统 AI 状态（排错）', route: '/settings/llm', hint: '查看系统默认服务状态' },
+      { label: '连接 AI 助手', route: '/settings/models' },
+      { label: '系统 AI 状态', route: '/settings/llm' },
     ],
   },
 ]

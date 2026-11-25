@@ -354,7 +354,7 @@ export default function KnowledgePage() {
       <div className="rcw-stack">
         <PageHeader
           title="知识库与受控检索"
-          description="确定性 TF-IDF 检索 + 来源分级治理：历史案例与外部知识只能补充参考，当前论文原始证据永远优先；模型推断显式标注、绝不冒充证据。"
+          description="受控知识检索与来源分级"
         />
 
         <Tabs
@@ -505,7 +505,7 @@ export default function KnowledgePage() {
               </div>
             </section>
 
-            {ragMut.isPending && <section className="rcw-card"><LoadingState compact message="正在执行确定性检索…" hint="POST /rag/query" /></section>}
+            {ragMut.isPending && <section className="rcw-card"><LoadingState compact message="正在执行确定性检索…" /></section>}
             {ragMut.isError && (
               <section className="rcw-card">
                 <ErrorState
@@ -674,7 +674,7 @@ export default function KnowledgePage() {
               </div>
             </div>
             {docsQuery.isPending ? (
-              <LoadingState message="正在读取知识文档…" hint="GET /rag/documents" />
+              <LoadingState message="正在读取知识文档…" />
             ) : docsQuery.isError ? (
               <ErrorState message={docsQuery.error.message} code={errCode(docsQuery.error)} onRetry={() => void docsQuery.refetch()} />
             ) : docs.length === 0 ? (

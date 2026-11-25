@@ -262,7 +262,7 @@ export default function BenchmarkPage() {
       <div className="rcw-stack">
         <PageHeader
           title="基准案例库"
-          description="历史复现案例与质量分级；案例证据仅供方法参考，不替代当前论文事实。"
+          description="历史复现案例与质量分级"
           actions={
             <button type="button" className="btn-primary" onClick={() => setCreateOpen(true)}>
               <Icon name="plus" size="xs" />新建案例
@@ -419,8 +419,7 @@ export default function BenchmarkPage() {
               <div className="rcw-row" style={{ gap: 'var(--rc-space-2)', alignItems: 'flex-start' }}>
                 <Icon as={AlertTriangle} size="sm" style={{ marginTop: 2 }} />
                 <div>
-                  <p className="text-sm font-semibold">历史案例参考 · 非当前论文证据</p>
-                  <p className="mt-1">检索结果均为历史案例（historical_case），仅供方法参考，绝不构成当前论文的证据；当前论文事实优先。</p>
+                  <p className="text-xs font-medium">历史案例仅供方法参考，当前论文事实优先。</p>
                   {searchQuery.data?.disclaimer && <p className="mt-1 opacity-80">{searchQuery.data.disclaimer}</p>}
                 </div>
               </div>

@@ -8,6 +8,8 @@ import type {
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Icon } from '../components/Icon'
+import { ThemeToggle } from '../components/ThemeToggle'
+import PageHelpButton from '../ux/PageHelpDrawer'
 import { ArrowUpRight, ChevronLeft, GitBranch, Link2, RefreshCw, Sprout, Workflow, X } from 'lucide-react'
 import {
   coreRadius,
@@ -407,6 +409,8 @@ export function BloomStage({
               标准视图
               <Icon as={ArrowUpRight} size={13} />
             </Link>
+            <ThemeToggle compact />
+            <PageHelpButton compact />
           </div>
         </header>
 
@@ -457,7 +461,7 @@ export function BloomStage({
                       rx={radius}
                       ry={radius * 0.6}
                       fill="none"
-                      stroke="var(--rc-hi)"
+                      stroke="var(--rc-text)"
                       strokeOpacity={0.065 - index * 0.012}
                       strokeDasharray={index === 2 ? '3 9' : undefined}
                     />

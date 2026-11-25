@@ -19,8 +19,8 @@
   inset: 0;
   z-index: 0;
   overflow: hidden;
-  background: var(--rc-ink);
-  color: var(--rc-glass);
+  background: var(--rc-bg);
+  color: var(--rc-text);
   isolation: isolate;
   font-family: var(--rc-font-body);
 }
@@ -31,12 +31,18 @@
   z-index: 1;
   pointer-events: none;
   background:
-    radial-gradient(54% 46% at 30% 22%, rgba(196, 132, 252, 0.05), transparent 72%),
-    radial-gradient(76% 68% at 50% 52%, transparent 36%, rgba(4, 2, 8, 0.5) 100%);
+    radial-gradient(54% 46% at 30% 22%, rgba(34, 197, 94, 0.06), transparent 72%),
+    radial-gradient(76% 68% at 50% 52%, transparent 36%, rgba(2, 5, 3, 0.56) 100%);
+}
+
+[data-rc-skin='light'] .rc-stage__veil {
+  background:
+    radial-gradient(54% 46% at 30% 22%, rgba(184, 84, 53, 0.055), transparent 72%),
+    radial-gradient(80% 72% at 50% 52%, transparent 44%, rgba(212, 203, 186, 0.42) 100%);
 }
 
 /* --------------------------------------------------------------------------
-   玻璃透镜：外场 / 镜面 / 边缘光 / 中央浅井
+   光学透镜 / 纸面罗盘：外场 / 镜面 / 边缘光 / 中央浅井
    -------------------------------------------------------------------------- */
 .rc-disc-shell {
   /* 圆盘直径是唯一尺寸源：同时受视口宽与高约束，任何分辨率下都必须是正圆。
@@ -71,7 +77,7 @@
   transition: transform 420ms var(--rc-ease-out);
 }
 
-/* 外场：一圈被压得很低的紫灰辉光 + 底面投影，让透镜「浮」在丝绸上。 */
+/* 外场：黑曜石翡翠精密环境光 + 底面投影，让光学透镜「浮」在深暗舞台上。 */
 .rc-disc-halo {
   position: absolute;
   inset: calc(var(--rc-disc-size) * -0.22);
@@ -79,11 +85,20 @@
   pointer-events: none;
   filter: blur(48px);
   background:
-    radial-gradient(48% 48% at 36% 30%, rgba(233, 213, 255, 0.2), transparent 62%),
-    radial-gradient(58% 58% at 64% 70%, rgba(124, 47, 208, 0.16), transparent 70%);
+    radial-gradient(48% 48% at 36% 30%, rgba(74, 222, 128, 0.14), transparent 62%),
+    radial-gradient(58% 58% at 64% 70%, rgba(21, 128, 61, 0.18), transparent 70%);
   box-shadow:
-    0 0 100px rgba(124, 47, 208, 0.08),
-    0 56px 120px rgba(0, 0, 0, 0.4);
+    0 0 100px rgba(21, 128, 61, 0.12),
+    0 56px 120px rgba(0, 0, 0, 0.52);
+}
+
+[data-rc-skin='light'] .rc-disc-halo {
+  background:
+    radial-gradient(48% 48% at 36% 30%, rgba(252, 251, 247, 0.72), transparent 64%),
+    radial-gradient(58% 58% at 64% 70%, rgba(184, 84, 53, 0.08), transparent 72%);
+  box-shadow:
+    0 28px 72px rgba(25, 24, 21, 0.09),
+    0 8px 24px rgba(25, 24, 21, 0.05);
 }
 
 .rc-disc {
@@ -96,42 +111,63 @@
      透镜也只能以正圆出现，不允许露出矩形底板。 */
   clip-path: circle(50% at 50% 50%);
   -webkit-mask-image: radial-gradient(
-    circle at 50% 50%,
-    #000 0 54%,
-    rgba(0, 0, 0, 0.88) 70%,
-    rgba(0, 0, 0, 0.38) 88%,
+    circle closest-side at 50% 50%,
+    #000 0 76%,
+    rgba(0, 0, 0, 0.9) 88%,
+    rgba(0, 0, 0, 0.45) 96%,
     transparent 100%
   );
   mask-image: radial-gradient(
-    circle at 50% 50%,
-    #000 0 54%,
-    rgba(0, 0, 0, 0.88) 70%,
-    rgba(0, 0, 0, 0.38) 88%,
+    circle closest-side at 50% 50%,
+    #000 0 76%,
+    rgba(0, 0, 0, 0.9) 88%,
+    rgba(0, 0, 0, 0.45) 96%,
     transparent 100%
   );
   border: 0;
   background:
-    radial-gradient(68% 60% at 24% 16%, rgba(255, 250, 255, 0.34) 0%, transparent 62%),
-    radial-gradient(34% 20% at 72% 88%, rgba(255, 255, 255, 0.16) 0%, transparent 74%),
-    linear-gradient(118deg, transparent 28%, rgba(255, 255, 255, 0.06) 44%, transparent 58%),
+    radial-gradient(68% 60% at 24% 16%, rgba(187, 247, 208, 0.14) 0%, transparent 62%),
+    radial-gradient(34% 20% at 72% 88%, rgba(74, 222, 128, 0.1) 0%, transparent 74%),
+    linear-gradient(118deg, transparent 28%, rgba(187, 247, 208, 0.04) 44%, transparent 58%),
     radial-gradient(
       76% 76% at 50% 50%,
-      rgba(244, 234, 253, 0.04) 0%,
-      rgba(240, 226, 251, 0.22) 24%,
-      rgba(236, 220, 250, 0.46) 38%,
-      rgba(228, 206, 244, 0.52) 60%,
-      rgba(212, 182, 240, 0.38) 78%,
-      rgba(168, 118, 214, 0.13) 94%,
+      rgba(10, 20, 14, 0.78) 0%,
+      rgba(12, 24, 17, 0.76) 36%,
+      rgba(16, 32, 22, 0.7) 64%,
+      rgba(18, 36, 25, 0.64) 84%,
+      rgba(11, 20, 15, 0.32) 96%,
       transparent 100%
     );
   -webkit-backdrop-filter: blur(18px) saturate(136%);
   backdrop-filter: blur(18px) saturate(136%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.46),
-    inset 0 -2px 1px rgba(59, 16, 102, 0.12),
-    inset 0 0 44px rgba(59, 16, 102, 0.09),
-    inset 0 -46px 78px rgba(59, 16, 102, 0.16),
-    0 24px 56px rgba(0, 0, 0, 0.24);
+    inset 0 1px 0 rgba(187, 247, 208, 0.24),
+    inset 0 -2px 1px rgba(5, 8, 6, 0.45),
+    inset 0 0 44px rgba(21, 128, 61, 0.16),
+    inset 0 -46px 78px rgba(5, 8, 6, 0.42),
+    0 24px 56px rgba(0, 0, 0, 0.48);
+}
+
+[data-rc-skin='light'] .rc-disc {
+  -webkit-mask-image: none;
+  mask-image: none;
+  border: 1px solid rgba(25, 24, 21, 0.14);
+  background:
+    radial-gradient(68% 60% at 24% 16%, rgba(255, 255, 255, 0.72) 0%, transparent 62%),
+    radial-gradient(40% 28% at 74% 86%, rgba(184, 84, 53, 0.04) 0%, transparent 74%),
+    radial-gradient(
+      82% 82% at 50% 50%,
+      rgba(252, 251, 247, 0.92) 0%,
+      rgba(250, 248, 243, 0.90) 64%,
+      rgba(241, 237, 228, 0.88) 100%
+    );
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 36px rgba(25, 24, 21, 0.03),
+    0 18px 46px rgba(25, 24, 21, 0.09),
+    0 2px 8px rgba(25, 24, 21, 0.05);
 }
 
 /* 镜缘光：用 conic-gradient + 1px 环状 mask 做一条方向性边光，而不是描边圆圈。 */
@@ -145,29 +181,58 @@
   background: conic-gradient(
     from 200deg,
     transparent 0deg 22deg,
-    rgba(255, 255, 255, 0.64) 44deg,
+    rgba(187, 247, 208, 0.64) 44deg,
     transparent 98deg,
     transparent 218deg,
-    rgba(196, 132, 252, 0.16) 252deg,
+    rgba(74, 222, 128, 0.34) 252deg,
     transparent 304deg,
     transparent 360deg
   );
   -webkit-mask-image: radial-gradient(
-    circle,
-    transparent calc(50% - 7px),
-    rgba(0, 0, 0, 0.18) calc(50% - 5px),
-    rgba(0, 0, 0, 0.38) calc(50% - 2px),
-    transparent calc(50% + 0.8px)
+    circle closest-side,
+    transparent calc(100% - 7px),
+    rgba(0, 0, 0, 0.24) calc(100% - 5px),
+    rgba(0, 0, 0, 0.56) calc(100% - 2px),
+    transparent 100%
   );
   mask-image: radial-gradient(
-    circle,
-    transparent calc(50% - 7px),
-    rgba(0, 0, 0, 0.18) calc(50% - 5px),
-    rgba(0, 0, 0, 0.38) calc(50% - 2px),
-    transparent calc(50% + 0.8px)
+    circle closest-side,
+    transparent calc(100% - 7px),
+    rgba(0, 0, 0, 0.24) calc(100% - 5px),
+    rgba(0, 0, 0, 0.56) calc(100% - 2px),
+    transparent 100%
   );
-  opacity: 0.38;
-  filter: blur(1.5px);
+  opacity: 0.52;
+  filter: blur(1.2px);
+}
+
+[data-rc-skin='light'] .rc-disc::before {
+  background: conic-gradient(
+    from 200deg,
+    transparent 0deg 22deg,
+    rgba(25, 24, 21, 0.22) 48deg,
+    transparent 108deg,
+    transparent 214deg,
+    rgba(184, 84, 53, 0.26) 252deg,
+    transparent 308deg,
+    transparent 360deg
+  );
+  -webkit-mask-image: radial-gradient(
+    circle closest-side,
+    transparent calc(100% - 2.2px),
+    rgba(0, 0, 0, 0.85) calc(100% - 1.2px),
+    rgba(0, 0, 0, 0.85) calc(100% - 0.4px),
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    circle closest-side,
+    transparent calc(100% - 2.2px),
+    rgba(0, 0, 0, 0.85) calc(100% - 1.2px),
+    rgba(0, 0, 0, 0.85) calc(100% - 0.4px),
+    transparent 100%
+  );
+  opacity: 0.75;
+  filter: none;
 }
 
 /* 中央浅井：核心透镜周围一圈向内凹的暗环，让核心是「嵌进去」而不是贴上去。 */
@@ -177,15 +242,28 @@
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(
-    circle at 50% 50%,
-    transparent 0 23.5%,
-    rgba(59, 16, 102, 0.1) 27%,
-    rgba(59, 16, 102, 0.04) 34%,
-    transparent 42%
-  ),
-    radial-gradient(36% 26% at 28% 20%, rgba(255, 255, 255, 0.2) 0%, transparent 72%);
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 0 23.5%,
+      rgba(5, 8, 6, 0.42) 27%,
+      rgba(21, 128, 61, 0.14) 34%,
+      transparent 42%
+    ),
+    radial-gradient(36% 26% at 28% 20%, rgba(187, 247, 208, 0.12) 0%, transparent 72%);
   mix-blend-mode: normal;
+}
+
+[data-rc-skin='light'] .rc-disc::after {
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 0 23.5%,
+      rgba(25, 24, 21, 0.08) 27%,
+      rgba(25, 24, 21, 0.03) 34%,
+      transparent 42%
+    ),
+    radial-gradient(36% 26% at 28% 20%, rgba(255, 255, 255, 0.45) 0%, transparent 72%);
 }
 
 /* --------------------------------------------------------------------------
@@ -206,25 +284,40 @@
   background: conic-gradient(
     from 196deg,
     transparent 0deg,
-    rgba(255, 255, 255, 0.32) 38deg,
-    rgba(233, 213, 255, 0.2) 74deg,
+    rgba(187, 247, 208, 0.42) 38deg,
+    rgba(74, 222, 128, 0.28) 74deg,
     transparent 128deg,
-    rgba(196, 132, 252, 0.13) 210deg,
+    rgba(34, 197, 94, 0.18) 210deg,
     transparent 268deg,
-    rgba(233, 213, 255, 0.1) 316deg,
+    rgba(187, 247, 208, 0.14) 316deg,
     transparent 360deg
   );
   -webkit-mask-image: radial-gradient(
-    circle,
-    transparent calc(50% - 1.2px),
-    #000 calc(50% - 0.6px) 50%,
-    transparent calc(50% + 0.6px)
+    circle closest-side,
+    transparent calc(100% - 1.4px),
+    #000 calc(100% - 0.6px),
+    transparent 100%
   );
   mask-image: radial-gradient(
-    circle,
-    transparent calc(50% - 1.2px),
-    #000 calc(50% - 0.6px) 50%,
-    transparent calc(50% + 0.6px)
+    circle closest-side,
+    transparent calc(100% - 1.4px),
+    #000 calc(100% - 0.6px),
+    transparent 100%
+  );
+  opacity: 0.92;
+}
+
+[data-rc-skin='light'] .rc-track--entry {
+  background: conic-gradient(
+    from 196deg,
+    transparent 0deg,
+    rgba(25, 24, 21, 0.22) 38deg,
+    rgba(184, 84, 53, 0.24) 74deg,
+    transparent 128deg,
+    rgba(25, 24, 21, 0.16) 210deg,
+    transparent 268deg,
+    rgba(25, 24, 21, 0.12) 316deg,
+    transparent 360deg
   );
   opacity: 0.9;
 }
@@ -232,6 +325,11 @@
 .rc-disc-shell[data-phase='S3'] .rc-track--entry {
   opacity: 1;
   filter: brightness(1.15);
+}
+
+[data-rc-skin='light'] .rc-disc-shell[data-phase='S3'] .rc-track--entry {
+  filter: none;
+  opacity: 1;
 }
 
 /* --------------------------------------------------------------------------
@@ -263,7 +361,7 @@
 }
 
 .rc-entry:focus-visible .rc-entry__bead {
-  outline: 2px solid var(--rc-magenta);
+  outline: 2px solid var(--rc-focus);
   outline-offset: 3px;
 }
 
@@ -289,9 +387,9 @@
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.74) 0%,
-    rgba(255, 255, 255, 0.3) 42%,
-    rgba(233, 213, 255, 0.12) 64%,
+    rgba(74, 222, 128, 0.28) 0%,
+    rgba(34, 197, 94, 0.14) 42%,
+    rgba(21, 128, 61, 0.06) 64%,
     transparent 76%
   );
   opacity: 0;
@@ -300,6 +398,16 @@
     opacity 200ms var(--rc-ease-hover),
     transform 220ms var(--rc-ease-hover);
   pointer-events: none;
+}
+
+[data-rc-skin='light'] .rc-entry__bead::before {
+  background: radial-gradient(
+    circle,
+    rgba(184, 84, 53, 0.16) 0%,
+    rgba(184, 84, 53, 0.08) 46%,
+    rgba(25, 24, 21, 0.03) 66%,
+    transparent 78%
+  );
 }
 
 .rc-entry:active .rc-entry__bead {
@@ -316,19 +424,28 @@
   transform: scale(1.06);
 }
 
-/* S3 拖动选中：这里才允许出现一块深紫「透镜片」，与 hover 的透明光池明确区分。 */
+/* S3 拖动选中：这里才允许出现一块实体「透镜片」，与 hover 的透明光池明确区分。 */
 .rc-disc-shell[data-phase='S3'] .rc-entry[data-active='true'] {
   --rc-lift: 9px;
 }
 
 .rc-disc-shell[data-phase='S3'] .rc-entry[data-active='true'] .rc-entry__bead {
-  background: linear-gradient(150deg, #6d28d9, #2f1350);
+  background: linear-gradient(150deg, #16a34a, #0f3d21);
   box-shadow:
-    0 0 0 1px rgba(233, 213, 255, 0.5),
-    0 0 0 5px rgba(168, 85, 247, 0.14),
-    0 10px 26px rgba(8, 4, 15, 0.46),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 0 0 1px rgba(187, 247, 208, 0.48),
+    0 0 0 5px rgba(34, 197, 94, 0.18),
+    0 10px 26px rgba(2, 6, 4, 0.56),
+    inset 0 1px 0 rgba(187, 247, 208, 0.28);
   transform: scale(1.02);
+}
+
+[data-rc-skin='light'] .rc-disc-shell[data-phase='S3'] .rc-entry[data-active='true'] .rc-entry__bead {
+  background: linear-gradient(150deg, #c96442, #983f24);
+  box-shadow:
+    0 0 0 1px rgba(152, 63, 36, 0.45),
+    0 0 0 5px rgba(184, 84, 53, 0.14),
+    0 8px 20px rgba(25, 24, 21, 0.18),
+    inset 0 1px 0 rgba(252, 251, 247, 0.28);
 }
 
 .rc-disc-shell[data-phase='S3'] .rc-entry[data-active='true'] .rc-entry__bead::before {
@@ -336,7 +453,13 @@
 }
 
 .rc-disc-shell[data-phase='S3'] .rc-entry[data-active='true'] .rc-glyph {
-  color: #f8f2ff;
+  color: #edf7f0;
+  filter: none;
+}
+
+[data-rc-skin='light'] .rc-disc-shell[data-phase='S3'] .rc-entry[data-active='true'] .rc-glyph {
+  color: #fcfbf7;
+  filter: none;
 }
 
 /* 9 个环绕入口共用同一套线性图标容器（24 画布 / 1.6 描边 / 同一光学比例） */
@@ -345,11 +468,15 @@
   place-items: center;
   width: var(--rc-glyph-size);
   height: var(--rc-glyph-size);
-  color: #331155;
+  color: #d8f5e3;
   filter: none;
   transition:
     color 180ms var(--rc-ease-hover),
     filter 200ms var(--rc-ease-hover);
+}
+
+[data-rc-skin='light'] .rc-glyph {
+  color: #2d2a25;
 }
 
 .rc-glyph svg {
@@ -359,8 +486,13 @@
 }
 
 .rc-entry[data-active='true'] .rc-glyph {
-  color: #4c1d95;
-  filter: drop-shadow(0 1px 4px rgba(255, 255, 255, 0.55));
+  color: #4ade80;
+  filter: drop-shadow(0 0 8px rgba(74, 222, 128, 0.45));
+}
+
+[data-rc-skin='light'] .rc-entry[data-active='true'] .rc-glyph {
+  color: #b85435;
+  filter: none;
 }
 
 /* hover / focus 名称：只用排印，不再做深色胶囊；按入口半区朝外避让。 */
@@ -376,14 +508,14 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: rgba(248, 242, 255, 0.94);
+  color: rgba(237, 247, 240, 0.95);
   font: 600 11.5px/1.2 var(--rc-font-body);
   letter-spacing: 0.015em;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  text-shadow: 0 1px 12px rgba(4, 2, 8, 0.92);
+  text-shadow: 0 1px 12px rgba(2, 5, 3, 0.92);
   box-shadow: none;
   transition:
     opacity 140ms var(--rc-ease-out),
@@ -391,11 +523,20 @@
     visibility 140ms;
 }
 
+[data-rc-skin='light'] .rc-tooltip {
+  color: #191815;
+  text-shadow: 0 1px 8px rgba(244, 241, 234, 0.92);
+}
+
 .rc-tooltip__count {
   padding: 0;
   border: 0;
   font: 500 9px/1 var(--rc-font-mono);
-  color: rgba(216, 180, 254, 0.55);
+  color: rgba(187, 247, 208, 0.62);
+}
+
+[data-rc-skin='light'] .rc-tooltip__count {
+  color: #545048;
 }
 
 /* 下半区入口：名称放在图标下方 */
@@ -445,15 +586,15 @@
   border-radius: 50%;
   transform: translate(-50%, -50%);
   background:
-    linear-gradient(155deg, rgba(252, 247, 255, 0.94) 0%, rgba(243, 231, 252, 0.88) 52%, rgba(224, 201, 244, 0.82) 100%),
-    radial-gradient(60% 48% at 32% 22%, rgba(255, 255, 255, 0.5), transparent 70%);
+    linear-gradient(155deg, rgba(12, 22, 16, 0.96) 0%, rgba(8, 16, 12, 0.98) 100%),
+    radial-gradient(60% 48% at 32% 22%, rgba(74, 222, 128, 0.08), transparent 70%);
   -webkit-backdrop-filter: blur(10px) saturate(118%);
   backdrop-filter: blur(10px) saturate(118%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-    inset 0 -8px 20px rgba(59, 16, 102, 0.11),
-    0 8px 22px rgba(8, 4, 15, 0.18);
-  color: #4a315f;
+    inset 0 1px 0 rgba(187, 247, 208, 0.14),
+    inset 0 -8px 20px rgba(2, 5, 3, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.45);
+  color: #edf7f0;
   text-align: center;
   cursor: grab;
   touch-action: none;
@@ -461,7 +602,21 @@
   -webkit-user-select: none;
 }
 
-/* 核心边缘的 1px 方向光：左上有光、右下收暗，避免变成纯白圆片。 */
+[data-rc-skin='light'] .rc-core {
+  background:
+    linear-gradient(155deg, #fcfbf7 0%, #f4f1ea 100%),
+    radial-gradient(60% 48% at 32% 22%, rgba(255, 255, 255, 0.8), transparent 70%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 1px solid rgba(25, 24, 21, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -4px 12px rgba(25, 24, 21, 0.03),
+    0 6px 18px rgba(25, 24, 21, 0.08);
+  color: #191815;
+}
+
+/* 核心边缘的 1px 方向光：左上有光、右下收暗，避免变成平面圆片。 */
 .rc-core::after {
   content: '';
   position: absolute;
@@ -470,26 +625,39 @@
   pointer-events: none;
   background: conic-gradient(
     from 218deg,
-    rgba(255, 255, 255, 0.62) 0deg,
-    rgba(255, 255, 255, 0.08) 90deg,
+    rgba(187, 247, 208, 0.42) 0deg,
+    rgba(74, 222, 128, 0.12) 90deg,
     transparent 172deg,
-    rgba(59, 16, 102, 0.1) 260deg,
-    rgba(255, 255, 255, 0.2) 330deg,
-    rgba(255, 255, 255, 0.62) 360deg
+    rgba(5, 8, 6, 0.4) 260deg,
+    rgba(74, 222, 128, 0.18) 330deg,
+    rgba(187, 247, 208, 0.42) 360deg
   );
   -webkit-mask-image: radial-gradient(
-    circle,
-    transparent calc(50% - 1.4px),
-    #000 calc(50% - 0.6px) 50%,
-    transparent calc(50% + 0.4px)
+    circle closest-side,
+    transparent calc(100% - 1.6px),
+    #000 calc(100% - 0.6px),
+    transparent 100%
   );
   mask-image: radial-gradient(
-    circle,
-    transparent calc(50% - 1.4px),
-    #000 calc(50% - 0.6px) 50%,
-    transparent calc(50% + 0.4px)
+    circle closest-side,
+    transparent calc(100% - 1.6px),
+    #000 calc(100% - 0.6px),
+    transparent 100%
   );
-  opacity: 0.42;
+  opacity: 0.56;
+}
+
+[data-rc-skin='light'] .rc-core::after {
+  background: conic-gradient(
+    from 218deg,
+    rgba(255, 255, 255, 0.85) 0deg,
+    rgba(25, 24, 21, 0.08) 90deg,
+    transparent 172deg,
+    rgba(25, 24, 21, 0.16) 260deg,
+    rgba(184, 84, 53, 0.18) 330deg,
+    rgba(255, 255, 255, 0.85) 360deg
+  );
+  opacity: 0.5;
 }
 
 .rc-core:active {
@@ -497,7 +665,7 @@
 }
 
 .rc-core:focus-visible {
-  outline: 2px solid var(--rc-magenta);
+  outline: 2px solid var(--rc-focus);
   outline-offset: 3px;
 }
 
@@ -512,33 +680,53 @@
 .rc-core__name {
   font: 600 var(--rc-type-name) / 1.2 var(--rc-font-display);
   letter-spacing: 0.005em;
-  color: #2f1350;
+  color: #edf7f0;
   white-space: nowrap;
   animation: rc-copy-in 160ms var(--rc-ease-out) both;
+}
+
+[data-rc-skin='light'] .rc-core__name {
+  color: #191815;
 }
 
 .rc-core__hint {
   font: 500 var(--rc-type-hint) / 1.35 var(--rc-font-body);
   letter-spacing: 0.015em;
-  color: #6b5478;
+  color: #94b2a0;
+}
+
+[data-rc-skin='light'] .rc-core__hint {
+  color: #545048;
 }
 
 .rc-core__title {
   font: 600 var(--rc-type-title) / 1.3 var(--rc-font-display);
-  color: #33115a;
+  color: #edf7f0;
   animation: rc-copy-in 140ms var(--rc-ease-out) both;
+}
+
+[data-rc-skin='light'] .rc-core__title {
+  color: #191815;
 }
 
 .rc-core__desc {
   font: 500 var(--rc-type-desc) / 1.4 var(--rc-font-body);
-  color: #5f4a72;
+  color: #94b2a0;
   animation: rc-copy-in 140ms var(--rc-ease-out) both;
+}
+
+[data-rc-skin='light'] .rc-core__desc {
+  color: #545048;
 }
 
 .rc-core__drag {
   font: 600 var(--rc-type-meta) / 1.2 var(--rc-font-body);
   letter-spacing: 0.03em;
-  color: #7c2fd0;
+  color: #4ade80;
+}
+
+[data-rc-skin='light'] .rc-core__drag {
+  color: #b85435;
 }
 
 @keyframes rc-copy-in {
@@ -559,7 +747,11 @@
   max-width: 100%;
   margin-top: calc(var(--rc-core-size) * 0.02);
   font: 500 calc(var(--rc-type-meta) * 0.95) / 1.3 var(--rc-font-mono);
-  color: rgba(47, 19, 80, 0.72);
+  color: rgba(237, 247, 240, 0.72);
+}
+
+[data-rc-skin='light'] .rc-core__context {
+  color: rgba(25, 24, 21, 0.68);
 }
 
 .rc-core__context-text {
@@ -574,9 +766,13 @@
   border: 0;
   border-bottom: 1px solid currentColor;
   background: transparent;
-  color: #6d28d9;
+  color: #4ade80;
   font: 500 calc(var(--rc-type-meta) * 1.05) / 1.3 var(--rc-font-body);
   cursor: pointer;
+}
+
+[data-rc-skin='light'] .rc-core__clear {
+  color: #b85435;
 }
 
 .rc-compact-trigger {
@@ -592,9 +788,13 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 1px solid rgba(192, 132, 252, 0.85);
+  border: 1px solid rgba(74, 222, 128, 0.85);
   pointer-events: none;
   animation: rc-ripple 300ms ease-out forwards;
+}
+
+[data-rc-skin='light'] .rc-ripple {
+  border-color: rgba(184, 84, 53, 0.75);
 }
 
 @keyframes rc-ripple {
@@ -608,7 +808,7 @@
   }
 }
 
-/* 首次提示：紧贴透镜下缘的状态行，不再是悬浮在页面底部的白色胶囊。 */
+/* 首次提示：紧贴透镜下缘的状态行，不再是悬浮在页面底部的胶囊。 */
 .rc-hint {
   position: absolute;
   left: 50%;
@@ -621,22 +821,32 @@
   border-radius: 0;
   border: 0;
   background: transparent;
-  color: rgba(233, 213, 255, 0.78);
+  color: rgba(237, 247, 240, 0.78);
   box-shadow: none;
   font: 500 12px/1.4 var(--rc-font-body);
   letter-spacing: 0.012em;
   white-space: nowrap;
   transform: translateX(-50%);
-  text-shadow: 0 1px 10px rgba(4, 2, 8, 0.8);
+  text-shadow: 0 1px 10px rgba(2, 5, 3, 0.85);
   animation: rc-hint-out 600ms ease 3s forwards;
+}
+
+[data-rc-skin='light'] .rc-hint {
+  color: #545048;
+  text-shadow: 0 1px 8px rgba(244, 241, 234, 0.92);
 }
 
 .rc-hint__dot {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: rgba(196, 132, 252, 0.82);
-  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.48);
+}
+
+[data-rc-skin='light'] .rc-hint__dot {
+  background: #b85435;
+  box-shadow: none;
 }
 
 @keyframes rc-hint-out {
@@ -677,7 +887,14 @@
   -webkit-backdrop-filter: var(--rc-blur-panel);
   backdrop-filter: var(--rc-blur-panel);
   border-bottom: var(--rc-stroke-hair);
-  box-shadow: inset 0 -1px 0 rgba(192, 132, 252, .14);
+  box-shadow: inset 0 -1px 0 var(--rc-border-hair);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .rc-l2-header {
+  background: var(--rc-surface-glass);
+  border-bottom: 1px solid var(--rc-border-hair);
+  box-shadow: 0 1px 0 var(--rc-border-hair);
   color: var(--rc-text);
 }
 
@@ -689,7 +906,7 @@
   border-radius: var(--rc-radius-pill);
   border: 1px solid var(--rc-border-strong);
   background: var(--rc-accent-wash);
-  color: var(--rc-lilac);
+  color: var(--rc-brand-soft);
   font: 600 12px/1.4 var(--rc-font-body);
   white-space: nowrap;
   cursor: pointer;
@@ -700,14 +917,12 @@
 }
 
 .rc-crumb-home:hover {
-  background: var(--rc-violet);
-  border-color: var(--rc-magenta);
+  background: var(--rc-accent);
+  border-color: var(--rc-brand-vivid);
   color: var(--rc-hi);
   box-shadow: var(--rc-glow-magenta);
 }
 
-/* 浅色皮肤：--rc-lilac 是为深底设计的品牌浅紫，放在浅底顶栏上几乎不可读。
- * 这里只换前景色，形状/交互不变。 */
 [data-rc-skin='light'] .rc-crumb-home,
 [data-rc-skin='light'] .rc-route-notice {
   color: var(--rc-text);
@@ -717,6 +932,7 @@
   background: var(--rc-accent);
   border-color: var(--rc-accent);
   color: var(--rc-hi);
+  box-shadow: none;
 }
 
 .rc-all-btn {
@@ -739,8 +955,13 @@
 
 .rc-all-btn:hover {
   background: var(--rc-accent-wash);
-  border-color: var(--rc-magenta);
+  border-color: var(--rc-border-strong);
   box-shadow: var(--rc-glow-magenta);
+}
+
+[data-rc-skin='light'] .rc-all-btn:hover {
+  border-color: var(--rc-accent);
+  box-shadow: none;
 }
 
 .rc-l2-header :focus-visible,
@@ -755,7 +976,7 @@
   padding: 8px 16px;
   border-bottom: 1px solid var(--rc-border-strong);
   background: var(--rc-accent-wash);
-  color: var(--rc-lilac);
+  color: var(--rc-brand-soft);
   font: 500 12px/1.5 var(--rc-font-body);
   animation: rc-copy-in var(--rc-dur-fast) var(--rc-ease-out) both;
 }
@@ -784,15 +1005,19 @@
   max-height: min(70vh, 640px);
   overflow: hidden;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  background: linear-gradient(160deg, rgba(246, 240, 252, 0.98), rgba(233, 213, 255, 0.95));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 24px 70px rgba(8, 4, 15, 0.5),
-    0 0 40px rgba(168, 85, 247, 0.24);
-  color: var(--rc-purple-deep);
+  border: 1px solid var(--rc-border);
+  background: linear-gradient(160deg, var(--rc-surface-2), var(--rc-surface));
+  box-shadow: var(--rc-shadow-pop);
+  color: var(--rc-text);
   transform: translate(-50%, -50%);
   animation: rc-popover-in 200ms var(--rc-ease-out) both;
+}
+
+[data-rc-skin='light'] .rc-feature-popover {
+  border: 1px solid var(--rc-border);
+  background: #fcfbf7;
+  box-shadow: var(--rc-shadow-pop);
+  color: #191815;
 }
 
 @keyframes rc-fade-in {
@@ -826,26 +1051,30 @@
   justify-content: space-between;
   gap: 16px;
   padding: 20px 24px 16px;
-  border-bottom: 1px solid rgba(124, 47, 207, 0.14);
+  border-bottom: 1px solid var(--rc-border-hair);
 }
 
 .rc-feature-popover__eyebrow {
   margin: 0 0 4px;
   font: 500 12px/1.4 var(--rc-font-mono);
   letter-spacing: 0.06em;
-  color: var(--rc-purple);
+  color: var(--rc-brand-vivid);
+}
+
+[data-rc-skin='light'] .rc-feature-popover__eyebrow {
+  color: #b85435;
 }
 
 .rc-feature-popover__title {
   margin: 0;
   font: 600 20px/1.3 var(--rc-font-display);
-  color: var(--rc-purple-deep);
+  color: var(--rc-text);
 }
 
 .rc-feature-popover__sub {
   margin: 4px 0 0;
   font: 500 12px/1.5 var(--rc-font-body);
-  color: #5b4a6b;
+  color: var(--rc-text-muted);
 }
 
 .rc-feature-popover__close {
@@ -855,15 +1084,27 @@
   height: 32px;
   flex: none;
   border-radius: 50%;
-  border: 1px solid rgba(124, 47, 207, 0.22);
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--rc-purple-dark);
+  border: 1px solid var(--rc-border);
+  background: var(--rc-surface-2);
+  color: var(--rc-text-muted);
   cursor: pointer;
 }
 
 .rc-feature-popover__close:hover {
-  background: #fff;
-  border-color: var(--rc-purple);
+  background: var(--rc-surface-3);
+  border-color: var(--rc-border-strong);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .rc-feature-popover__close {
+  background: #f1ede4;
+  color: #545048;
+}
+
+[data-rc-skin='light'] .rc-feature-popover__close:hover {
+  background: #e7e1d4;
+  border-color: #b85435;
+  color: #191815;
 }
 
 .rc-feature-popover__body {
@@ -878,13 +1119,23 @@
   min-width: 0;
   padding: 12px;
   border-radius: 14px;
-  border: 1px solid rgba(124, 47, 207, 0.12);
-  background: rgba(255, 255, 255, 0.46);
+  border: 1px solid var(--rc-border-hair);
+  background: var(--rc-bg-2);
+}
+
+[data-rc-skin='light'] .rc-feature-group {
+  border-color: rgba(25, 24, 21, 0.1);
+  background: #f1ede4;
 }
 
 .rc-feature-group--current {
-  border-color: rgba(168, 85, 247, 0.45);
-  box-shadow: 0 0 18px rgba(168, 85, 247, 0.14);
+  border-color: var(--rc-border-strong);
+  box-shadow: var(--rc-glow-violet);
+}
+
+[data-rc-skin='light'] .rc-feature-group--current {
+  border-color: #b85435;
+  box-shadow: 0 2px 10px rgba(184, 84, 53, 0.12);
 }
 
 .rc-feature-group__title {
@@ -893,7 +1144,7 @@
   gap: 8px;
   margin: 0 0 10px;
   font: 600 14px/1.4 var(--rc-font-body);
-  color: var(--rc-purple-dark);
+  color: var(--rc-text);
 }
 
 .rc-feature-group__dot {
@@ -901,13 +1152,21 @@
   height: 7px;
   flex: none;
   border-radius: 50%;
-  background: var(--rc-violet);
+  background: var(--rc-brand-vivid);
+}
+
+[data-rc-skin='light'] .rc-feature-group__dot {
+  background: #b85435;
 }
 
 .rc-feature-group__count {
   margin-left: auto;
   font: 500 12px/1.4 var(--rc-font-mono);
-  color: var(--rc-purple);
+  color: var(--rc-brand-vivid);
+}
+
+[data-rc-skin='light'] .rc-feature-group__count {
+  color: #b85435;
 }
 
 .rc-feature-group__items {
@@ -924,7 +1183,7 @@
   padding: 6px 9px;
   border-radius: 9px;
   border: 1px solid transparent;
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--rc-surface-2);
   text-align: left;
   cursor: pointer;
   transition:
@@ -934,14 +1193,24 @@
 }
 
 .rc-feature-item:hover {
-  background: #fff;
-  border-color: var(--rc-magenta);
+  background: var(--rc-surface-3);
+  border-color: var(--rc-border-strong);
   transform: translateX(2px);
+}
+
+[data-rc-skin='light'] .rc-feature-item {
+  background: #fcfbf7;
+  border-color: rgba(25, 24, 21, 0.06);
+}
+
+[data-rc-skin='light'] .rc-feature-item:hover {
+  background: #ffffff;
+  border-color: #b85435;
 }
 
 .rc-feature-item__label {
   font: 500 13px/1.4 var(--rc-font-body);
-  color: var(--rc-purple-deep);
+  color: var(--rc-text);
 }
 
 .rc-feature-item__route {
@@ -949,7 +1218,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font: 500 12px/1.4 var(--rc-font-mono);
-  color: #6f5b80;
+  color: var(--rc-text-muted);
 }
 
 /* --------------------------------------------------------------------------
@@ -968,14 +1237,22 @@
 .rc-core__wordmark {
   font: 600 var(--rc-type-wordmark) / 1 var(--rc-font-display);
   letter-spacing: 0.16em;
-  color: rgba(59, 16, 102, 0.64);
+  color: rgba(187, 247, 208, 0.68);
+}
+
+[data-rc-skin='light'] .rc-core__wordmark {
+  color: rgba(25, 24, 21, 0.56);
 }
 
 .rc-core__brand-rule {
   flex: none;
   width: calc(var(--rc-core-size) * 0.2);
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(124, 47, 207, 0.34), transparent);
+  background: linear-gradient(90deg, transparent, rgba(74, 222, 128, 0.38), transparent);
+}
+
+[data-rc-skin='light'] .rc-core__brand-rule {
+  background: linear-gradient(90deg, transparent, rgba(25, 24, 21, 0.24), transparent);
 }
 
 /* --------------------------------------------------------------------------
@@ -1034,9 +1311,9 @@
     gap: 4px;
     padding: 6px 8px;
     border-radius: 999px;
-    border: 1px solid rgba(124, 47, 207, 0.35);
-    background: rgba(255, 255, 255, 0.7);
-    color: var(--rc-purple-dark);
+    border: 1px solid var(--rc-border-strong);
+    background: var(--rc-surface-2);
+    color: var(--rc-text);
     font: 600 12px/1.4 var(--rc-font-body);
     cursor: pointer;
   }
@@ -1048,7 +1325,104 @@
 /* --------------------------------------------------------------------------
    prefers-reduced-motion：无流动 / 无涟漪 / 无缩放，保留 120ms 淡入淡出
    -------------------------------------------------------------------------- */
+@keyframes rc-disc-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes rc-node-bloom {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.rc-disc-shell {
+  animation: rc-disc-enter 480ms var(--rc-ease-expo, cubic-bezier(0.19, 1, 0.22, 1)) both;
+}
+
+.rc-entry {
+  animation: rc-node-bloom 420ms var(--rc-ease-out) both;
+  animation-delay: calc(60ms + var(--rc-node-i, 0) * 32ms);
+}
+
+/* 方向性罗盘光束：铺满整盘（inset: 0）+ closest-side 柔羽化，完整包裹图标直达盘缘无硬裁切 */
+.rc-compass-beam {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transform: rotate(var(--rc-pointer-angle, 0deg));
+  transition:
+    transform 320ms var(--rc-ease-expo, cubic-bezier(0.19, 1, 0.22, 1)),
+    opacity 220ms var(--rc-ease-out);
+  background: conic-gradient(
+    from -28deg,
+    transparent 0deg,
+    rgb(var(--rc-violet-rgb) / 0.11) 14deg,
+    rgb(var(--rc-violet-rgb) / 0.24) 28deg,
+    rgb(var(--rc-violet-rgb) / 0.11) 42deg,
+    transparent 56deg 360deg
+  );
+  -webkit-mask-image: radial-gradient(
+    circle closest-side,
+    transparent 0 33%,
+    rgba(0, 0, 0, 0.58) 46%,
+    #000 72%,
+    rgba(0, 0, 0, 0.5) 89%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    circle closest-side,
+    transparent 0 33%,
+    rgba(0, 0, 0, 0.58) 46%,
+    #000 72%,
+    rgba(0, 0, 0, 0.5) 89%,
+    transparent 100%
+  );
+}
+
+.rc-disc-shell[data-pointed='true'] .rc-compass-beam {
+  opacity: 1;
+}
+
+.rc-disc-shell[data-fan='true'] .rc-compass-beam {
+  opacity: 0;
+}
+
+[data-rc-skin='light'] .rc-compass-beam {
+  background: conic-gradient(
+    from -28deg,
+    transparent 0deg,
+    rgb(var(--rc-accent-rgb) / 0.08) 14deg,
+    rgb(var(--rc-accent-rgb) / 0.19) 28deg,
+    rgb(var(--rc-accent-rgb) / 0.08) 42deg,
+    transparent 56deg 360deg
+  );
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .rc-disc-shell,
+  .rc-entry {
+    animation: none;
+  }
+
+  .rc-compass-beam {
+    transition-duration: 120ms;
+  }
+
   .rc-entry,
   .rc-entry__bead,
   .rc-tooltip,
@@ -1069,7 +1443,7 @@
   }
 
   .rc-entry[data-active='true'] .rc-entry__bead {
-    box-shadow: 0 0 0 2px var(--rc-magenta);
+    box-shadow: 0 0 0 2px var(--rc-focus);
   }
 
   .rc-ripple {

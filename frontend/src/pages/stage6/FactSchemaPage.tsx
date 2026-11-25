@@ -137,7 +137,7 @@ export default function FactSchemaPage() {
       <div className="rcw-stack">
         <PageHeader
           title="事实字段目录"
-          description="科研事实标准化字段 catalog（论文事实与案例事实共用的规范化 schema）：扇区角度严格等于各类别的真实字段占比。"
+          description="标准化科研事实字段目录"
           actions={
             data && (
               <>
@@ -149,7 +149,7 @@ export default function FactSchemaPage() {
         />
 
         {schemaQuery.isPending ? (
-          <section className="rcw-card"><LoadingState message="正在加载字段目录…" hint="GET /fact-schema" /></section>
+          <section className="rcw-card"><LoadingState message="正在加载字段目录…" /></section>
         ) : schemaQuery.isError ? (
           <section className="rcw-card">
             <ErrorState
@@ -160,7 +160,7 @@ export default function FactSchemaPage() {
           </section>
         ) : (
           <>
-            <div className="rcw-grid rcw-grid-4">
+            <div className="rcw-grid rcw-grid-4 rc-stagger">
               <StatCard icon={Hash} label="字段总数" value={schemaQuery.data.total} />
               <StatCard icon={LayoutGrid} label="类别数" value={schemaQuery.data.categories.length} />
               <StatCard icon={Ruler} label="带单位字段数" value={unitCount} />

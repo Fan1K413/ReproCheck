@@ -128,8 +128,8 @@ function buildArc(input: Input): PetalGeometry {
         : 204
   const panelHeight = count >= 6 ? 72 : 74
 
-  // 半径 = 三个上限取最小；再抬到「不压住盘面」的下限。
-  const byHeight = stageHeight / 2 - panelHeight / 2 - 24
+  // 半径 = 三个上限取最小；顶部预留 76px 避让固定工具栏，再抬到「不压住盘面」的下限。
+  const byHeight = stageHeight / 2 - panelHeight / 2 - 76
   const byWidth = stageWidth / 2 - panelWidth / 2 - 40
   const radius = Math.max(
     Math.min(byHeight, byWidth, 488),

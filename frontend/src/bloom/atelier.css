@@ -1,10 +1,10 @@
 /* ==========================================================================
    Bloom Atelier —— 三级：组合式复现工作区
-   暗色画布 + 半透明模块节点 + 纸张式详情抽屉。
-   不使用满屏渐变/发光边框；所有读数来自真实接口。
+   双主题画布 + 模块节点 + 纸张式详情抽屉。
+   不使用满屏霓虹渐变/发光边框；所有读数来自真实接口。
 
-   §1.11 作用域收敛：变量收敛到 --rc-* 体系（Shell → rc 语义层，
-   Data → rc 功能色，Glow → rc 紫光），舞台保持自带深色。
+   - 深色模式：黑曜石黑 × 翡翠绿精密仪表
+   - 浅色模式（[data-rc-skin='light']）：暖调类纸编排（Warm Alabaster Paper & Terracotta）
    ========================================================================== */
 
 .bloom-page--atelier {
@@ -1770,4 +1770,476 @@
     animation: none !important;
     transition-duration: 1ms !important;
   }
+}
+
+/* ==========================================================================
+   浅色模式 · 仿 Anthropic 暖调类纸编排（Warm Alabaster Paper & Terracotta）
+   ========================================================================== */
+
+[data-rc-skin='light'] .bloom-atelier {
+  --atelier-ink: var(--rc-bg);
+  --atelier-panel: var(--rc-surface);
+  --atelier-paper: var(--rc-surface);
+  --atelier-paper-ink: var(--rc-text);
+  --atelier-accent: var(--rc-accent);
+  --atelier-line: var(--rc-border);
+  --atelier-glow: var(--rc-shadow-near);
+  --atelier-fail-ink: var(--rc-danger);
+  --bloom-ink: var(--rc-text);
+  --bloom-paper: var(--rc-surface);
+  --bloom-paper-ink: var(--rc-text);
+  --bloom-accent: var(--rc-accent);
+  background: var(--rc-bg);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-atelier__grid {
+  background:
+    radial-gradient(rgba(25, 24, 21, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(25, 24, 21, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(25, 24, 21, 0.035) 1px, transparent 1px);
+  background-size: 26px 26px, 26px 26px, 26px 26px;
+}
+
+/* ---------------- 浅色顶栏 ---------------- */
+
+[data-rc-skin='light'] .bloom-atelier__topbar {
+  border-bottom: 1px solid var(--rc-border);
+  background: rgba(244, 241, 234, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+[data-rc-skin='light'] .bloom-atelier__back {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier__back:hover {
+  border-color: var(--rc-accent);
+  color: var(--rc-accent);
+  background: var(--rc-accent-wash);
+}
+
+[data-rc-skin='light'] .bloom-atelier__mark {
+  border-color: rgba(184, 84, 53, 0.34);
+  background: var(--rc-surface);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-atelier__project p {
+  font-family: var(--rc-font-display);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-atelier__project span {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier__tabs {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+}
+
+[data-rc-skin='light'] .bloom-atelier__tabs a {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier__tabs a:hover {
+  color: var(--rc-text);
+  background: var(--rc-bg-2);
+}
+
+[data-rc-skin='light'] .bloom-atelier__tabs span.is-active {
+  background: var(--rc-accent);
+  color: var(--rc-text-inverse);
+}
+
+[data-rc-skin='light'] .bloom-atelier__readout-label,
+[data-rc-skin='light'] .bloom-atelier__readout-meta {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier__readout strong {
+  color: var(--rc-accent);
+}
+
+/* ---------------- 浅色左侧模块库 ---------------- */
+
+[data-rc-skin='light'] .bloom-atelier__library {
+  border-right: 1px solid var(--rc-border);
+  background: rgba(252, 251, 247, 0.86);
+  backdrop-filter: blur(8px);
+}
+
+[data-rc-skin='light'] .bloom-atelier__library-head {
+  border-bottom-color: var(--rc-border-hair);
+}
+
+[data-rc-skin='light'] .bloom-atelier__eyebrow {
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-atelier__library-head h2 {
+  font-family: var(--rc-font-display);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-atelier__counter {
+  border-color: var(--rc-border);
+  background: var(--rc-bg);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-library-row {
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-library-row:hover {
+  background: var(--rc-bg-2);
+}
+
+[data-rc-skin='light'] .bloom-library-row.is-active {
+  border-left-color: var(--rc-accent);
+  background: var(--rc-accent-wash);
+}
+
+[data-rc-skin='light'] .bloom-library-row.is-selected {
+  border-color: rgba(184, 84, 53, 0.34);
+  border-left-color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-library-row__index {
+  color: var(--rc-text-subtle);
+}
+
+[data-rc-skin='light'] .bloom-library-row__icon {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-library-row.is-active .bloom-library-row__icon {
+  border-color: rgba(184, 84, 53, 0.38);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-library-row__meta {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-library-row__dot {
+  border-color: var(--rc-border);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-library-row.is-active .bloom-library-row__dot,
+[data-rc-skin='light'] .bloom-library-row__dot.tone-ready {
+  border-color: rgba(31, 107, 75, 0.45);
+  color: var(--rc-success);
+}
+
+[data-rc-skin='light'] .bloom-atelier__library-foot {
+  border-top-color: var(--rc-border-hair);
+  color: var(--rc-text-muted);
+}
+
+/* ---------------- 浅色中央画布、连线、枢纽与节点 ---------------- */
+
+[data-rc-skin='light'] .bloom-atelier__canvas-head h1 {
+  font-family: var(--rc-font-display);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-atelier__canvas-hint {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .atelier-edge--hub {
+  stroke: rgba(25, 24, 21, 0.16);
+}
+
+[data-rc-skin='light'] .atelier-edge--pair {
+  stroke: rgba(184, 84, 53, 0.54);
+}
+
+[data-rc-skin='light'] .bloom-atelier__edge-label {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+  color: var(--rc-text-muted);
+  box-shadow: var(--rc-shadow-near);
+  backdrop-filter: none;
+}
+
+[data-rc-skin='light'] .bloom-atelier__hub {
+  border-color: var(--rc-border-strong);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(184, 84, 53, 0.06), transparent 60%),
+    var(--rc-surface);
+  box-shadow: var(--rc-shadow-panel);
+  color: var(--rc-text);
+  backdrop-filter: none;
+}
+
+[data-rc-skin='light'] .bloom-atelier__hub::before {
+  border-color: var(--rc-border);
+}
+
+[data-rc-skin='light'] .bloom-atelier__hub-kicker {
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-atelier__hub strong {
+  font-family: var(--rc-font-display);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-atelier__hub-paper,
+[data-rc-skin='light'] .bloom-atelier__hub-meta,
+[data-rc-skin='light'] .bloom-atelier__hub-score small {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier__hub-score {
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-atelier-node,
+[data-rc-skin='light'] .bloom-atelier-node--folio,
+[data-rc-skin='light'] .bloom-atelier-node--lattice,
+[data-rc-skin='light'] .bloom-atelier-node--instrument {
+  background: var(--rc-surface);
+  color: var(--rc-text);
+  filter: drop-shadow(0 3px 10px rgba(25, 24, 21, 0.08));
+}
+
+[data-rc-skin='light'] .bloom-atelier-node:hover {
+  filter: drop-shadow(0 8px 18px rgba(25, 24, 21, 0.13));
+}
+
+[data-rc-skin='light'] .bloom-atelier-node.is-selected {
+  filter:
+    drop-shadow(0 0 0 2px var(--rc-accent))
+    drop-shadow(0 10px 22px rgba(184, 84, 53, 0.16));
+}
+
+[data-rc-skin='light'] .bloom-atelier-node::before {
+  background: var(--rc-border-strong);
+}
+
+[data-rc-skin='light'] .bloom-atelier-node.state-ready::before {
+  background: var(--rc-success);
+}
+
+[data-rc-skin='light'] .bloom-atelier-node__icon {
+  border-color: var(--rc-border);
+  background: var(--rc-bg);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-atelier-node__code,
+[data-rc-skin='light'] .bloom-atelier-node__metric small,
+[data-rc-skin='light'] .bloom-atelier-node__role,
+[data-rc-skin='light'] .bloom-atelier-node__note {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier-node__note {
+  border-top-color: var(--rc-border-hair);
+}
+
+[data-rc-skin='light'] .bloom-atelier-node__title {
+  font-family: var(--rc-font-display);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-atelier-node__state {
+  border-color: var(--rc-border);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier-node__state.state-ready,
+[data-rc-skin='light'] .bloom-atelier__detail-state.state-ready {
+  border-color: rgba(31, 107, 75, 0.36);
+  background: var(--rc-success-wash);
+  color: var(--rc-success);
+}
+
+/* ---------------- 浅色底部读数条 ---------------- */
+
+[data-rc-skin='light'] .bloom-atelier__bench {
+  border-top-color: var(--rc-border);
+  background: rgba(252, 251, 247, 0.90);
+}
+
+[data-rc-skin='light'] .bloom-atelier__bench-score span,
+[data-rc-skin='light'] .bloom-atelier__bench-score small,
+[data-rc-skin='light'] .bloom-atelier-bar__label,
+[data-rc-skin='light'] .bloom-atelier-bar__value,
+[data-rc-skin='light'] .bloom-atelier__signals {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier__bench-score strong {
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-atelier-bar__track {
+  background: var(--rc-bg-3);
+}
+
+[data-rc-skin='light'] .bloom-atelier-bar__track span {
+  background: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-atelier__refresh {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier__refresh:hover {
+  border-color: var(--rc-accent);
+  background: var(--rc-accent-wash);
+  color: var(--rc-accent);
+}
+
+/* ---------------- 浅色右侧详情抽屉 ---------------- */
+
+[data-rc-skin='light'] .bloom-atelier__detail {
+  background: var(--rc-surface);
+  color: var(--rc-text);
+  border-left-color: var(--rc-border);
+  box-shadow: -8px 0 28px rgba(25, 24, 21, 0.06);
+}
+
+[data-rc-skin='light'] .bloom-atelier__detail[data-morph='folio'] {
+  background: linear-gradient(160deg, var(--rc-surface), var(--rc-surface-2));
+}
+
+[data-rc-skin='light'] .bloom-atelier__detail[data-morph='lattice'] {
+  background:
+    linear-gradient(rgba(25, 24, 21, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(25, 24, 21, 0.04) 1px, transparent 1px),
+    var(--rc-surface);
+  background-size: 18px 18px, 18px 18px, 100% 100%;
+}
+
+[data-rc-skin='light'] .bloom-atelier__detail[data-morph='instrument'] {
+  background:
+    repeating-linear-gradient(
+      180deg,
+      rgba(25, 24, 21, 0.035) 0,
+      rgba(25, 24, 21, 0.035) 1px,
+      transparent 1px,
+      transparent 10px
+    ),
+    var(--rc-surface);
+}
+
+[data-rc-skin='light'] .bloom-atelier__detail-head {
+  border-bottom-color: var(--rc-border);
+}
+
+[data-rc-skin='light'] .bloom-atelier__detail-head h2 {
+  font-family: var(--rc-font-display);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-atelier__detail-tools button,
+[data-rc-skin='light'] .bloom-atelier__detail-tools a {
+  border-color: var(--rc-border);
+  background: var(--rc-bg);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier__detail-tools a:hover,
+[data-rc-skin='light'] .bloom-atelier__detail-tools button:hover {
+  border-color: var(--rc-accent);
+  background: var(--rc-accent-wash);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-atelier__context li button {
+  border-color: var(--rc-border);
+  background: var(--rc-bg);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-atelier__context li button:hover {
+  border-color: var(--rc-accent);
+  background: var(--rc-accent-wash);
+}
+
+[data-rc-skin='light'] .bloom-atelier__detail-foot {
+  border-top-color: var(--rc-border);
+  background: var(--rc-bg);
+}
+
+[data-rc-skin='light'] .bloom-atelier__jump {
+  background: var(--rc-accent);
+  color: var(--rc-text-inverse);
+}
+
+[data-rc-skin='light'] .bloom-atelier__jump:hover {
+  background: var(--rc-accent-hover);
+}
+
+/* ---------------- 浅色移动端适配 ---------------- */
+
+[data-rc-skin='light'] .bloom-atelier__tray button {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier__tray button.is-active {
+  border-color: var(--rc-accent);
+  background: var(--rc-accent-wash);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-atelier__stack button {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-atelier__stack button.is-selected {
+  border-color: var(--rc-accent);
+  background: var(--rc-accent-wash);
+}
+
+[data-rc-skin='light'] .bloom-atelier__stack .bloom-atelier-node__state {
+  border-color: var(--rc-border) !important;
+  color: var(--rc-text-muted) !important;
+}
+
+[data-rc-skin='light'] .bloom-atelier__stack-metric {
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-atelier__stack-note {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier__gaps {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+}
+
+[data-rc-skin='light'] .bloom-atelier__gaps-head,
+[data-rc-skin='light'] .bloom-atelier__gaps-note,
+[data-rc-skin='light'] .bloom-atelier__gaps-rule {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-atelier__gaps-title,
+[data-rc-skin='light'] .bloom-atelier__gaps-next p {
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-atelier__gaps-next span,
+[data-rc-skin='light'] .bloom-atelier__gaps-empty {
+  color: var(--rc-accent);
 }

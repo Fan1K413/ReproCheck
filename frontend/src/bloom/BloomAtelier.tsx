@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Icon } from '../components/Icon'
+import { ThemeToggle } from '../components/ThemeToggle'
+import PageHelpButton from '../ux/PageHelpDrawer'
 import {
   ArrowUpRight,
   ChevronLeft,
@@ -288,6 +290,8 @@ export function BloomAtelier({ projectId, data }: { projectId: string; data: Wor
               {readyCount}/{activeModules.length} 就绪 · {activeModules.length}/6 模块
             </span>
           </div>
+          <ThemeToggle compact />
+          <PageHelpButton compact />
         </header>
 
         <div className={`bloom-atelier__body${detailOpen ? ' is-detail-open' : ''}`}>

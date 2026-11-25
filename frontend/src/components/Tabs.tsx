@@ -12,7 +12,7 @@ type TabsProps = {
 export function Tabs({ tabs, active, onChange }: TabsProps) {
   return (
     <div
-      className="flex flex-wrap items-center gap-2 border-b"
+      className="flex flex-wrap items-center gap-1.5 border-b"
       style={{ borderColor: 'var(--rc-border-hair)' }}
       role="tablist"
     >
@@ -25,11 +25,12 @@ export function Tabs({ tabs, active, onChange }: TabsProps) {
             role="tab"
             aria-selected={isActive}
             onClick={() => onChange(tab.key)}
-            className={`relative -mb-px inline-flex items-center gap-2 px-3 py-2.5 text-sm transition-colors ${
-              isActive ? 'font-semibold' : 'font-medium'
+            className={`relative -mb-px inline-flex items-center gap-2 px-3.5 py-2.5 text-sm transition-colors duration-150 ${
+              isActive
+                ? 'font-semibold text-[var(--rc-violet)]'
+                : 'font-medium text-[var(--rc-text-muted)] hover:text-[var(--rc-text)]'
             }`}
             style={{
-              color: isActive ? 'var(--rc-violet)' : 'var(--rc-text-muted)',
               borderBottom: `2px solid ${isActive ? 'var(--rc-violet)' : 'transparent'}`,
             }}
           >

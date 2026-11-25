@@ -1,19 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
+import { useUIStore } from '../../stores/uiStore'
 import { createFieldController, type FieldController } from './fieldController'
 import '../../styles/workbench-background.css'
 
 /**
- * 一级工作台背景层。
- *
- * 结构（自下而上）：
- *  1. `__fallback`  静态墨紫底 + 两条斜向丝绸折痕，首屏与 WebGL 不可用时可见；
- *  2. `__canvas`   WebGL 丝绸光场，仅做光影，不拦截任何交互。
- *
- * 第二轮已移除证据点阵与两条轨道环：它们会和盘面争夺「几何仪器感」，
- * 空间纵深改由着色器的域扭曲、环境光与 CSS 的单一外轨道承担。
+ * 一级工作台背景层：随全局黑绿深色 / 类纸浅色主题实时切换 WebGL 与 CSS 兜底场。
  */
 export default function ReproFieldBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const controllerRef = useRef<FieldController | null>(null)
+  const theme = useUIStore((state) => state.theme)
   const [live, setLive] = useState(false)
 
   useEffect(() => {
@@ -22,16 +18,28 @@ export default function ReproFieldBackground() {
 
     let controller: FieldController | null = null
     try {
-      controller = createFieldController(canvas, {
-        onReady: () => setLive(true),
-        onUnavailable: () => setLive(false),
-      })
+      controller = createFieldController(
+        canvas,
+        {
+          onReady: () => setLive(true),
+          onUnavailable: () => setLive(false),
+        },
+        useUIStore.getState().theme,
+      )
+      controllerRef.current = controller
     } catch {
       setLive(false)
     }
 
-    return () => controller?.destroy()
+    return () => {
+      controller?.destroy()
+      controllerRef.current = null
+    }
   }, [])
+
+  useEffect(() => {
+    controllerRef.current?.setTheme(theme)
+  }, [theme])
 
   return (
     <div className={`rc-field${live ? ' rc-field--live' : ''}`} aria-hidden="true">

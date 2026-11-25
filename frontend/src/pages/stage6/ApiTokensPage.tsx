@@ -208,7 +208,7 @@ export default function ApiTokensPage() {
       <div className="rcw-stack">
         <PageHeader
           title="开放 API Token"
-          description="面向 CI / 外部工具的受控访问令牌；明文仅创建时显示一次"
+          description="外部集成受控访问令牌"
           actions={
             <button type="button" className="btn-primary" onClick={() => setCreateOpen(true)}>
               <Icon name="plus" size="xs" />创建令牌
@@ -216,7 +216,7 @@ export default function ApiTokensPage() {
           }
         />
 
-        <div className="rcw-grid rcw-grid-4">
+        <div className="rcw-grid rcw-grid-4 rc-stagger">
           {kpis.map((kpi) => (
             <div key={kpi.label} className="rcw-kpi">
               <span className="rcw-kpi-icon"><Icon name={kpi.icon} size="sm" /></span>
@@ -241,12 +241,6 @@ export default function ApiTokensPage() {
               </div>
             )}
           </div>
-          <p className="rcw-row mt-3" style={{ gap: 'var(--rc-space-2)' }}>
-            <Icon name="shield" size="xs" tone="subtle" />
-            <span className="text-xs rcw-muted">
-              明文令牌（rc_live_ 前缀）仅创建时返回一次，后端仅存 SHA-256 哈希；撤销或过期后立即失效。本页不写入任何本地草稿存储。
-            </span>
-          </p>
           {tokensQuery.isPending ? (
             <LoadingState compact message="正在读取令牌列表…" />
           ) : tokensQuery.isError ? (
@@ -255,7 +249,7 @@ export default function ApiTokensPage() {
             <EmptyState
               icon={KeyRound}
               title="尚无 API Token"
-              description="创建受控访问令牌后，CI 流水线与外部工具可通过开放 API（/api/open/v1）调用。"
+              description="创建受控访问令牌后，CI 流水线与外部工具可安全调用开放 API。"
               action={
                 <button type="button" className="btn-primary" onClick={() => setCreateOpen(true)}>
                   <Icon name="plus" size="xs" />创建第一个令牌

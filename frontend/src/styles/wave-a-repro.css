@@ -2,13 +2,11 @@
  * Wave A · 复现执行系 6 页专用样式
  * ------------------------------------------------------------------
  * 视觉语言：图 3 / 图 4「精密仪器」
- *   近黑底 (--rc-bg) + 24px 细网格 + 1px hair 分区 + 小圆角 chip
- *   + 单一亮紫高亮 (--rc-violet)，与工作台紫黑玻璃同源。
+ *   主画布 (--rc-bg) + 24px 细网格 (--rc-grid-line) + 1px hair 分区
+ *   + 小圆角 chip + 主题高亮 (--rc-violet / --rc-accent)。
  *
  * 约束（global-design-system.md §1 / §5）：
- *   · 颜色/间距/圆角/阴影/时长/缓动一律取 --rc-* token；
- *   · 唯一字面量是 §4.4 明示的细网格 rgba(233,213,255,.04)，
- *     已收敛为局部变量 --rc-wa-grid；
+ *   · 颜色/间距/圆角/阴影/时长/缓动一律取 --rc-* token，零字面量；
  *   · 动画属性仅 transform / opacity / color / box-shadow，
  *     禁止 width / height / top / left / margin / padding。
  *
@@ -20,8 +18,6 @@
  * ------------------------------------------------------------------ */
 
 .rc-wa-page {
-  --rc-wa-grid: rgba(233, 213, 255, .04);
-  --rc-wa-grid-strong: rgba(233, 213, 255, .08);
   display: flex;
   flex-direction: column;
   gap: var(--rc-space-6);
@@ -284,7 +280,7 @@
   border-radius: var(--rc-radius-lg);
   /* 堆叠卡正面用不透明抬升面：保证被压在下层的卡片内容不会透过正文造成串读 */
   background-color: var(--rc-surface-2);
-  box-shadow: var(--rc-shadow-panel), inset 0 1px 0 rgba(255, 255, 255, .10);
+  box-shadow: var(--rc-shadow-panel), var(--rc-shadow-inset-hi);
 }
 
 .rc-wa-persp__cardtitle {
@@ -486,8 +482,8 @@
   border-radius: var(--rc-radius-md);
   background-color: var(--rc-bg);
   background-image:
-    linear-gradient(var(--rc-wa-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--rc-wa-grid) 1px, transparent 1px);
+    linear-gradient(var(--rc-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rc-grid-line) 1px, transparent 1px);
   background-size: 24px 24px;
   overflow: hidden;
 }
@@ -688,8 +684,8 @@
   overflow: auto;
   background-color: var(--rc-bg);
   background-image:
-    linear-gradient(var(--rc-wa-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--rc-wa-grid) 1px, transparent 1px);
+    linear-gradient(var(--rc-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rc-grid-line) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -877,7 +873,7 @@
 }
 
 .rc-wa-wave__grid {
-  stroke: var(--rc-wa-grid-strong);
+  stroke: var(--rc-grid-line-major);
   stroke-width: 1;
 }
 
@@ -954,8 +950,8 @@
   border-radius: var(--rc-radius-sm);
   background-color: var(--rc-bg);
   background-image:
-    linear-gradient(var(--rc-wa-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--rc-wa-grid) 1px, transparent 1px);
+    linear-gradient(var(--rc-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rc-grid-line) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -1310,8 +1306,8 @@
  * ------------------------------------------------------------------ */
 
 @keyframes rc-wa-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, .45); }
-  50% { box-shadow: 0 0 0 3px rgba(168, 85, 247, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgb(var(--rc-violet-rgb) / .45); }
+  50% { box-shadow: 0 0 0 3px rgb(var(--rc-violet-rgb) / 0); }
 }
 
 @keyframes rc-wa-breathe {
@@ -1414,4 +1410,35 @@
   .rc-wa-statusbar { padding: var(--rc-space-2) var(--rc-space-4); }
   .rc-wa-log__row { grid-template-columns: 48px minmax(0, 1fr); }
   .rc-wa-log__time { display: none; }
+}
+
+/* ------------------------------------------------------------------
+ * 17. 浅色模式 · 类纸编排覆写
+ * ------------------------------------------------------------------ */
+
+[data-rc-skin='light'] .rc-wa-panel--glass,
+[data-rc-skin='light'] .rc-wa-kpi,
+[data-rc-skin='light'] .rc-wa-gauge,
+[data-rc-skin='light'] .rc-wa-consolebar,
+[data-rc-skin='light'] .rc-wa-statusbar,
+[data-rc-skin='light'] .rc-wa-dual__card {
+  background-color: var(--rc-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-rc-skin='light'] .rc-wa-persp__cardbody {
+  background-color: var(--rc-surface);
+}
+
+[data-rc-skin='light'] .rc-wa-dual__card--back {
+  background-color: var(--rc-bg-2);
+}
+
+[data-rc-skin='light'] .rc-wa-pick[aria-pressed='true'],
+[data-rc-skin='light'] .rc-wa-rail__item[aria-current='step'],
+[data-rc-skin='light'] .rc-wa-dep:hover,
+[data-rc-skin='light'] .rc-wa-dep:focus-visible,
+[data-rc-skin='light'] .rc-wa-dep.is-focus {
+  box-shadow: var(--rc-shadow-near);
 }

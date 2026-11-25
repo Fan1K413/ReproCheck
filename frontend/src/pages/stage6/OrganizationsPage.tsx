@@ -365,7 +365,7 @@ export default function OrganizationsPage() {
       <div className="rcw-stack">
         <PageHeader
           title="组织与成员"
-          description="科研组织档案室：成员矩阵、邀请令牌、团队与工作空间；组织级数据隔离与管理员校验均由后端强制执行。"
+          description="组织、成员与工作空间"
           actions={
             <button type="button" className="btn-primary" onClick={() => setOrgModalOpen(true)}>
               <Icon name="plus" size="xs" />新建组织
@@ -373,7 +373,7 @@ export default function OrganizationsPage() {
           }
         />
 
-        <div className="rcw-grid rcw-grid-4">
+        <div className="rcw-grid rcw-grid-4 rc-stagger">
           {kpis.map((kpi) => (
             <div key={kpi.label} className="rcw-kpi">
               <span className="rcw-kpi-icon"><Icon name={kpi.icon} size="sm" /></span>
@@ -555,7 +555,7 @@ export default function OrganizationsPage() {
                             </p>
                             <div className="rcw-row-between" style={{ marginTop: 'var(--rc-space-2)' }}>
                               <p className="text-xs leading-relaxed rcw-muted">
-                                受邀者凭此令牌接受邀请（POST /invitations/accept），令牌仅显示一次。关闭后无法再次查看，请先复制保存。
+                                令牌仅显示一次，关闭后无法再次查看，请先复制保存。
                               </p>
                               <CopyButton text={lastInvite.token} label="复制令牌" />
                             </div>

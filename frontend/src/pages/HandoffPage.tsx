@@ -125,7 +125,7 @@ export default function HandoffPage() {
     <div className="rc2-page">
       <PageHeader
         title="科研交接包"
-        description="导出项目交接 ZIP，或上传 ZIP 做完整性与安全校验；校验仅读取文件，不写数据库。"
+        description="交接包导出与完整性校验"
         actions={
           <nav className="flex flex-wrap items-center gap-2">
             <Link to={`/projects/${projectId}/verification`} className="btn-ghost">
@@ -138,14 +138,6 @@ export default function HandoffPage() {
         }
       />
 
-      <div className="rc2-draft">
-        <Icon name="shield" size="sm" tone="accent" />
-        <span>
-          <strong>仅校验不写库：</strong>
-          上传后只验证 ZIP 路径、文件类型、manifest 与 SHA-256；后端返回 import_mode=validated_not_applied，不会导入任何数据。
-        </span>
-      </div>
-
       <div className="rc2-stack">
         <section className="rc2-card rc2-stack__full">
           <span className="rc2-card__stage rc2-card__stage--accent" aria-hidden="true" />
@@ -156,7 +148,7 @@ export default function HandoffPage() {
             <div className="rc2-card__body">
               <h3 className="rc2-card__title">导出交接包</h3>
               <p className="rc2-card__paper">
-                POST /projects/{'{id}'}/handoff/export：按当前项目真实数据生成 ZIP（带 Bearer 下载）。
+                按当前项目数据生成交接包 ZIP。
               </p>
               <button
                 type="button"

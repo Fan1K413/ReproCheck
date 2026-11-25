@@ -14,20 +14,22 @@ type ModalProps = {
 
 export function Modal({ open, title, description, onClose, children, footer, wide = false }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     if (!open) return
     const previouslyFocused = document.activeElement as HTMLElement | null
     panelRef.current?.focus({ preventScroll: true })
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') onCloseRef.current()
     }
     window.addEventListener('keydown', onKey)
     return () => {
       window.removeEventListener('keydown', onKey)
       previouslyFocused?.focus?.({ preventScroll: true })
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 
@@ -58,9 +60,7 @@ export function Modal({ open, title, description, onClose, children, footer, wid
         style={{
           borderRadius: 'var(--rc-radius-lg)',
           border: 'var(--rc-stroke)',
-          backgroundColor: 'var(--rc-surface-glass)',
-          backdropFilter: 'var(--rc-blur-panel)',
-          WebkitBackdropFilter: 'var(--rc-blur-panel)',
+          backgroundColor: 'var(--rc-surface)',
           boxShadow: 'var(--rc-shadow-pop)',
           color: 'var(--rc-text)',
           animation: 'rc-modal-in var(--rc-dur-base) var(--rc-ease-out) both',
@@ -71,7 +71,10 @@ export function Modal({ open, title, description, onClose, children, footer, wid
           style={{ borderBottom: 'var(--rc-stroke-hair)' }}
         >
           <div className="min-w-0">
-            <h3 className="text-xl font-semibold" style={{ color: 'var(--rc-text)' }}>
+            <h3
+              className="text-xl font-semibold"
+              style={{ color: 'var(--rc-text)', fontFamily: 'var(--rc-font-display)' }}
+            >
               {title}
             </h3>
             {description && (

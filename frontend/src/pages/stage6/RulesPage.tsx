@@ -469,7 +469,7 @@ export default function RulesPage() {
       <div className="rcw-stack">
         <PageHeader
           title="审计规则"
-          description="规则生命周期管理：版本演进、离线样本测试与版本对比评估。变更须由具备 rule.manage 权限的成员显式发起，全程留痕。"
+          description="规则版本、测试与评估"
           actions={
             <>
               <button type="button" className="btn-ghost" disabled={seedMut.isPending} onClick={() => seedMut.mutate()}>
@@ -480,14 +480,7 @@ export default function RulesPage() {
           }
         />
 
-        <div className="rcw-note">
-          <p className="rcw-row" style={{ gap: 'var(--rc-space-3)', alignItems: 'flex-start' }}>
-            <Icon name="shield" size="sm" style={{ marginTop: 2 }} />
-            <span>规则生命周期受控：单条反馈不会自动修改生产规则；新版本必须携带测试样本，上线前通过样本测试与离线评估把关。</span>
-          </p>
-        </div>
-
-        <div className="rcw-grid rcw-grid-4">
+        <div className="rcw-grid rcw-grid-4 rc-stagger">
           {kpis.map((kpi) => (
             <div key={kpi.label} className="rcw-kpi">
               <span className="rcw-kpi-icon"><Icon name={kpi.icon} size="sm" /></span>
@@ -528,7 +521,7 @@ export default function RulesPage() {
                 </div>
               </div>
             </div>
-            {rulesQuery.isPending ? <LoadingState compact message="正在读取规则…" hint="GET /rules" />
+            {rulesQuery.isPending ? <LoadingState compact message="正在读取规则…" />
               : rulesQuery.isError ? <ErrorState compact message={rulesQuery.error.message} code={errCode(rulesQuery.error)} onRetry={() => void rulesQuery.refetch()} />
               : rules.length === 0 ? (
                 <EmptyState
@@ -584,7 +577,7 @@ export default function RulesPage() {
                 {rulesQuery.isPending ? <LoadingState message="正在读取规则…" />
                   : <EmptyState icon={ScrollText} title="选择左侧规则查看详情" description="也可以载入默认规则，或新建一条自定义规则开始治理。" />}
               </div>
-            ) : detailQuery.isPending ? <div className="rcw-card"><LoadingState message="正在读取规则详情…" hint="GET /rules/{id}" /></div>
+            ) : detailQuery.isPending ? <div className="rcw-card"><LoadingState message="正在读取规则详情…" /></div>
               : detailQuery.isError ? <div className="rcw-card"><ErrorState message={detailQuery.error.message} code={errCode(detailQuery.error)} onRetry={() => void detailQuery.refetch()} /></div>
               : detail && detailRisk ? (
                 <>

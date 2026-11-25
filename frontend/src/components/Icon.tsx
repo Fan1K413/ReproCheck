@@ -196,10 +196,10 @@ export function Icon({
     stateStyle.color = TONE[tone]
   }
   if (state === 'hover' || state === 'selected') {
-    stateStyle.filter = 'drop-shadow(0 0 8px rgba(168, 85, 247, .35))'
+    stateStyle.filter = 'var(--rc-icon-glow)'
   }
   if (state === 'active') {
-    stateStyle.filter = 'drop-shadow(0 0 6px rgba(168, 85, 247, .28))'
+    stateStyle.filter = 'var(--rc-icon-glow-active)'
   }
   if (state === 'selected') {
     stateStyle.outline = '1px solid var(--rc-magenta)'

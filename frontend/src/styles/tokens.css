@@ -1,62 +1,105 @@
 /* ==========================================================================
- * ReproCheck Design Token · 唯一色源（global-design-system.md §1.9 / §1.10）
- * 本文件必须最先引入（main.tsx），是全站 41 页 + 8 舞台 + 公共组件的唯一变量契约。
- * 规则：业务代码只消费 --rc-*；颜色字面量只允许存在于本文件。
+ * ReproCheck Design Token · 唯一色源
+ *
+ * 双主题体系：
+ *  - 深色模式（默认 / [data-rc-skin='dark']）：黑曜石黑 × 精密荧光绿（Obsidian & Emerald）
+ *  - 浅色模式（[data-rc-skin='light']）：仿 Anthropic 类纸编排（Warm Alabaster Paper & Terracotta）
+ *
+ * 本文件在 main.tsx 最先引入，供全站 40+ 页面、三级工作台、Bloom 舞台与公共组件统一消费。
  * ========================================================================== */
 
-:root {
-  /* ===== 1. 品牌基色（继承 visual-style-spec.md，永不改动） ===== */
-  --rc-ink: #08040f;
-  --rc-purple-deep: #1e0a35;
-  --rc-purple-dark: #3b1066;
-  --rc-purple: #7c2fd0;
-  --rc-violet: #a855f7;
-  --rc-magenta: #c084fc;
-  --rc-lilac: #e9d5ff;
-  --rc-glass: #f6f0fb;
-  --rc-hi: #ffffff;
-  --rc-cool: #eaf3ee;
+:root,
+[data-rc-skin='dark'] {
+  color-scheme: dark;
 
-  /* ===== 2. 语义颜色 · 深色皮肤（默认） ===== */
-  --rc-bg: #08040f;
-  --rc-bg-2: #150a26;
-  --rc-surface: #150a26;
-  --rc-surface-2: #221038;
-  --rc-surface-3: #2e1548;
-  --rc-surface-glass: rgba(246, 240, 252, .08);
-  --rc-surface-glass-2: rgba(233, 213, 255, .14);
-  --rc-border-hair: rgba(255, 255, 255, .08);
-  --rc-border: rgba(233, 213, 255, .16);
-  --rc-border-strong: rgba(233, 213, 255, .30);
-  --rc-text: #f6f0fb;
-  --rc-text-muted: #b9a5d2;
-  --rc-text-subtle: #8b76a8;
-  --rc-text-inverse: #1e0a35;
-  --rc-accent: #7c2fd0;
-  --rc-accent-bright: #a855f7;
-  --rc-accent-wash: rgba(124, 47, 207, .18);
-  --rc-accent-rgb: 124 47 207;
-  --rc-success: #46d6b0;
-  --rc-success-wash: rgba(70, 214, 176, .14);
-  --rc-success-rgb: 70 214 176;
-  --rc-danger: #ff6b7d;
-  --rc-danger-wash: rgba(255, 107, 125, .14);
-  --rc-danger-rgb: 255 107 125;
+  /* ===== 1. 品牌与材质基色（深色：黑曜石黑 × 翡翠绿） ===== */
+  --rc-ink: #050806;
+  --rc-ink-rgb: 5 8 6;
+  --rc-brand-deep: #0b140f;
+  --rc-brand-dark: #142a1e;
+  --rc-brand: #15803d;
+  --rc-brand-bright: #22c55e;
+  --rc-brand-vivid: #4ade80;
+  --rc-brand-soft: #bbf7d0;
+
+  /* 存量令牌兼容映射（无紫色残留：全部指向黑绿精密色阶） */
+  --rc-purple-deep: var(--rc-brand-deep);
+  --rc-purple-dark: var(--rc-brand-dark);
+  --rc-purple: var(--rc-brand);
+  --rc-violet: #22c55e;
+  --rc-violet-rgb: 34 197 94;
+  --rc-magenta: #4ade80;
+  --rc-magenta-rgb: 74 222 128;
+  --rc-lilac: #bbf7d0;
+  --rc-lilac-rgb: 187 247 208;
+  --rc-glass: #ecf7f0;
+  --rc-hi: #ffffff;
+  --rc-hi-rgb: 255 255 255;
+  --rc-cool: #e6f6ec;
+
+  /* ===== 2. 语义颜色 · 深色模式（黑 + 绿） ===== */
+  --rc-bg: #050806;
+  --rc-bg-2: #09100c;
+  --rc-bg-3: #0e1812;
+  --rc-surface: #0c130f;
+  --rc-surface-2: #121d17;
+  --rc-surface-3: #192920;
+  --rc-surface-glass: rgba(12, 19, 15, 0.84);
+  --rc-surface-glass-2: rgba(20, 34, 26, 0.90);
+
+  --rc-border-hair: rgba(167, 243, 208, 0.09);
+  --rc-border: rgba(74, 222, 128, 0.18);
+  --rc-border-strong: rgba(74, 222, 128, 0.38);
+
+  --rc-text: #edf7f0;
+  --rc-text-muted: #94b2a0;
+  --rc-text-subtle: #648271;
+  --rc-text-inverse: #050806;
+
+  --rc-accent: #15803d;
+  --rc-accent-bright: #22c55e;
+  --rc-accent-hover: #16a34a;
+  --rc-accent-wash: rgba(34, 197, 94, 0.13);
+  --rc-accent-wash-strong: rgba(34, 197, 94, 0.22);
+  --rc-accent-rgb: 21 128 61;
+
+  --rc-success: #34d399;
+  --rc-success-wash: rgba(52, 211, 153, 0.13);
+  --rc-success-rgb: 52 211 153;
+  --rc-danger: #f87171;
+  --rc-danger-wash: rgba(248, 113, 113, 0.14);
+  --rc-danger-rgb: 248 113 113;
   --rc-warning: #f5b94e;
-  --rc-warning-wash: rgba(245, 185, 78, .14);
+  --rc-warning-wash: rgba(245, 185, 78, 0.14);
   --rc-warning-rgb: 245 185 78;
-  --rc-info: #a78bfa;
-  --rc-info-wash: rgba(167, 139, 250, .14);
-  --rc-neutral: #9c8bb5;
-  --rc-neutral-wash: rgba(156, 139, 181, .14);
-  --rc-focus: #c084fc;
-  --rc-scrim: rgba(8, 4, 15, .62);
+  --rc-info: #38bdf8;
+  --rc-info-wash: rgba(56, 189, 248, 0.13);
+  --rc-neutral: #849e8f;
+  --rc-neutral-wash: rgba(132, 158, 143, 0.14);
+
+  --rc-focus: #4ade80;
+  --rc-scrim: rgba(2, 5, 3, 0.72);
+
+  /* 组件级动态材质令牌 */
+  --rc-panel-bg: linear-gradient(160deg, rgba(24, 42, 32, 0.42), rgba(10, 17, 13, 0.92)), var(--rc-surface);
+  --rc-panel-top-edge: linear-gradient(90deg, transparent, rgba(74, 222, 128, 0.32), transparent);
+  --rc-input-bg: rgba(4, 8, 6, 0.72);
+  --rc-input-bg-focus: rgba(7, 14, 10, 0.92);
+  --rc-row-hover: rgba(34, 197, 94, 0.08);
+  --rc-scrollbar-thumb: rgba(74, 222, 128, 0.24);
+  --rc-scrollbar-thumb-hover: rgba(74, 222, 128, 0.42);
+  --rc-icon-glow: drop-shadow(0 0 8px rgba(34, 197, 94, 0.36));
+  --rc-icon-glow-active: drop-shadow(0 0 6px rgba(74, 222, 128, 0.30));
+  --rc-watermark: rgba(74, 222, 128, 0.08);
+  --rc-grid-line: rgba(74, 222, 128, 0.045);
+  --rc-grid-line-major: rgba(74, 222, 128, 0.095);
+  --rc-paper-grain-opacity: 0;
 
   /* ===== 3. 字体 ===== */
-  --rc-font-display: 'Sora', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
-  --rc-font-mono: 'IBM Plex Mono', 'PingFang SC', 'Microsoft YaHei', monospace;
-  --rc-font-body: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
-  --rc-fs-display: 40px;
+  --rc-font-display: 'Space Grotesk', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --rc-font-mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, monospace;
+  --rc-font-body: 'Inter', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif;
+  --rc-fs-display: 38px;
   --rc-fs-h1: 28px;
   --rc-fs-h2: 20px;
   --rc-fs-h3: 16px;
@@ -67,14 +110,14 @@
   --rc-fw-r: 400;
   --rc-fw-m: 500;
   --rc-fw-sb: 600;
-  --rc-lh-tight: 1.1;
-  --rc-lh-h: 1.25;
-  --rc-lh-body: 1.6;
-  --rc-ls-display: -.02em;
-  --rc-ls-h1: -.01em;
-  --rc-ls-body: .01em;
-  --rc-ls-caption: .02em;
-  --rc-ls-mono: .06em;
+  --rc-lh-tight: 1.15;
+  --rc-lh-h: 1.28;
+  --rc-lh-body: 1.62;
+  --rc-ls-display: -0.025em;
+  --rc-ls-h1: -0.015em;
+  --rc-ls-body: 0.005em;
+  --rc-ls-caption: 0.02em;
+  --rc-ls-mono: 0.06em;
 
   /* ===== 4. 间距（4px 基线） ===== */
   --rc-space-1: 4px;
@@ -87,11 +130,11 @@
   --rc-space-8: 40px;
 
   /* ===== 5. 圆角 ===== */
-  --rc-radius-xs: 6px;
-  --rc-radius-sm: 10px;
-  --rc-radius-md: 14px;
-  --rc-radius-lg: 20px;
-  --rc-radius-xl: 28px;
+  --rc-radius-xs: 5px;
+  --rc-radius-sm: 8px;
+  --rc-radius-md: 12px;
+  --rc-radius-lg: 16px;
+  --rc-radius-xl: 22px;
   --rc-radius-pill: 999px;
   --rc-radius-disc: 50%;
 
@@ -99,46 +142,47 @@
   --rc-stroke-hair: 1px solid var(--rc-border-hair);
   --rc-stroke: 1px solid var(--rc-border);
   --rc-stroke-strong: 1px solid var(--rc-border-strong);
-  --rc-blur-glass: blur(22px) saturate(150%);
-  --rc-blur-panel: blur(14px) saturate(135%);
+  --rc-blur-glass: blur(18px) saturate(130%);
+  --rc-blur-panel: blur(12px) saturate(120%);
   --rc-blur-scrim: blur(6px);
-  --rc-shadow-inset-hi: inset 0 1px 0 rgba(255, 255, 255, .70);
-  --rc-shadow-inset-lo: inset 0 -8px 24px rgba(168, 85, 247, .28);
-  --rc-shadow-near: 0 8px 24px rgba(8, 4, 15, .45);
-  --rc-shadow-far: 0 24px 70px rgba(124, 47, 207, .35);
+
+  --rc-shadow-inset-hi: inset 0 1px 0 rgba(187, 247, 208, 0.14);
+  --rc-shadow-inset-lo: inset 0 -6px 20px rgba(21, 128, 61, 0.16);
+  --rc-shadow-near: 0 8px 24px rgba(0, 0, 0, 0.52);
+  --rc-shadow-far: 0 24px 64px rgba(0, 0, 0, 0.65);
   --rc-shadow-glass:
-    inset 0 1px 0 rgba(255, 255, 255, .70),
-    inset 0 -8px 24px rgba(168, 85, 247, .28),
-    0 8px 24px rgba(8, 4, 15, .45),
-    0 24px 70px rgba(124, 47, 207, .35);
+    inset 0 1px 0 rgba(187, 247, 208, 0.14),
+    0 12px 36px rgba(0, 0, 0, 0.56),
+    0 0 0 1px rgba(74, 222, 128, 0.08);
   --rc-shadow-panel:
-    inset 0 1px 0 rgba(255, 255, 255, .12),
-    0 12px 36px rgba(8, 4, 15, .32);
+    inset 0 1px 0 rgba(187, 247, 208, 0.09),
+    0 10px 30px rgba(0, 0, 0, 0.42);
   --rc-shadow-pop:
-    inset 0 1px 0 rgba(255, 255, 255, .14),
-    0 18px 48px rgba(8, 4, 15, .42),
-    0 0 32px rgba(168, 85, 247, .24);
-  --rc-glow-violet: 0 0 18px rgba(168, 85, 247, .60);
-  --rc-glow-magenta: 0 0 14px rgba(192, 132, 252, .45);
-  --rc-a-04: .04;
-  --rc-a-08: .08;
-  --rc-a-12: .12;
-  --rc-a-16: .16;
-  --rc-a-24: .24;
-  --rc-a-34: .34;
-  --rc-a-42: .42;
-  --rc-a-70: .70;
+    inset 0 1px 0 rgba(187, 247, 208, 0.12),
+    0 18px 48px rgba(0, 0, 0, 0.60),
+    0 0 24px rgba(34, 197, 94, 0.14);
+  --rc-glow-violet: 0 0 18px rgba(34, 197, 94, 0.34);
+  --rc-glow-magenta: 0 0 14px rgba(74, 222, 128, 0.28);
+
+  --rc-a-04: 0.04;
+  --rc-a-08: 0.08;
+  --rc-a-12: 0.12;
+  --rc-a-16: 0.16;
+  --rc-a-24: 0.24;
+  --rc-a-34: 0.34;
+  --rc-a-42: 0.42;
+  --rc-a-70: 0.70;
 
   /* ===== 7. 动画 ===== */
   --rc-dur-instant: 80ms;
   --rc-dur-fast: 120ms;
-  --rc-dur-base: 200ms;
-  --rc-dur-slow: 400ms;
+  --rc-dur-base: 180ms;
+  --rc-dur-slow: 360ms;
   --rc-dur-ambient: 24s;
-  --rc-ease-out: cubic-bezier(.16, 1, .3, 1);
-  --rc-ease-hover: cubic-bezier(.2, .8, .2, 1);
-  --rc-ease-inout: cubic-bezier(.4, 0, .2, 1);
-  --rc-ease-spring: cubic-bezier(.2, 1.35, .36, 1);
+  --rc-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --rc-ease-hover: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --rc-ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
+  --rc-ease-spring: cubic-bezier(0.2, 1.35, 0.36, 1);
   --rc-ease-linear: linear;
 
   /* ===== 8. 图标 ===== */
@@ -152,120 +196,71 @@
   --rc-stroke-deco: 1.5;
 
   /* ===== 9. 布局 ===== */
-  --rc-header-h: 64px;
+  --rc-header-h: 60px;
   --rc-page-pad: 32px;
   --rc-card-pad: 24px;
   --rc-card-pad-tight: 16px;
   --rc-grid-gutter: 24px;
   --rc-section-gap: 24px;
   --rc-icon-gap: 8px;
-  --rc-content-max: 1440px;
-}
+  --rc-content-max: 1400px;
 
-/* ===== 10. 浅色皮肤：只覆盖语义层，品牌基色与主紫不变 ===== */
-[data-rc-skin='light'] {
-  --rc-bg: #f6f0fb;
-  --rc-bg-2: #efe6f7;
-  --rc-surface: rgba(255, 255, 255, .76);
-  --rc-surface-2: #f1e7fa;
-  --rc-surface-3: #e7d8f2;
-  --rc-surface-glass: rgba(255, 255, 255, .62);
-  --rc-surface-glass-2: rgba(233, 213, 255, .55);
-  --rc-border-hair: rgba(59, 16, 102, .08);
-  --rc-border: rgba(59, 16, 102, .16);
-  --rc-border-strong: rgba(59, 16, 102, .32);
-  --rc-text: #1e0a35;
-  --rc-text-muted: #5b4a6b;
-  --rc-text-subtle: #7a6a8d;
-  --rc-text-inverse: #f6f0fb;
-  --rc-accent-wash: rgba(124, 47, 207, .10);
-  --rc-success: #0e7a5f;
-  --rc-success-wash: rgba(14, 122, 95, .10);
-  --rc-danger: #c0294a;
-  --rc-danger-wash: rgba(192, 41, 74, .10);
-  --rc-warning: #9a6300;
-  --rc-warning-wash: rgba(154, 99, 0, .10);
-  --rc-info: #1e6e93;
-  --rc-neutral: #5b4a6b;
-  --rc-scrim: rgba(30, 10, 53, .42);
-  --rc-shadow-panel:
-    inset 0 1px 0 rgba(255, 255, 255, .85),
-    0 12px 32px rgba(59, 16, 102, .12);
-  --rc-shadow-pop:
-    inset 0 1px 0 rgba(255, 255, 255, .9),
-    0 18px 48px rgba(30, 10, 53, .18),
-    0 0 32px rgba(168, 85, 247, .18);
-}
-
-/* ==========================================================================
- * §1.10 旧变量 → 新 Token 兼容别名
- * 加这一段后，38 个存量页不改 JSX 即完成「去绿 + 紫化」。
- * 全部使用 var() 间接引用，浅色皮肤覆盖会在 computed-value 阶段动态生效。
- * @deprecated 仅用于存量页面，新代码禁止使用。
- * ========================================================================== */
-:root {
-  /* 绿色主色 → 品牌紫（含 Tailwind 透明度三元组） */
+  /* ===== 10. Tailwind / 旧变量兼容别名（深色三元组） ===== */
   --accent: var(--rc-accent);
   --accent-soft: var(--rc-accent-bright);
-  --accent-dark: var(--rc-purple-deep);
+  --accent-dark: var(--rc-brand-deep);
   --accent-wash: var(--rc-accent-wash);
   --accent-rgb: var(--rc-accent-rgb);
-  --accent-soft-rgb: 168 85 247;
-  --accent-dark-rgb: 30 10 53;
-  --accent-wash-rgb: 124 47 207;
+  --accent-soft-rgb: 34 197 94;
+  --accent-dark-rgb: 11 20 15;
+  --accent-wash-rgb: 34 197 94;
 
-  /* 中性面 → rc 语义面 */
   --surface: var(--rc-surface);
   --canvas: var(--rc-bg);
   --line: var(--rc-border);
   --line-soft: var(--rc-border-hair);
-  --surface-rgb: 21 10 38;
-  --canvas-rgb: 8 4 15;
-  --line-rgb: 233 213 255;
-  --line-soft-rgb: 255 255 255;
+  --surface-rgb: 12 19 15;
+  --canvas-rgb: 5 8 6;
+  --line-rgb: 74 222 128;
+  --line-soft-rgb: 167 243 208;
 
-  /* 文字 */
   --ink: var(--rc-text);
   --ink-muted: var(--rc-text-muted);
   --ink-subtle: var(--rc-text-subtle);
-  --ink-rgb: 246 240 251;
-  --ink-muted-rgb: 185 165 210;
-  --ink-subtle-rgb: 139 118 168;
+  --ink-rgb: 237 247 240;
+  --ink-muted-rgb: 148 178 160;
+  --ink-subtle-rgb: 100 130 113;
 
-  /* 功能色 */
   --success: var(--rc-success);
   --success-wash: var(--rc-success-wash);
   --success-rgb: var(--rc-success-rgb);
-  --success-wash-rgb: 70 214 176;
+  --success-wash-rgb: 52 211 153;
   --danger: var(--rc-danger);
   --danger-wash: var(--rc-danger-wash);
   --danger-rgb: var(--rc-danger-rgb);
-  --danger-wash-rgb: 255 107 125;
+  --danger-wash-rgb: 248 113 113;
   --warning: var(--rc-warning);
   --warning-wash: var(--rc-warning-wash);
   --warning-rgb: var(--rc-warning-rgb);
   --warning-wash-rgb: 245 185 78;
   --neutral: var(--rc-neutral);
   --neutral-wash: var(--rc-neutral-wash);
-  /* tailwind.config.js 的 neutral.DEFAULT / neutral.wash 需要三元组，补足契约缺口 */
-  --neutral-rgb: 156 139 181;
-  --neutral-wash-rgb: 156 139 181;
+  --neutral-rgb: 132 158 143;
+  --neutral-wash-rgb: 132 158 143;
 
-  /* 旧 navy 灰阶 → 紫阶 */
   --navy-950: var(--rc-ink);
   --navy-900: var(--rc-ink);
-  --navy-800: var(--rc-purple-deep);
-  --navy-700: var(--rc-purple-dark);
+  --navy-800: var(--rc-brand-deep);
+  --navy-700: var(--rc-brand-dark);
   --navy-600: var(--rc-text-subtle);
   --navy-100: var(--rc-lilac);
-  --navy-950-rgb: 8 4 15;
-  --navy-900-rgb: 8 4 15;
-  --navy-800-rgb: 30 10 53;
-  --navy-700-rgb: 59 16 102;
-  --navy-600-rgb: 139 118 168;
-  --navy-100-rgb: 233 213 255;
+  --navy-950-rgb: 5 8 6;
+  --navy-900-rgb: 5 8 6;
+  --navy-800-rgb: 11 20 15;
+  --navy-700-rgb: 20 42 30;
+  --navy-600-rgb: 100 130 113;
+  --navy-100-rgb: 187 247 208;
 
-  /* 字体 / 圆角 / 阴影 */
   --font-sans: var(--rc-font-body);
   --font-mono: var(--rc-font-mono);
   --radius-sm: var(--rc-radius-sm);
@@ -273,4 +268,143 @@
   --radius-panel: var(--rc-radius-lg);
   --shadow-panel: var(--rc-shadow-panel);
   --shadow-pop: var(--rc-shadow-pop);
+}
+
+/* ==========================================================================
+ * 浅色模式 · 仿 Anthropic 类纸编排（Warm Alabaster Paper & Terracotta Clay）
+ * 纸感暖底 #F4F1EA · 棉纸卡片 #FCFBF7 · 碳黑印刷字 #191815 · 陶土强调 #B85435
+ * ========================================================================== */
+[data-rc-skin='light'] {
+  color-scheme: light;
+
+  /* 品牌与材质基色（浅色类纸） */
+  --rc-ink: #f4f1ea;
+  --rc-ink-rgb: 244 241 234;
+  --rc-brand-deep: #24211d;
+  --rc-brand-dark: #453f37;
+  --rc-brand: #b85435;
+  --rc-brand-bright: #c96442;
+  --rc-brand-vivid: #983f24;
+  --rc-brand-soft: #2e2a25;
+
+  --rc-purple-deep: #24211d;
+  --rc-purple-dark: #453f37;
+  --rc-purple: #b85435;
+  --rc-violet: #b85435;
+  --rc-violet-rgb: 184 84 53;
+  --rc-magenta: #983f24;
+  --rc-magenta-rgb: 152 63 36;
+  --rc-lilac: #2e2a25;
+  --rc-lilac-rgb: 46 42 37;
+  --rc-glass: #fcfbf7;
+  --rc-hi: #fcfbf7;
+  --rc-hi-rgb: 252 251 247;
+  --rc-cool: #e9e4d9;
+
+  /* 语义纸面层次 */
+  --rc-bg: #f4f1ea;
+  --rc-bg-2: #ede8dd;
+  --rc-bg-3: #e4ded0;
+  --rc-surface: #fcfbf7;
+  --rc-surface-2: #f1ede4;
+  --rc-surface-3: #e7e1d4;
+  --rc-surface-glass: rgba(252, 251, 247, 0.94);
+  --rc-surface-glass-2: rgba(244, 241, 234, 0.96);
+
+  --rc-border-hair: rgba(25, 24, 21, 0.085);
+  --rc-border: rgba(25, 24, 21, 0.145);
+  --rc-border-strong: rgba(25, 24, 21, 0.28);
+
+  --rc-text: #191815;
+  --rc-text-muted: #545048;
+  --rc-text-subtle: #787369;
+  --rc-text-inverse: #fcfbf7;
+
+  --rc-accent: #b85435;
+  --rc-accent-bright: #c96442;
+  --rc-accent-hover: #a14528;
+  --rc-accent-wash: rgba(184, 84, 53, 0.095);
+  --rc-accent-wash-strong: rgba(184, 84, 53, 0.16);
+  --rc-accent-rgb: 184 84 53;
+
+  --rc-success: #1f6b4b;
+  --rc-success-wash: rgba(31, 107, 75, 0.10);
+  --rc-success-rgb: 31 107 75;
+  --rc-danger: #b43434;
+  --rc-danger-wash: rgba(180, 52, 52, 0.10);
+  --rc-danger-rgb: 180 52 52;
+  --rc-warning: #9a5b13;
+  --rc-warning-wash: rgba(154, 91, 19, 0.10);
+  --rc-warning-rgb: 154 91 19;
+  --rc-info: #255d84;
+  --rc-info-wash: rgba(37, 93, 132, 0.10);
+  --rc-neutral: #5c574e;
+  --rc-neutral-wash: rgba(92, 87, 78, 0.10);
+
+  --rc-focus: #b85435;
+  --rc-scrim: rgba(25, 24, 21, 0.34);
+
+  /* 类纸排版：标题切换为编排衬线体（Anthropic Editorial Serif） */
+  --rc-font-display: 'Newsreader', 'Noto Serif SC', 'Songti SC', Georgia, 'Times New Roman', serif;
+  --rc-ls-display: -0.015em;
+
+  /* 纸面材质：干爽、无霓虹眩光、细墨线与柔和纸页投影 */
+  --rc-panel-bg: var(--rc-surface);
+  --rc-panel-top-edge: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  --rc-input-bg: #faf8f3;
+  --rc-input-bg-focus: #ffffff;
+  --rc-row-hover: rgba(184, 84, 53, 0.055);
+  --rc-scrollbar-thumb: rgba(25, 24, 21, 0.20);
+  --rc-scrollbar-thumb-hover: rgba(25, 24, 21, 0.36);
+  --rc-icon-glow: drop-shadow(0 1px 2px rgba(184, 84, 53, 0.22));
+  --rc-icon-glow-active: drop-shadow(0 1px 2px rgba(152, 63, 36, 0.25));
+  --rc-watermark: rgba(25, 24, 21, 0.055);
+  --rc-grid-line: rgba(25, 24, 21, 0.045);
+  --rc-grid-line-major: rgba(25, 24, 21, 0.09);
+  --rc-paper-grain-opacity: 0.032;
+
+  --rc-blur-glass: blur(10px);
+  --rc-blur-panel: blur(8px);
+  --rc-shadow-inset-hi: inset 0 1px 0 rgba(255, 255, 255, 0.90);
+  --rc-shadow-inset-lo: inset 0 -1px 0 rgba(25, 24, 21, 0.04);
+  --rc-shadow-near: 0 2px 8px rgba(25, 24, 21, 0.06);
+  --rc-shadow-far: 0 18px 46px rgba(25, 24, 21, 0.12);
+  --rc-shadow-glass:
+    0 1px 2px rgba(25, 24, 21, 0.05),
+    0 10px 28px rgba(25, 24, 21, 0.07);
+  --rc-shadow-panel:
+    0 1px 2px rgba(25, 24, 21, 0.04),
+    0 6px 20px rgba(25, 24, 21, 0.045);
+  --rc-shadow-pop:
+    0 2px 6px rgba(25, 24, 21, 0.06),
+    0 18px 40px rgba(25, 24, 21, 0.12);
+  --rc-glow-violet: 0 2px 10px rgba(184, 84, 53, 0.20);
+  --rc-glow-magenta: 0 2px 8px rgba(184, 84, 53, 0.15);
+
+  /* Tailwind 三元组浅色覆写（确保所有 bg-surface / text-ink / border-line 类完整响应浅色模式） */
+  --accent-soft-rgb: 201 100 66;
+  --accent-dark-rgb: 152 63 36;
+  --accent-wash-rgb: 184 84 53;
+
+  --surface-rgb: 252 251 247;
+  --canvas-rgb: 244 241 234;
+  --line-rgb: 25 24 21;
+  --line-soft-rgb: 25 24 21;
+
+  --ink-rgb: 25 24 21;
+  --ink-muted-rgb: 84 80 72;
+  --ink-subtle-rgb: 120 115 105;
+
+  --success-wash-rgb: 31 107 75;
+  --danger-wash-rgb: 180 52 52;
+  --warning-wash-rgb: 154 91 19;
+  --neutral-rgb: 92 87 78;
+  --neutral-wash-rgb: 92 87 78;
+
+  --navy-950-rgb: 25 24 21;
+  --navy-900-rgb: 36 33 29;
+  --navy-800-rgb: 69 63 55;
+  --navy-700-rgb: 120 115 105;
+  --navy-600-rgb: 150 144 134;
+  --navy-100-rgb: 237 232 221;
 }

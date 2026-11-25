@@ -1,0 +1,822 @@
+/* ==========================================================================
+ * ReproCheck V4.1 · 全局微动效与空间编排系统
+ * 用布局节奏、方向性反馈与克制的物理缓动替代冗长说明文案。
+ * ========================================================================== */
+
+:root {
+  --rc-ease-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --rc-ease-snappy: cubic-bezier(0.22, 1, 0.36, 1);
+  --rc-ease-pop: cubic-bezier(0.34, 1.38, 0.64, 1);
+}
+
+/* ---------- 1. 抽屉 / 弹层空间入场 ---------- */
+@keyframes rc-drawer-slide-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-18px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes rc-scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rc-rise-stagger {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes rc-pulse-live {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgb(var(--rc-violet-rgb) / 0.45);
+  }
+  60% {
+    opacity: 0.85;
+    transform: scale(1.08);
+    box-shadow: 0 0 0 6px rgb(var(--rc-violet-rgb) / 0);
+  }
+}
+
+@keyframes rc-bar-grow {
+  from {
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left center;
+  }
+}
+
+.rc-drawer-panel {
+  animation: rc-drawer-slide-in 240ms var(--rc-ease-expo) both;
+}
+
+.rc-drawer-scrim {
+  animation: rc-scrim-in 180ms var(--rc-ease-out) both;
+}
+
+/* 卡片与指标卡错落入场 */
+.rc-stagger > * {
+  animation: rc-rise-stagger 340ms var(--rc-ease-expo) both;
+}
+
+.rc-stagger > *:nth-child(1) { animation-delay: 20ms; }
+.rc-stagger > *:nth-child(2) { animation-delay: 55ms; }
+.rc-stagger > *:nth-child(3) { animation-delay: 90ms; }
+.rc-stagger > *:nth-child(4) { animation-delay: 125ms; }
+.rc-stagger > *:nth-child(5) { animation-delay: 160ms; }
+.rc-stagger > *:nth-child(6) { animation-delay: 195ms; }
+
+/* 活体状态点：用微弱呼吸替代“每 1.5s 轮询”之类文案 */
+.rc-live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rc-violet);
+  animation: rc-pulse-live 2.2s var(--rc-ease-inout) infinite;
+}
+
+/* 键盘快捷键提示胶囊 */
+.rc-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 4px;
+  border: var(--rc-stroke-hair);
+  background: var(--rc-surface-2);
+  color: var(--rc-text-subtle);
+  font-family: var(--rc-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- 2. 卡片与表格触感反馈 ---------- */
+.panel,
+.rcw-card,
+.rc2-card,
+.rc2-kpi,
+.rc-we-card,
+.rc-wa-panel,
+.mb-panel {
+  transition:
+    transform 220ms var(--rc-ease-snappy),
+    border-color 200ms var(--rc-ease-hover),
+    box-shadow 220ms var(--rc-ease-snappy),
+    background-color 200ms var(--rc-ease-hover);
+}
+
+.rc2-kpi:hover,
+.rc2-card:hover {
+  border-color: var(--rc-border-strong);
+  transform: translateY(-2px);
+}
+
+/* 进度条自动平滑生长 */
+.rc4-meter__fill,
+.ov-dist__fill,
+.ux-guided-rail__progress i {
+  animation: rc-bar-grow 520ms var(--rc-ease-expo) both;
+}
+
+/* ---------- 3. 紧凑单行工作流进度胶囊（替代笨重多行 NextStepCard） ---------- */
+.rc-step-strip {
+  width: min(var(--rc-content-max), calc(100% - 32px));
+  margin: 12px auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 14px;
+  border-radius: var(--rc-radius-md);
+  border: var(--rc-stroke);
+  background: var(--rc-surface);
+  box-shadow: var(--rc-shadow-near);
+  animation: rc-rise-stagger 260ms var(--rc-ease-expo) both;
+}
+
+.rc-step-strip__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.rc-step-strip__dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.rc-step-strip__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rc-border-strong);
+  transition: transform 220ms var(--rc-ease-pop), background-color 220ms var(--rc-ease-out);
+}
+
+.rc-step-strip__dot.is-done {
+  background: var(--rc-success);
+}
+
+.rc-step-strip__dot.is-current {
+  width: 18px;
+  border-radius: 999px;
+  background: var(--rc-accent-bright);
+  box-shadow: var(--rc-glow-magenta);
+}
+
+[data-rc-skin='light'] .rc-step-strip__dot.is-current {
+  box-shadow: none;
+}
+
+.rc-step-strip__title {
+  font-size: 13px;
+  font-weight: var(--rc-fw-sb);
+  color: var(--rc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-step-strip__tag {
+  font-family: var(--rc-font-mono);
+  font-size: 11px;
+  color: var(--rc-text-subtle);
+  white-space: nowrap;
+}
+
+.rc-step-strip__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.rc-step-strip__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--rc-radius-pill);
+  background: var(--rc-accent);
+  color: var(--rc-hi);
+  font-size: 12px;
+  font-weight: var(--rc-fw-sb);
+  text-decoration: none;
+  transition:
+    transform 160ms var(--rc-ease-snappy),
+    background-color 160ms var(--rc-ease-hover),
+    box-shadow 180ms var(--rc-ease-hover);
+}
+
+.rc-step-strip__cta:hover {
+  background: var(--rc-accent-hover);
+  box-shadow: var(--rc-glow-violet);
+  transform: translateY(-1px);
+}
+
+.rc-step-strip__cta svg {
+  transition: transform 180ms var(--rc-ease-snappy);
+}
+
+.rc-step-strip__cta:hover svg {
+  transform: translateX(2px);
+}
+
+.rc-step-strip__secondary {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--rc-radius-pill);
+  border: var(--rc-stroke-hair);
+  color: var(--rc-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 150ms, border-color 150ms, background-color 150ms;
+}
+
+.rc-step-strip__secondary:hover {
+  color: var(--rc-text);
+  border-color: var(--rc-border-strong);
+  background: var(--rc-surface-2);
+}
+
+@media (max-width: 640px) {
+  .rc-step-strip {
+    width: calc(100% - 24px);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .rc-step-strip__tag {
+    display: none;
+  }
+}
+
+/* ---------- 4. 侧栏导航激活指示条 ---------- */
+.rc-nav-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--rc-radius-sm);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--rc-text-muted);
+  text-decoration: none;
+  transition:
+    background-color 160ms var(--rc-ease-hover),
+    color 160ms var(--rc-ease-hover),
+    transform 160ms var(--rc-ease-snappy);
+}
+
+.rc-nav-link:hover {
+  color: var(--rc-text);
+  background: var(--rc-surface-2);
+  transform: translateX(2px);
+}
+
+.rc-nav-link.is-active {
+  color: var(--rc-text);
+  font-weight: var(--rc-fw-sb);
+  background: var(--rc-accent-wash);
+}
+
+.rc-nav-link.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--rc-accent-bright);
+}
+
+.rc-nav-link.is-fallback {
+  opacity: 0.52;
+}
+
+.rc-nav-link.is-fallback:hover {
+  opacity: 0.85;
+}
+
+/* 侧栏项目切换器与新建项目动作 */
+.rc-project-nav-section {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: var(--rc-stroke-hair);
+  animation: rc-rise-stagger 260ms var(--rc-ease-expo) backwards;
+}
+
+.rc-spa-project-box {
+  margin: 0 2px 12px;
+  padding: 8px 10px;
+  border-radius: var(--rc-radius-sm);
+  border: var(--rc-stroke-hair);
+  background: var(--rc-surface);
+}
+
+.rc-spa-project-box__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rc-text-subtle);
+}
+
+.rc-spa-project-box__add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: var(--rc-stroke-hair);
+  color: var(--rc-text-muted);
+  transition: color 150ms, border-color 150ms, background-color 150ms;
+}
+
+.rc-spa-project-box__add:hover {
+  color: var(--rc-text);
+  border-color: var(--rc-border-strong);
+  background: var(--rc-accent-wash);
+}
+
+.rc-spa-project-select {
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: var(--rc-stroke-hair);
+  background: var(--rc-surface-2);
+  color: var(--rc-text);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 150ms;
+}
+
+.rc-spa-project-select:hover,
+.rc-spa-project-select:focus {
+  border-color: var(--rc-accent-bright);
+}
+
+.rc-spa-new-proj {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  width: 100%;
+  border-radius: var(--rc-radius-sm);
+  border: 1px dashed var(--rc-border-strong);
+  background: var(--rc-accent-wash);
+  color: var(--rc-violet);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 160ms, border-color 160ms, transform 160ms var(--rc-ease-snappy);
+}
+
+.rc-spa-new-proj:hover {
+  background: var(--rc-accent);
+  border-style: solid;
+  border-color: var(--rc-accent);
+  color: var(--rc-hi);
+  transform: translateY(-1px);
+}
+
+.rc-spa-new-proj.is-collapsed {
+  padding: 0;
+}
+
+/* ---------- 5. 单页应用常驻侧栏壳层（桌面锚定，无刷新切换感） ---------- */
+.rc-spa-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.rc-spa-rail {
+  width: 232px;
+  flex-shrink: 0;
+  flex-direction: column;
+  height: 100vh;
+  border-right: var(--rc-stroke-hair);
+  background: var(--rc-bg-2);
+  transition: width 260ms var(--rc-ease-expo);
+  overflow: hidden;
+  z-index: 25;
+}
+
+[data-rc-skin='light'] .rc-spa-rail {
+  background: var(--rc-bg-2);
+  border-right: 1px solid var(--rc-border);
+}
+
+.rc-spa-rail--collapsed {
+  width: 64px;
+}
+
+.rc-spa-rail__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: var(--rc-header-h);
+  padding: 0 12px;
+  border-bottom: var(--rc-stroke-hair);
+  flex-shrink: 0;
+}
+
+.rc-spa-rail--collapsed .rc-spa-rail__head {
+  justify-content: center;
+  padding: 0 8px;
+}
+
+.rc-spa-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--rc-text);
+  cursor: pointer;
+}
+
+.rc-spa-rail--collapsed .rc-spa-brand {
+  display: none;
+}
+
+.rc-spa-brand__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--rc-accent);
+  color: var(--rc-hi);
+  flex-shrink: 0;
+}
+
+.rc-spa-brand__name {
+  font-family: var(--rc-font-display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.rc-spa-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: var(--rc-stroke-hair);
+  background: transparent;
+  color: var(--rc-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 150ms, background-color 150ms, border-color 150ms;
+}
+
+.rc-spa-collapse-btn:hover {
+  color: var(--rc-text);
+  background: var(--rc-surface-2);
+  border-color: var(--rc-border);
+}
+
+.rc-spa-rail__nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 10px 20px;
+}
+
+.rc-nav-link.is-collapsed {
+  justify-content: center;
+  padding: 9px 0;
+}
+
+.rc-nav-link.is-collapsed.is-active::before {
+  top: 6px;
+  bottom: 6px;
+}
+
+.rc-spa-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.rc-spa-scroll {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: clip;
+  scroll-behavior: auto;
+}
+
+.rc-crumb-current {
+  animation: rc-crumb-swap 220ms var(--rc-ease-expo) backwards;
+}
+
+@keyframes rc-crumb-swap {
+  from {
+    opacity: 0;
+    transform: translate3d(6px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- 6. 双层同步切页转场（旧页滑出 + 新页滑入，零空白帧） ---------- */
+.rc-route-viewport {
+  position: relative;
+  min-height: 50vh;
+}
+
+.rc-route-ghost-host {
+  position: absolute;
+  inset: 0 -24px;
+  padding: 0 24px;
+  pointer-events: none;
+  overflow-x: clip;
+  overflow-y: visible;
+  z-index: 1;
+}
+
+.rc-route-ghost-layer {
+  width: 100%;
+  animation: rc-ghost-out-push 240ms var(--rc-ease-snappy) forwards;
+}
+
+.rc-route-ghost-layer[data-nav='pop'] {
+  animation-name: rc-ghost-out-pop;
+}
+
+.rc-route-ghost-layer[data-nav='replace'] {
+  animation-name: rc-ghost-out-fade;
+  animation-duration: 180ms;
+}
+
+@keyframes rc-ghost-out-push {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-28px, 0, 0) scale(0.988);
+  }
+}
+
+@keyframes rc-ghost-out-pop {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(28px, 0, 0) scale(0.988);
+  }
+}
+
+@keyframes rc-ghost-out-fade {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes rc-route-push-dark {
+  0% {
+    opacity: 0;
+    transform: translate3d(28px, 0, 0) scale(0.992);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes rc-route-pop-dark {
+  0% {
+    opacity: 0;
+    transform: translate3d(-28px, 0, 0) scale(0.992);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes rc-route-push-paper {
+  0% {
+    opacity: 0;
+    transform: translate3d(24px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes rc-route-pop-paper {
+  0% {
+    opacity: 0;
+    transform: translate3d(-24px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes rc-route-replace {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes rc-screen-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.988);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes rc-progress-sweep {
+  0% {
+    transform: scaleX(0.06);
+    opacity: 1;
+  }
+  70% {
+    transform: scaleX(0.84);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+@keyframes rc-progress-indeterminate {
+  0% {
+    transform: translateX(-35%) scaleX(0.28);
+  }
+  50% {
+    transform: translateX(35%) scaleX(0.55);
+  }
+  100% {
+    transform: translateX(115%) scaleX(0.25);
+  }
+}
+
+/* 使用 backwards 而非 both，避免动效结束后残留 transform 合成层影响页内 fixed 弹窗 */
+.rc-route-stage {
+  position: relative;
+  z-index: 2;
+  animation: rc-route-push-dark 300ms var(--rc-ease-expo) backwards;
+}
+
+.rc-route-stage[data-nav='pop'] {
+  animation-name: rc-route-pop-dark;
+  animation-duration: 280ms;
+}
+
+.rc-route-stage[data-nav='replace'] {
+  animation-name: rc-route-replace;
+  animation-duration: 200ms;
+}
+
+/* 浅色类纸模式：干爽翻页感，平滑横向切页 */
+[data-rc-skin='light'] .rc-route-stage {
+  animation-name: rc-route-push-paper;
+  animation-duration: 300ms;
+}
+
+[data-rc-skin='light'] .rc-route-stage[data-nav='pop'] {
+  animation-name: rc-route-pop-paper;
+  animation-duration: 280ms;
+}
+
+.rc-screen-transition {
+  min-height: 100vh;
+  animation: rc-screen-enter 280ms var(--rc-ease-expo) backwards;
+}
+
+.rc-route-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9998;
+  height: 2px;
+  pointer-events: none;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--rc-accent), var(--rc-accent-bright), var(--rc-magenta));
+  box-shadow: 0 0 10px rgb(var(--rc-violet-rgb) / 0.65);
+}
+
+[data-rc-skin='light'] .rc-route-progress {
+  background: linear-gradient(90deg, var(--rc-accent), var(--rc-accent-bright));
+  box-shadow: none;
+}
+
+.rc-route-progress--run:not(.is-loading) {
+  animation: rc-progress-sweep 420ms var(--rc-ease-expo) forwards;
+}
+
+.rc-route-progress--done {
+  transform: scaleX(1);
+  opacity: 0;
+  transition: opacity 220ms var(--rc-ease-out);
+}
+
+.rc-route-progress.is-loading {
+  animation: rc-progress-indeterminate 1.1s var(--rc-ease-inout) infinite;
+}
+
+/* 减弱动态 */
+@media (prefers-reduced-motion: reduce) {
+  .rc-drawer-panel,
+  .rc-drawer-scrim,
+  .rc-stagger > *,
+  .rc-live-dot,
+  .rc-step-strip,
+  .rc4-meter__fill,
+  .ov-dist__fill,
+  .ux-guided-rail__progress i {
+    animation: none !important;
+  }
+
+  .rc-route-stage,
+  .rc-route-stage[data-nav='pop'],
+  .rc-route-stage[data-nav='replace'],
+  .rc-screen-transition {
+    animation: rc-scrim-in 120ms linear both !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .rc-route-progress {
+    display: none;
+  }
+
+  .rc2-kpi:hover,
+  .rc2-card:hover,
+  .rc-nav-link:hover,
+  .rc-step-strip__cta:hover {
+    transform: none;
+  }
+}

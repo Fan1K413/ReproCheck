@@ -87,7 +87,7 @@ export default function ChangeMonitorPage() {
     <div className="rc4-page">
       <PageHeader
         title="项目变化监控与影响分析"
-        description="根据仓库真实 commit 与变更文件评估对事实、实验和审计结论的影响。普通 README 修改不会触发全量重跑。"
+        description="仓库变更与影响链分析"
         actions={
           <button
             type="button"
@@ -153,9 +153,9 @@ export default function ChangeMonitorPage() {
               )}
               {data.status !== 'analyzed' && (
                 <div className="mt-4">
-                  <p className="rcw-overline mb-2">仓库快照（真实同步记录）</p>
+                  <p className="rcw-overline mb-2">仓库快照</p>
                   {snapshots.length === 0 ? (
-                    <p className="rc4-list__meta">后端未返回任何仓库快照；不构造虚假快照。</p>
+                    <p className="rc4-list__meta">暂无仓库快照。</p>
                   ) : (
                     <div className="rc4-list">
                       {snapshots.map((snapshot) => (
@@ -222,7 +222,7 @@ export default function ChangeMonitorPage() {
                 <div className="rc4-panel__body">
                   {data.changed_files.length === 0 ? (
                     <p className="rc4-list__meta">
-                      快照未包含文件清单，影响范围无法确定；此处不虚构任何文件。
+                      快照未包含文件清单。
                     </p>
                   ) : visibleFiles.length === 0 ? (
                     <EmptyState compact title="该类别下没有变更文件" />

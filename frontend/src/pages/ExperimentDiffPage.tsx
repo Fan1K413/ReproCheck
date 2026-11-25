@@ -122,7 +122,7 @@ export default function ExperimentDiffPage() {
     <div className="rc4-page">
       <PageHeader
         title="实验差异分析中心"
-        description="比较两个或多个实验版本，找出条件与指标变化；只给出相关性线索，不认定因果。"
+        description="实验条件与指标差异比对"
       />
 
       <section className="rc4-panel">
@@ -157,7 +157,7 @@ export default function ExperimentDiffPage() {
             <EmptyState
               compact
               title="该项目还没有运行记录"
-              description="没有真实运行记录时无法比较；本工具不做任何模拟对比。"
+              description="暂无可比较的运行记录。"
             />
           ) : (
             <div className="rc4-rail">
@@ -203,8 +203,7 @@ export default function ExperimentDiffPage() {
                   偏差波形监控
                 </h3>
                 <span className="rc4-panel__hint">
-                  波形间距 ∝ |relative_diff|（相对 100% 封顶）· 可比指标 {comparableCount} /{' '}
-                  {diff.data.metric_diffs.length}
+                  可比指标 {comparableCount} / {diff.data.metric_diffs.length}
                 </span>
               </div>
             </div>
@@ -261,11 +260,8 @@ export default function ExperimentDiffPage() {
                   </div>
                 ))}
               </div>
-              <p className="rc4-list__meta mt-3">
-                缺少可比值的指标不绘制波形，也不用装饰条替代真实偏差。
-              </p>
 
-              {/* 运行快照的真实指标（缺失时如实标注，不用推测值补齐） */}
+              {/* 运行快照的真实指标 */}
               <div className="mt-4">
                 <p className="rcw-overline mb-2">运行快照指标</p>
                 <div className="grid gap-3 md:grid-cols-2">

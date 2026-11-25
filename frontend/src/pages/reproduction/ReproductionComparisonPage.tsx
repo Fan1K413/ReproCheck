@@ -220,9 +220,7 @@ function Comparison({ pid }: { pid: string }) {
         <div className="rc-wa-head__text">
           <p className="rc-wa-eyebrow">结果对照</p>
           <h1 className="rc-wa-title">结果对照与质量评估</h1>
-          <p className="rc-wa-lede">
-            论文值与复现值均来自后端，判定由后端规则给出；切换方案时透视卡 400ms 滑入，差异条长度 ∝ 真实 diff_relative。
-          </p>
+          <p className="rc-wa-lede">指标对比与质量评估</p>
         </div>
         <div className="rc-wa-head__actions">
           <Link to={`/projects/${pid}/reproduction`} className="btn-ghost">
@@ -330,7 +328,7 @@ function Comparison({ pid }: { pid: string }) {
                 <div className="rc-wa-dual" key={active.comparison_id}>
                   {/* 后卡：复现值（同一格内错位叠压在前卡之上） */}
                   <div className={`rc-wa-dual__card rc-wa-dual__card--back${entering ? ' is-entering' : ''}`}>
-                    <span className="rc-wa-dual__label">复现值 reproduced_value</span>
+                    <span className="rc-wa-dual__label">复现值</span>
                     <span
                       className="rc-wa-dual__value"
                       style={{ marginTop: 0, fontSize: 'var(--rc-fs-h1)', color: 'var(--rc-violet)' }}
@@ -345,7 +343,7 @@ function Comparison({ pid }: { pid: string }) {
 
                   {/* 前卡：论文基准 */}
                   <div className={`rc-wa-dual__card rc-wa-dual__card--front${entering ? ' is-entering' : ''}`}>
-                    <p className="rc-wa-dual__label">论文基准 paper_value</p>
+                    <p className="rc-wa-dual__label">论文基准</p>
                     <p className="rc-wa-dual__value">
                       {active.paper_value == null ? '数据不足' : formatNumber(active.paper_value)}
                       {active.paper_value != null && active.unit ? ` ${active.unit}` : ''}
@@ -360,13 +358,13 @@ function Comparison({ pid }: { pid: string }) {
                         </p>
                       </div>
                       <div>
-                        <p className="rc-wa-dual__label">绝对差 diff_absolute</p>
+                        <p className="rc-wa-dual__label">绝对差</p>
                         <p className="rc-wa-meta__v" style={{ fontSize: 'var(--rc-fs-h3)' }}>
                           {formatNumber(active.diff_absolute)}
                         </p>
                       </div>
                       <div>
-                        <p className="rc-wa-dual__label">相对差 diff_relative</p>
+                        <p className="rc-wa-dual__label">相对差</p>
                         <p
                           className="rc-wa-meta__v"
                           style={{
@@ -388,7 +386,7 @@ function Comparison({ pid }: { pid: string }) {
 
                     {active.diff_relative == null ? (
                       <p className="rc-wa-kpi__hint" style={{ marginTop: 'var(--rc-space-4)' }}>
-                        论文值或复现值缺失，按规范不绘制对比条；判定：{verdictLabel(active.verdict)}。
+                        数值缺失，判定：{verdictLabel(active.verdict)}
                       </p>
                     ) : (
                       <>
@@ -412,7 +410,7 @@ function Comparison({ pid }: { pid: string }) {
                           />
                         </div>
                         <p className="rc-wa-kpi__hint" style={{ marginTop: 'var(--rc-space-2)' }}>
-                          双向差异条：以 0 为中心，长度 ∝ |diff_relative| / {maxAbsDiff.toFixed(6)}（全局同尺度）
+                          偏差尺度 ±{(maxAbsDiff * 100).toFixed(2)}%
                         </p>
                       </>
                     )}
@@ -429,7 +427,7 @@ function Comparison({ pid }: { pid: string }) {
                 <Icon as={GitCompare} size="sm" tone="accent" />
                 差异明细
               </div>
-              <span className="rc-wa-source">conditions_check / tolerance_basis</span>
+              <span className="rc-wa-source">{comparisons.length} 项</span>
             </div>
             <div className="rc-wa-panel__body rc-wa-panel__body--flush rc-wa-tablehost">
               <table className="data-table">
@@ -523,7 +521,7 @@ function Comparison({ pid }: { pid: string }) {
                                   </div>
                                 </div>
                                 <div>
-                                  <p className="rc-wa-sub">容差依据 tolerance_basis</p>
+                                  <p className="rc-wa-sub">容差依据</p>
                                   <p
                                     style={{
                                       marginTop: 'var(--rc-space-2)',
@@ -560,7 +558,6 @@ function Comparison({ pid }: { pid: string }) {
             <Icon as={Scale} size="sm" tone="accent" />
             复现质量评估
           </div>
-          <span className="rc-wa-source">来源：后端质量对照聚合</span>
         </div>
         <div className="rc-wa-panel__body">
           {qualityQuery.isPending ? (
@@ -602,7 +599,7 @@ function Comparison({ pid }: { pid: string }) {
                     backgroundColor: 'var(--rc-surface-3)',
                   }}
                 >
-                  <span className="rc-wa-kpi__label">综合得分（后端计算）</span>
+                  <span className="rc-wa-kpi__label">综合得分</span>
                   <span className="mono" style={{ fontSize: 'var(--rc-fs-h1)', fontWeight: 'var(--rc-fw-sb)' }}>
                     {qualityQuery.data.overall}
                   </span>
@@ -627,7 +624,7 @@ function Comparison({ pid }: { pid: string }) {
 
               {qualityQuery.data?.formula && (
                 <div>
-                  <p className="rc-wa-sub">计算公式 formula</p>
+                  <p className="rc-wa-sub">计算公式</p>
                   <pre
                     className="mono rc-wa-code"
                     style={{ marginTop: 'var(--rc-space-2)', padding: 'var(--rc-space-3)', whiteSpace: 'pre-wrap' }}

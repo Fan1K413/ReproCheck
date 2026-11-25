@@ -379,11 +379,16 @@ export default function ParseTasksPage() {
             返回材料列表
           </Link>
           <p className="mb-head__eyebrow mt-3">自动处理 · 任务流水轨</p>
-          <h1 className="mb-head__title">自动处理任务</h1>
-          <p className="mb-head__desc">
-            任务状态轮询自 GET /parse-tasks；
-            {hasActive ? '存在未完成任务，每 1.5 秒刷新一次。' : '当前全部为终态，已停止轮询。'}
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="mb-head__title">自动处理任务</h1>
+            {hasActive && (
+              <StatusBadge tone="accent" dot={false}>
+                <span className="rc-live-dot" aria-hidden="true" />
+                自动刷新
+              </StatusBadge>
+            )}
+          </div>
+          <p className="mb-head__desc">解析队列与执行状态</p>
         </div>
         <nav className="mb-head__actions">
           <Link to={`${base}/facts`} className="btn-ghost">
@@ -436,46 +441,22 @@ export default function ParseTasksPage() {
         </p>
       )}
 
-      {/* 状态计数（真实任务集合聚合） */}
-      {tasks.length > 0 && (
-        <div className="mb-tally" role="group" aria-label="任务状态计数">
-          {tally.map(([status, count]) => (
-            <span key={status} className="mb-tally__item">
-              <StatusBadge tone={statusTone(status as TaskStatus)} dot={false}>
-                {statusLabel(status as TaskStatus)}
-              </StatusBadge>
-              <span className="mb-tally__n">{count}</span>
-            </span>
-          ))}
-          <span className="mb-tally__item">
-            <Icon name="listTree" size="xs" tone="muted" />
-            合计
-            <span className="mb-tally__n">{tasks.length}</span>
-          </span>
-        </div>
-      )}
-
-      {/* 特色交互：阶段流水轨 —— 按真实开始时间排列，点击节点查看该任务详情 */}
-      <section className="mb-panel" aria-label="任务阶段流水轨">
-        <div className="mb-panel__head">
-          <h3 className="mb-panel__title">
-            <Icon as={Activity} size="sm" tone="accent" />
-            阶段流水轨
-          </h3>
-          <span className="mb-panel__hint">按 started_at 排序 · 点击节点展开该任务</span>
-        </div>
-        {tasksQuery.isPending ? (
+      {tasksQuery.isPending ? (
+        <section className="mb-panel" aria-label="任务加载中">
           <LoadingState compact message="正在读取解析任务…" />
-        ) : tasksQuery.isError ? (
+        </section>
+      ) : tasksQuery.isError ? (
+        <section className="mb-panel" aria-label="任务加载失败">
           <ErrorState
             compact
             message={errorMessage(tasksQuery.error, '无法获取解析任务，请确认后端服务已启动。')}
             code={errorCode(tasksQuery.error)}
             onRetry={() => void tasksQuery.refetch()}
           />
-        ) : railTasks.length === 0 ? (
+        </section>
+      ) : tasks.length === 0 ? (
+        <section className="mb-panel" aria-label="解析任务为空">
           <EmptyState
-            compact
             icon={Hash}
             title="尚无解析任务"
             description="在材料管理中点击「解析」后，任务会出现在这里。"
@@ -485,191 +466,196 @@ export default function ParseTasksPage() {
               </Link>
             }
           />
-        ) : (
-          <div className="mb-rail" role="tablist" aria-label="解析任务列表">
-            {railTasks.map((task) => {
-              const active = selectedTaskId === task.task_id
-              const running = isActiveTaskStatus(task.status)
-              return (
-                <button
-                  key={task.task_id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  className={`mb-rail__node ${active ? 'mb-rail__node--on' : ''}`}
-                  onClick={() => {
-                    setSelectedTaskId(task.task_id)
-                    setActionError(null)
-                  }}
-                >
-                  <span className="mb-rail__id">{task.task_id.slice(0, 8)}</span>
-                  <span className="mb-rail__name">{materialName(task)}</span>
-                  <span className="mb-rail__stage">
-                    阶段 {task.stage || '—'}
-                    {task.stage_message ? ` · ${task.stage_message}` : ''}
-                  </span>
-                  <span className="mb-rail__foot">
-                    {running ? <span className="mb-rail__pulse" aria-hidden="true" /> : <span />}
-                    <StatusBadge tone={statusTone(task.status)}>{statusLabel(task.status)}</StatusBadge>
-                  </span>
-                  <span className="mb-rail__foot">
-                    <span>{formatDateTime(task.started_at)}</span>
-                    <span>{formatDuration(task.duration_ms)}</span>
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* 任务详情（L3 展开） */}
-      {selectedTaskId && (
-        <section className="mb-panel" aria-label="任务详情">
-          <div className="mb-panel__head">
-            <h3 className="mb-panel__title">
-              <Icon name="file" size="sm" tone="accent" />
-              任务详情
-            </h3>
-            <div className="flex items-center gap-2">
-              <span className="mb-mono text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
-                {selectedTaskId.slice(0, 12)}
-              </span>
-              <button
-                type="button"
-                className="mb-iconbtn"
-                aria-label="关闭任务详情"
-                onClick={() => setSelectedTaskId(null)}
-              >
-                <Icon name="x" size="sm" />
-              </button>
-            </div>
-          </div>
-          {detailQuery.isPending ? (
-            <LoadingState compact message="正在读取任务详情…" />
-          ) : detailQuery.isError ? (
-            <ErrorState
-              compact
-              message={errorMessage(detailQuery.error, '无法获取任务详情。')}
-              code={errorCode(detailQuery.error)}
-              onRetry={() => void detailQuery.refetch()}
-            />
-          ) : selectedTask ? (
-            <div className="mb-panel__body">
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge tone={statusTone(selectedTask.status)}>
-                  {statusLabel(selectedTask.status)}
+        </section>
+      ) : (
+        <>
+          {/* 状态计数（真实任务集合聚合） */}
+          <div className="mb-tally" role="group" aria-label="任务状态计数">
+            {tally.map(([status, count]) => (
+              <span key={status} className="mb-tally__item">
+                <StatusBadge tone={statusTone(status as TaskStatus)} dot={false}>
+                  {statusLabel(status as TaskStatus)}
                 </StatusBadge>
-                <span className="mb-mono text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
-                  阶段：{selectedTask.stage || '—'}
-                </span>
-              </div>
+                <span className="mb-tally__n">{count}</span>
+              </span>
+            ))}
+            <span className="mb-tally__item">
+              <Icon name="listTree" size="xs" tone="muted" />
+              合计
+              <span className="mb-tally__n">{tasks.length}</span>
+            </span>
+          </div>
 
-              {/* 阶段步进：仅当后端 stage 命中已知阶段序列时高亮 */}
-              {selectedStageIndex >= 0 && (
-                <div className="mt-5">
-                  <p className="mb-label mb-2">流水线阶段</p>
-                  <div className="mb-steps">
-                    {STAGE_STEPS.map((step, index) => {
-                      const isOn = index === selectedStageIndex && selectedTask.status !== 'completed'
-                      const isDone =
-                        selectedStageIndex >= 0 &&
-                        (index < selectedStageIndex ||
-                          (selectedTask.status === 'completed' && index <= selectedStageIndex))
-                      return (
-                        <div
-                          key={step.key}
-                          className={`mb-steps__item ${isOn ? 'mb-steps__item--on' : ''} ${
-                            isDone ? 'mb-steps__item--done' : ''
-                          }`}
-                        >
-                          <span className="mb-steps__dot" />
-                          <span className="mb-steps__t">{step.label}</span>
-                        </div>
-                      )
-                    })}
+          {/* 特色交互：阶段流水轨 —— 点击节点查看该任务详情 */}
+          <section className="mb-panel" aria-label="任务阶段流水轨">
+            <div className="mb-panel__head">
+              <h3 className="mb-panel__title">
+                <Icon as={Activity} size="sm" tone="accent" />
+                阶段流水轨
+              </h3>
+              <span className="mb-panel__hint">点击节点查看详情</span>
+            </div>
+            <div className="mb-rail" role="tablist" aria-label="解析任务列表">
+              {railTasks.map((task) => {
+                const active = selectedTaskId === task.task_id
+                const running = isActiveTaskStatus(task.status)
+                return (
+                  <button
+                    key={task.task_id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    className={`mb-rail__node ${active ? 'mb-rail__node--on' : ''}`}
+                    onClick={() => {
+                      setSelectedTaskId(task.task_id)
+                      setActionError(null)
+                    }}
+                  >
+                    <span className="mb-rail__id">{task.task_id.slice(0, 8)}</span>
+                    <span className="mb-rail__name">{materialName(task)}</span>
+                    <span className="mb-rail__stage">
+                      阶段 {task.stage || '—'}
+                      {task.stage_message ? ` · ${task.stage_message}` : ''}
+                    </span>
+                    <span className="mb-rail__foot">
+                      {running ? <span className="mb-rail__pulse" aria-hidden="true" /> : <span />}
+                      <StatusBadge tone={statusTone(task.status)}>{statusLabel(task.status)}</StatusBadge>
+                    </span>
+                    <span className="mb-rail__foot">
+                      <span>{formatDateTime(task.started_at)}</span>
+                      <span>{formatDuration(task.duration_ms)}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          {/* 任务详情（L3 展开） */}
+          {selectedTaskId && (
+            <section className="mb-panel" aria-label="任务详情">
+              <div className="mb-panel__head">
+                <h3 className="mb-panel__title">
+                  <Icon name="file" size="sm" tone="accent" />
+                  任务详情
+                </h3>
+                <div className="flex items-center gap-2">
+                  <span className="mb-mono text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
+                    {selectedTaskId.slice(0, 12)}
+                  </span>
+                  <button
+                    type="button"
+                    className="mb-iconbtn"
+                    aria-label="关闭任务详情"
+                    onClick={() => setSelectedTaskId(null)}
+                  >
+                    <Icon name="x" size="sm" />
+                  </button>
+                </div>
+              </div>
+              {detailQuery.isPending ? (
+                <LoadingState compact message="正在读取任务详情…" />
+              ) : detailQuery.isError ? (
+                <ErrorState
+                  compact
+                  message={errorMessage(detailQuery.error, '无法获取任务详情。')}
+                  code={errorCode(detailQuery.error)}
+                  onRetry={() => void detailQuery.refetch()}
+                />
+              ) : selectedTask ? (
+                <div className="mb-panel__body">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge tone={statusTone(selectedTask.status)}>
+                      {statusLabel(selectedTask.status)}
+                    </StatusBadge>
+                    <span className="mb-mono text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
+                      阶段：{selectedTask.stage || '—'}
+                    </span>
+                  </div>
+
+                  {/* 阶段步进：仅当后端 stage 命中已知阶段序列时高亮 */}
+                  {selectedStageIndex >= 0 && (
+                    <div className="mt-5">
+                      <p className="mb-label mb-2">流水线阶段</p>
+                      <div className="mb-steps">
+                        {STAGE_STEPS.map((step, index) => {
+                          const isOn = index === selectedStageIndex && selectedTask.status !== 'completed'
+                          const isDone =
+                            selectedStageIndex >= 0 &&
+                            (index < selectedStageIndex ||
+                              (selectedTask.status === 'completed' && index <= selectedStageIndex))
+                          return (
+                            <div
+                              key={step.key}
+                              className={`mb-steps__item ${isOn ? 'mb-steps__item--on' : ''} ${
+                                isDone ? 'mb-steps__item--done' : ''
+                              }`}
+                            >
+                              <span className="mb-steps__dot" />
+                              <span className="mb-steps__t">{step.label}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <p
+                    className="mt-5 rounded-md px-3 py-2 text-sm"
+                    style={{ backgroundColor: 'var(--rc-surface-2)', color: 'var(--rc-text)' }}
+                  >
+                    <span className="font-semibold">阶段消息：</span>
+                    {selectedTask.stage_message || '—'}
+                  </p>
+
+                  <dl className="mb-dl mt-5">
+                    {[
+                      ['提示词版本', selectedTask.prompt_version || '—'],
+                      ['模型', selectedTask.model || '—'],
+                      ['模型调用次数', formatCount(selectedTask.model_calls)],
+                      ['总 Token', formatCount(selectedTask.total_tokens)],
+                      ['Prompt Token', formatCount(selectedTask.prompt_tokens)],
+                      ['Completion Token', formatCount(selectedTask.completion_tokens)],
+                      ['耗时', formatDuration(selectedTask.duration_ms)],
+                      ['事实数', formatCount(selectedTask.facts_count)],
+                      ['开始时间', formatDateTime(selectedTask.started_at)],
+                      ['完成时间', formatDateTime(selectedTask.completed_at)],
+                      ['错误码', selectedTask.error_code ?? '—'],
+                      ['错误信息', selectedTask.error_message ?? '—'],
+                    ].map(([label, value]) => (
+                      <div key={label} className="mb-dl__row">
+                        <dt className="mb-dl__key">{label}</dt>
+                        <dd className="mb-dl__val">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+
+                  <div className="mt-5 flex flex-wrap items-center gap-2">
+                    {renderActions(selectedTask)}
                   </div>
                 </div>
-              )}
+              ) : null}
+            </section>
+          )}
 
-              <p
-                className="mt-5 rounded-md px-3 py-2 text-sm"
-                style={{ backgroundColor: 'var(--rc-surface-2)', color: 'var(--rc-text)' }}
-              >
-                <span className="font-semibold">阶段消息：</span>
-                {selectedTask.stage_message || '（后端未提供阶段消息）'}
-              </p>
-
-              <dl className="mb-dl mt-5">
-                {[
-                  ['提示词版本', selectedTask.prompt_version || '—'],
-                  ['模型', selectedTask.model || '—'],
-                  ['模型调用次数', formatCount(selectedTask.model_calls)],
-                  ['总 Token', formatCount(selectedTask.total_tokens)],
-                  ['Prompt Token', formatCount(selectedTask.prompt_tokens)],
-                  ['Completion Token', formatCount(selectedTask.completion_tokens)],
-                  ['耗时', formatDuration(selectedTask.duration_ms)],
-                  ['事实数', formatCount(selectedTask.facts_count)],
-                  ['开始时间', formatDateTime(selectedTask.started_at)],
-                  ['完成时间', formatDateTime(selectedTask.completed_at)],
-                  ['错误码', selectedTask.error_code ?? '—'],
-                  ['错误信息', selectedTask.error_message ?? '—'],
-                ].map(([label, value]) => (
-                  <div key={label} className="mb-dl__row">
-                    <dt className="mb-dl__key">{label}</dt>
-                    <dd className="mb-dl__val">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                {renderActions(selectedTask)}
+          {/* 完整任务表 */}
+          <section className="mb-panel" aria-label="任务列表">
+            <div className="mb-panel__head">
+              <h3 className="mb-panel__title">
+                <Icon name="listTree" size="sm" tone="accent" />
+                任务列表
+              </h3>
+              <div className="flex items-center gap-3">
+                {hasActive && (
+                  <StatusBadge tone="accent" dot={false}>
+                    <span className="rc-live-dot" aria-hidden="true" />
+                    自动刷新
+                  </StatusBadge>
+                )}
+                {tasksQuery.data && <StatusBadge tone="neutral">{tasksQuery.data.total} 项</StatusBadge>}
               </div>
             </div>
-          ) : null}
-        </section>
-      )}
 
-      {/* 完整任务表 */}
-      <section className="mb-panel" aria-label="任务列表">
-        <div className="mb-panel__head">
-          <h3 className="mb-panel__title">
-            <Icon name="listTree" size="sm" tone="accent" />
-            任务列表
-          </h3>
-          <div className="flex items-center gap-3">
-            {hasActive && (
-              <StatusBadge tone="accent">
-                <Icon name="rotate" size="xs" className="animate-spin" />
-                轮询中
-              </StatusBadge>
-            )}
-            {tasksQuery.data && <StatusBadge tone="neutral">{tasksQuery.data.total} 项</StatusBadge>}
-          </div>
-        </div>
-
-        {tasksQuery.isPending ? (
-          <LoadingState compact message="正在读取解析任务…" />
-        ) : tasksQuery.isError ? (
-          <ErrorState
-            compact
-            message={errorMessage(tasksQuery.error, '无法获取解析任务，请确认后端服务已启动。')}
-            code={errorCode(tasksQuery.error)}
-            onRetry={() => void tasksQuery.refetch()}
-          />
-        ) : tasks.length === 0 ? (
-          <EmptyState
-            icon={Hash}
-            title="尚无解析任务"
-            description="在材料管理中点击「解析」后，任务会出现在这里。"
-            action={
-              <Link to={`${base}/materials`} className="btn-primary">
-                前往材料管理
-              </Link>
-            }
-          />
-        ) : (
-          <>
             <div className="hidden lg:block">
               <DataTable columns={columns} data={tasks} rowKey={(task) => task.task_id} />
             </div>
@@ -717,9 +703,9 @@ export default function ParseTasksPage() {
                 </li>
               ))}
             </ul>
-          </>
-        )}
-      </section>
+          </section>
+        </>
+      )}
     </div>
   )
 }

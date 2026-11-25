@@ -2,9 +2,9 @@
    Bloom UI —— 舞台、瓣卡与工作区
    只作用于 .bloom-* 命名空间，不影响既有 panel / data-table / 侧栏。
 
-   §1.11 作用域收敛：Bloom 舞台保持自带深色（不加 data-rc-skin="light"），
-   仅把 bloom 变量收敛到 --rc-* 体系 —— Shell 走 rc 语义层，
-   Data 走 rc 功能色，Glow 统一 rc 紫光。
+   双主题体系：
+   - 深色模式（默认 / [data-rc-skin='dark']）：黑曜石黑 × 翡翠绿精密仪表
+   - 浅色模式（[data-rc-skin='light']）：暖调类纸编排（Warm Alabaster Paper & Terracotta）
    ========================================================================== */
 
 .bloom-page {
@@ -25,12 +25,12 @@
   --bloom-pass: var(--rc-success);
   --bloom-fail: var(--rc-danger);
   --bloom-pending: var(--rc-warning);
-  /* 纸面（浅底）上的状态墨色：与亮色功能色同源，向墨紫混合以保证对比度 */
+  /* 纸面（浅底）上的状态墨色：与亮色功能色同源，向深底混色以保证对比度 */
   --bloom-pass-ink: color-mix(in srgb, var(--rc-success) 42%, var(--rc-purple-deep));
   --bloom-fail-ink: color-mix(in srgb, var(--rc-danger) 42%, var(--rc-purple-deep));
   --bloom-pending-ink: color-mix(in srgb, var(--rc-warning) 42%, var(--rc-purple-deep));
 
-  /* ===== Glow：统一紫光 ===== */
+  /* ===== Glow：强调光晕 ===== */
   --bloom-glow: var(--rc-glow-violet);
 
   height: 100dvh;
@@ -1786,19 +1786,19 @@
   font-size: 9px;
 }
 
-.bloom-stage--mobile .bloom-topbar {
+.bloom-page--mobile .bloom-topbar {
   height: auto;
   flex-wrap: wrap;
   gap: 8px;
   padding: 10px 14px;
 }
 
-.bloom-stage--mobile .bloom-project__name,
-.bloom-stage--mobile .bloom-project__paper {
+.bloom-page--mobile .bloom-project__name,
+.bloom-page--mobile .bloom-project__paper {
   max-width: 200px;
 }
 
-.bloom-stage--mobile .bloom-ridge {
+.bloom-page--mobile .bloom-ridge {
   order: 4;
   margin-left: 0;
   width: 100%;
@@ -1806,11 +1806,11 @@
   justify-content: flex-start;
 }
 
-.bloom-stage--mobile .bloom-topbar__right {
+.bloom-page--mobile .bloom-topbar__right {
   margin-left: auto;
 }
 
-.bloom-stage--mobile .bloom-avatars {
+.bloom-page--mobile .bloom-avatars {
   display: none;
 }
 
@@ -1909,8 +1909,8 @@
     color-mix(in srgb, var(--rc-violet) 14%, transparent) 86%,
     color-mix(in srgb, var(--rc-accent) 4%, transparent)
   );
-  -webkit-mask-image: radial-gradient(circle, transparent 11%, #000 38%, transparent 77%);
-  mask-image: radial-gradient(circle, transparent 11%, #000 38%, transparent 77%);
+  -webkit-mask-image: radial-gradient(circle closest-side, transparent 14%, #000 44%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side, transparent 14%, #000 44%, transparent 100%);
 }
 
 .bloom-picker__petal {
@@ -2234,7 +2234,7 @@
 }
 
 .bloom-atelier-entry:hover {
-  background: var(--rc-violet);
+  background: var(--rc-accent-hover);
   transform: translateY(-1px);
 }
 
@@ -2648,7 +2648,7 @@
 }
 
 .btn-atelier:hover {
-  background: var(--rc-violet);
+  background: var(--rc-accent-hover);
   transform: translateY(-1px);
 }
 
@@ -3632,4 +3632,641 @@
     padding: 0 7px;
     font-size: 9.5px;
   }
+}
+
+/* ==========================================================================
+   浅色模式 · 仿 Anthropic 暖调类纸编排（Warm Alabaster Paper & Terracotta）
+   ========================================================================== */
+
+[data-rc-skin='light'] .bloom-page {
+  --bloom-ink: var(--rc-text);
+  --bloom-panel: var(--rc-surface);
+  --bloom-paper: var(--rc-surface);
+  --bloom-line: var(--rc-border);
+  --bloom-paper-ink: var(--rc-text);
+  --bloom-paper-muted: var(--rc-text-muted);
+
+  --bloom-accent: var(--rc-accent);
+  --bloom-accent-deep: var(--rc-brand-deep);
+  --bloom-pass: var(--rc-success);
+  --bloom-fail: var(--rc-danger);
+  --bloom-pending: var(--rc-warning);
+  --bloom-pass-ink: var(--rc-success);
+  --bloom-fail-ink: var(--rc-danger);
+  --bloom-pending-ink: var(--rc-warning);
+  --bloom-glow: var(--rc-shadow-near);
+}
+
+[data-rc-skin='light'] .bloom-layout {
+  background: var(--rc-bg);
+}
+
+[data-rc-skin='light'] .bloom-shell {
+  background: var(--rc-bg);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-shell__glow {
+  background:
+    radial-gradient(rgba(25, 24, 21, 0.06) 1px, transparent 1px),
+    radial-gradient(62% 54% at 50% 48%, rgba(184, 84, 53, 0.045), transparent 72%);
+  background-size: 22px 22px, 100% 100%;
+}
+
+/* ---------------- 浅色顶栏 ---------------- */
+
+[data-rc-skin='light'] .bloom-topbar {
+  border-bottom: 1px solid var(--rc-border);
+  background: rgba(244, 241, 234, 0.90);
+  backdrop-filter: blur(8px);
+}
+
+[data-rc-skin='light'] .bloom-back {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-back:hover {
+  border-color: var(--rc-accent);
+  color: var(--rc-accent);
+  background: var(--rc-accent-wash);
+}
+
+[data-rc-skin='light'] .bloom-project__mark {
+  border-color: rgba(184, 84, 53, 0.34);
+  background: var(--rc-surface);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-project__name {
+  font-family: var(--rc-font-display);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-project__paper {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-ridge {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+}
+
+[data-rc-skin='light'] .bloom-ridge__step {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-ridge__step:hover {
+  color: var(--rc-text);
+  background: var(--rc-bg-2);
+}
+
+[data-rc-skin='light'] .bloom-ridge__step.is-on {
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-ridge__dot {
+  border-color: var(--rc-border-strong);
+}
+
+[data-rc-skin='light'] .bloom-ridge__step.is-on .bloom-ridge__dot {
+  border-color: var(--rc-accent);
+  background: var(--rc-accent);
+  box-shadow: 0 0 0 3px var(--rc-accent-wash);
+}
+
+[data-rc-skin='light'] .bloom-ridge__link {
+  background: var(--rc-border);
+}
+
+[data-rc-skin='light'] .bloom-stage__tabs {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+}
+
+[data-rc-skin='light'] .bloom-stage__tabs a {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-stage__tabs a:hover {
+  color: var(--rc-text);
+  background: var(--rc-bg-2);
+}
+
+[data-rc-skin='light'] .bloom-stage__tabs span.is-active {
+  background: var(--rc-accent);
+  color: var(--rc-text-inverse);
+}
+
+[data-rc-skin='light'] .bloom-avatar {
+  border-color: var(--rc-bg);
+  background: var(--rc-bg-3);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-link-out {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-link-out:hover {
+  border-color: var(--rc-accent);
+  color: var(--rc-accent);
+  background: var(--rc-accent-wash);
+}
+
+/* ---------------- 浅色舞台 HUD 与轨道 ---------------- */
+
+[data-rc-skin='light'] .bloom-stage__hud {
+  color: var(--rc-text-subtle);
+}
+
+[data-rc-skin='light'] .bloom-stage__hud-item--right {
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-stage__rails ellipse {
+  stroke-opacity: 0.13;
+}
+
+[data-rc-skin='light'] .bloom-stage__rails ellipse:nth-of-type(2) {
+  stroke-opacity: 0.10;
+}
+
+[data-rc-skin='light'] .bloom-stage__rails ellipse:nth-of-type(3) {
+  stroke-opacity: 0.08;
+}
+
+/* ---------------- 浅色中心核 ---------------- */
+
+[data-rc-skin='light'] .bloom-core {
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-core__disc {
+  border: 1px solid var(--rc-border-strong);
+  background:
+    radial-gradient(circle at 50% 30%, rgba(184, 84, 53, 0.06), transparent 62%),
+    var(--rc-surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.90),
+    0 10px 28px rgba(25, 24, 21, 0.09);
+  backdrop-filter: none;
+}
+
+[data-rc-skin='light'] .bloom-core__disc::after {
+  border-color: var(--rc-border);
+}
+
+[data-rc-skin='light'] .bloom-core__ring {
+  border-color: rgba(184, 84, 53, 0.22);
+  border-right-color: rgba(184, 84, 53, 0.56);
+  border-bottom-color: var(--rc-border);
+}
+
+[data-rc-skin='light'] .bloom-core__glyph {
+  color: var(--rc-text-subtle);
+}
+
+[data-rc-skin='light'] .bloom-core__glyph span,
+[data-rc-skin='light'] .bloom-core__tag {
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-core__name {
+  font-family: var(--rc-font-display);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-core__paper {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-core__score {
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-core__score small {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-core__tick {
+  background: var(--rc-border-strong);
+}
+
+[data-rc-skin='light'] .bloom-core__atelier {
+  border-color: rgba(184, 84, 53, 0.34);
+  background: var(--rc-accent-wash);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-core__atelier:hover {
+  background: var(--rc-accent);
+  border-color: var(--rc-accent);
+  color: var(--rc-text-inverse);
+}
+
+/* ---------------- 浅色瓣卡与叠纸 ---------------- */
+
+[data-rc-skin='light'] .bloom-card {
+  color: var(--rc-text);
+  filter: drop-shadow(0 4px 12px rgba(25, 24, 21, 0.08));
+}
+
+[data-rc-skin='light'] .bloom-card.is-open {
+  filter: drop-shadow(0 16px 40px rgba(25, 24, 21, 0.14));
+}
+
+[data-rc-skin='light'] .bloom-card.is-selected .bloom-card__surface {
+  box-shadow:
+    inset 0 0 0 2px var(--rc-accent),
+    0 8px 20px rgba(184, 84, 53, 0.14);
+}
+
+[data-rc-skin='light'] .bloom-card__underlay--back {
+  background: var(--rc-bg-3);
+  border: 1px solid var(--rc-border);
+  opacity: 0.94;
+}
+
+[data-rc-skin='light'] .bloom-card__underlay--mid {
+  background: var(--rc-bg-2);
+  border: 1px solid rgba(184, 84, 53, 0.24);
+}
+
+[data-rc-skin='light'] .bloom-card__surface {
+  background: var(--rc-surface);
+  color: var(--rc-text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1px var(--rc-border);
+  backdrop-filter: none;
+}
+
+[data-rc-skin='light'] .bloom-card__surface::after {
+  border-color: var(--rc-border-hair);
+  opacity: 1;
+}
+
+[data-rc-skin='light'] .bloom-morph--folio .bloom-card__surface {
+  background: linear-gradient(160deg, var(--rc-surface), var(--rc-surface-2));
+}
+
+[data-rc-skin='light'] .bloom-morph--lattice .bloom-card__surface {
+  background: linear-gradient(150deg, var(--rc-surface), var(--rc-bg-2));
+}
+
+[data-rc-skin='light'] .bloom-morph--instrument .bloom-card__surface {
+  background: linear-gradient(154deg, var(--rc-surface), var(--rc-surface-3));
+}
+
+[data-rc-skin='light'] .bloom-card.is-open .bloom-card__surface {
+  background: var(--rc-surface);
+}
+
+[data-rc-skin='light'] .bloom-compact {
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-compact__title,
+[data-rc-skin='light'] .bloom-detail__title {
+  font-family: var(--rc-font-display);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-compact__index,
+[data-rc-skin='light'] .bloom-compact__kicker {
+  color: var(--rc-text-subtle);
+}
+
+[data-rc-skin='light'] .bloom-compact__morph {
+  color: var(--rc-accent);
+  border-color: rgba(184, 84, 53, 0.28);
+  background: var(--rc-accent-wash);
+}
+
+[data-rc-skin='light'] .bloom-compact__icon {
+  border-color: var(--rc-border);
+  background: var(--rc-bg-2);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-compact__metric {
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-morph--instrument .bloom-compact__metric {
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-compact__metric-label,
+[data-rc-skin='light'] .bloom-compact__status,
+[data-rc-skin='light'] .bloom-compact__peek {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-dot {
+  box-shadow: 0 0 0 1px rgba(25, 24, 21, 0.22);
+}
+
+/* ---------------- 浅色展开详情与三族面板 ---------------- */
+
+[data-rc-skin='light'] .bloom-detail__kicker {
+  color: var(--rc-text-subtle);
+}
+
+[data-rc-skin='light'] .bloom-detail__sub {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-detail__chrome-corner {
+  border-color: var(--rc-border-strong);
+}
+
+[data-rc-skin='light'] .bloom-detail__chrome-spine {
+  color: var(--rc-text-subtle);
+}
+
+[data-rc-skin='light'] .bloom-icon-btn {
+  border-color: var(--rc-border);
+  background: var(--rc-bg-2);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-icon-btn:hover {
+  border-color: var(--rc-accent);
+  background: var(--rc-accent-wash);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-icon-btn--atelier {
+  border-color: rgba(184, 84, 53, 0.34);
+  background: var(--rc-accent-wash);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .btn-atelier {
+  background: var(--rc-accent);
+  color: var(--rc-text-inverse);
+}
+
+[data-rc-skin='light'] .btn-atelier:hover {
+  background: var(--rc-accent-hover);
+}
+
+[data-rc-skin='light'] .bloom-detail__more {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-detail__foot {
+  border-top-color: var(--rc-border);
+  background: var(--rc-bg-2);
+}
+
+[data-rc-skin='light'] .bloom-metrics {
+  border-color: var(--rc-border);
+  background: var(--rc-border);
+}
+
+[data-rc-skin='light'] .bloom-metric {
+  background: var(--rc-surface);
+}
+
+[data-rc-skin='light'] .bloom-list,
+[data-rc-skin='light'] .bloom-kv {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+}
+
+[data-rc-skin='light'] .bloom-dag {
+  border-color: var(--rc-border);
+  background: var(--rc-bg);
+}
+
+[data-rc-skin='light'] .bloom-dag__node {
+  border-color: var(--rc-border-strong);
+  background: var(--rc-surface);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-chip.tone-navy {
+  background: var(--rc-bg-3);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-bar {
+  background: var(--rc-bg-3);
+}
+
+[data-rc-skin='light'] .bloom-openface--lattice .lattice__origin {
+  border-color: var(--rc-border-strong);
+  background: var(--rc-surface);
+}
+
+[data-rc-skin='light'] .bloom-openface--lattice .lattice__scroll > * {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+}
+
+[data-rc-skin='light'] .bloom-openface--instrument .instrument__rail {
+  background: var(--rc-bg-2);
+  border: 1px solid var(--rc-border-strong);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-openface--instrument .instrument__rail-id {
+  color: var(--rc-text-subtle);
+}
+
+[data-rc-skin='light'] .bloom-openface--instrument .instrument__reading-label {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-openface--instrument .instrument__reading-value {
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-openface--instrument .instrument__rail-status {
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-openface--instrument .instrument__chrome-spine,
+[data-rc-skin='light'] .bloom-morph--instrument .bloom-detail__chrome-spine {
+  color: var(--rc-text-subtle);
+}
+
+[data-rc-skin='light'] .bloom-combo-panel {
+  background: var(--rc-surface);
+  color: var(--rc-text);
+  filter: drop-shadow(0 18px 42px rgba(25, 24, 21, 0.14));
+}
+
+[data-rc-skin='light'] .bloom-combo-panel__hinge strong {
+  color: var(--rc-accent);
+}
+
+/* ---------------- 浅色底栏、组合槽与星丛 ---------------- */
+
+[data-rc-skin='light'] .bloom-foot {
+  border-top-color: var(--rc-border);
+  background: linear-gradient(to top, rgba(244, 241, 234, 0.96), rgba(244, 241, 234, 0.72));
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-foot__hint {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-foot__key {
+  border-color: var(--rc-border-strong);
+  background: var(--rc-surface);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-foot__refresh {
+  border-color: var(--rc-border);
+  background: var(--rc-surface);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-foot__refresh:hover {
+  border-color: var(--rc-accent);
+  color: var(--rc-accent);
+  background: var(--rc-accent-wash);
+}
+
+[data-rc-skin='light'] .bloom-foot__atelier {
+  background: var(--rc-accent-wash);
+  border-color: rgba(184, 84, 53, 0.32);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-foot__atelier:hover {
+  background: var(--rc-accent);
+  border-color: var(--rc-accent);
+  color: var(--rc-text-inverse);
+}
+
+[data-rc-skin='light'] .bloom-combo {
+  border-color: rgba(184, 84, 53, 0.42);
+  background: var(--rc-surface);
+  color: var(--rc-text);
+  box-shadow: 0 12px 32px rgba(25, 24, 21, 0.12);
+}
+
+[data-rc-skin='light'] .bloom-combo__pair {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-combo__slot {
+  border-color: var(--rc-border-strong);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-combo__slot.is-filled {
+  border-color: var(--rc-accent);
+  background: var(--rc-accent-wash);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-combo__cancel {
+  border-color: var(--rc-border);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-constellation {
+  background: var(--rc-bg);
+}
+
+[data-rc-skin='light'] .bloom-constellation__card {
+  filter: drop-shadow(0 4px 12px rgba(25, 24, 21, 0.08));
+}
+
+[data-rc-skin='light'] .bloom-constellation__card:hover {
+  filter: drop-shadow(0 8px 20px rgba(25, 24, 21, 0.13));
+}
+
+[data-rc-skin='light'] .bloom-constellation__paper {
+  background: var(--rc-surface);
+  color: var(--rc-text);
+  box-shadow: inset 0 0 0 1px var(--rc-border);
+}
+
+[data-rc-skin='light'] .bloom-constellation__name {
+  font-family: var(--rc-font-display);
+}
+
+[data-rc-skin='light'] .bloom-constellation__enter {
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-constellation__empty {
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-boot {
+  background: var(--rc-bg);
+  color: var(--rc-text-muted);
+}
+
+[data-rc-skin='light'] .bloom-boot strong {
+  font-family: var(--rc-font-display);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-boot__mark {
+  border-color: rgba(184, 84, 53, 0.36);
+  background: var(--rc-surface);
+  color: var(--rc-accent);
+}
+
+/* ---------------- 浅色移动端组合盘 ---------------- */
+
+[data-rc-skin='light'] .bloom-stage--mobile .bloom-card {
+  filter: drop-shadow(0 3px 10px rgba(25, 24, 21, 0.08));
+}
+
+[data-rc-skin='light'] .bloom-picker {
+  background: radial-gradient(circle at 50% 48%, rgba(244, 241, 234, 0.78), rgba(25, 24, 21, 0.45) 78%);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-picker__disc {
+  border-color: var(--rc-border-strong);
+  background: rgba(252, 251, 247, 0.94);
+  box-shadow: 0 24px 60px rgba(25, 24, 21, 0.16);
+}
+
+[data-rc-skin='light'] .bloom-picker__ring {
+  border-color: var(--rc-border);
+}
+
+[data-rc-skin='light'] .bloom-picker__center {
+  background: var(--rc-surface);
+  border: 1px solid var(--rc-border);
+  box-shadow: 0 8px 24px rgba(25, 24, 21, 0.10);
+  color: var(--rc-text);
+}
+
+[data-rc-skin='light'] .bloom-picker__option {
+  border-color: var(--rc-border-strong);
+  background: var(--rc-surface);
+  box-shadow: 0 4px 12px rgba(25, 24, 21, 0.10);
+  color: var(--rc-accent);
+}
+
+[data-rc-skin='light'] .bloom-picker__option::after {
+  border-color: var(--rc-text);
+  background: var(--rc-text);
+  color: var(--rc-text-inverse);
+}
+
+[data-rc-skin='light'] .bloom-picker__cancel {
+  border-color: var(--rc-border-strong);
+  background: var(--rc-surface);
+  color: var(--rc-text);
 }

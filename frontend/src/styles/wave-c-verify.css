@@ -158,7 +158,7 @@
   overflow: hidden;
   border: var(--rc-stroke);
   border-radius: var(--rc-radius-lg);
-  background: linear-gradient(150deg, rgba(109, 63, 145, 0.26), var(--rc-surface-glass) 72%);
+  background: linear-gradient(150deg, rgb(var(--rc-accent-rgb) / 0.14), var(--rc-surface-glass) 72%);
   backdrop-filter: var(--rc-blur-panel);
   -webkit-backdrop-filter: var(--rc-blur-panel);
   box-shadow: var(--rc-shadow-panel);
@@ -215,7 +215,7 @@
 .rc2-stack__side {
   grid-column: span 4;
   position: sticky;
-  top: calc(var(--rc-header-h) + var(--rc-space-4));
+  top: 20px;
 }
 
 .rc2-stack__full {
@@ -228,7 +228,7 @@
   isolation: isolate;
   border: var(--rc-stroke);
   border-radius: var(--rc-radius-lg);
-  background: linear-gradient(150deg, rgba(109, 63, 145, 0.26), var(--rc-surface-glass) 72%);
+  background: linear-gradient(150deg, rgb(var(--rc-accent-rgb) / 0.14), var(--rc-surface-glass) 72%);
   backdrop-filter: var(--rc-blur-panel);
   -webkit-backdrop-filter: var(--rc-blur-panel);
   box-shadow: var(--rc-shadow-panel);
@@ -255,7 +255,7 @@
   z-index: -1;
   border: var(--rc-stroke-hair);
   border-radius: var(--rc-radius-lg);
-  background: linear-gradient(150deg, rgba(109, 63, 145, 0.26), var(--rc-surface-glass) 72%);
+  background: linear-gradient(150deg, rgb(var(--rc-accent-rgb) / 0.14), var(--rc-surface-glass) 72%);
   opacity: 0.5;
   transform-origin: 50% 100%;
   transition: transform var(--rc-dur-slow) var(--rc-ease-out);
@@ -421,7 +421,7 @@
 .rc2-rel {
   border: var(--rc-stroke);
   border-radius: var(--rc-radius-lg);
-  background: linear-gradient(150deg, rgba(109, 63, 145, 0.26), var(--rc-surface-glass) 72%);
+  background: linear-gradient(150deg, rgb(var(--rc-accent-rgb) / 0.14), var(--rc-surface-glass) 72%);
   backdrop-filter: var(--rc-blur-panel);
   -webkit-backdrop-filter: var(--rc-blur-panel);
   box-shadow: var(--rc-shadow-panel);
@@ -530,7 +530,7 @@
 .rc2-form {
   border: var(--rc-stroke);
   border-radius: var(--rc-radius-xl);
-  background: linear-gradient(150deg, rgba(109, 63, 145, 0.26), var(--rc-surface-glass) 72%);
+  background: linear-gradient(150deg, rgb(var(--rc-accent-rgb) / 0.14), var(--rc-surface-glass) 72%);
   backdrop-filter: var(--rc-blur-panel);
   -webkit-backdrop-filter: var(--rc-blur-panel);
   box-shadow: var(--rc-shadow-panel);
@@ -655,7 +655,7 @@
 /* ------------------------------------------------------------------ 图4 · 精密线框 */
 
 .rc4-page {
-  --rc4-grid: color-mix(in srgb, var(--rc-text) 4%, transparent);
+  --rc4-grid: var(--rc-grid-line);
   --rc4-panel-bg: var(--rc-surface);
   position: relative;
   display: flex;
@@ -972,7 +972,6 @@
   flex-direction: column;
   justify-content: center;
   min-width: 0;
-  overflow: hidden;
   border: 1px solid var(--rc-border);
   border-radius: var(--rc-radius-xs);
   background: var(--rc-surface-3);
@@ -1025,7 +1024,7 @@
   transform: translate3d(-50%, 4px, 0);
   border: var(--rc-stroke);
   border-radius: var(--rc-radius-sm);
-  background: linear-gradient(150deg, rgba(109, 63, 145, 0.26), var(--rc-surface-glass) 72%);
+  background: linear-gradient(150deg, rgb(var(--rc-accent-rgb) / 0.14), var(--rc-surface-glass) 72%);
   backdrop-filter: var(--rc-blur-panel);
   -webkit-backdrop-filter: var(--rc-blur-panel);
   box-shadow: var(--rc-shadow-pop);
@@ -1452,4 +1451,26 @@
   .rc4-ribbon__tip {
     transition: opacity var(--rc-dur-fast) var(--rc-ease-linear) !important;
   }
+}
+
+/* ------------------------------------------------------------------ 浅色模式 · 类纸编排 */
+
+[data-rc-skin='light'] .rc2-kpi,
+[data-rc-skin='light'] .rc2-card,
+[data-rc-skin='light'] .rc2-rel,
+[data-rc-skin='light'] .rc2-form,
+[data-rc-skin='light'] .rc4-ribbon__tip {
+  background: var(--rc-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+[data-rc-skin='light'] .rc2-card::before,
+[data-rc-skin='light'] .rc2-card::after {
+  background: var(--rc-bg-2);
+}
+
+[data-rc-skin='light'] .rc2-link--primary:hover {
+  background: var(--rc-accent-hover);
+  border-color: var(--rc-accent-hover);
 }

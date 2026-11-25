@@ -237,7 +237,7 @@ export default function FeedbackPage() {
       <div className="rcw-stack">
         <PageHeader
           title="审计反馈治理"
-          description="面向审计发现的人工反馈与分诊队列：确认、误报、证据不足等信号统一治理，任何规则变更仍须走显式版本流程。"
+          description="审计发现反馈与分诊队列"
           actions={
             <button type="button" className="btn-primary" disabled={!projectId} onClick={openCreate}>
               <Icon as={MessageSquarePlus} size="xs" />提交反馈
@@ -245,19 +245,10 @@ export default function FeedbackPage() {
           }
         />
 
-        <div className="rcw-note">
-          <div className="rcw-row" style={{ gap: 'var(--rc-space-3)', alignItems: 'flex-start' }}>
-            <Icon as={ShieldCheck} size="sm" style={{ marginTop: 2 }} />
-            <p>
-              反馈仅用于人工分诊，绝不自动修改生产规则；争议（disputed）反馈将转人工复核，由具备 finding.review 权限的审核人员裁定。
-            </p>
-          </div>
-        </div>
-
         {/* ---------- 项目选择 ---------- */}
         <section className="rcw-card rcw-card-tight">
           {projectsQuery.isPending ? (
-            <LoadingState compact message="正在读取项目列表…" hint="GET /projects" />
+            <LoadingState compact message="正在读取项目列表…" />
           ) : projectsQuery.isError ? (
             <ErrorState compact message={projectsQuery.error.message} code={errCode(projectsQuery.error)} onRetry={() => void projectsQuery.refetch()} />
           ) : projects.length === 0 ? (
@@ -288,7 +279,7 @@ export default function FeedbackPage() {
         {projectId && (
           <>
             {allQuery.isPending || listQuery.isPending ? (
-              <section className="rcw-card"><LoadingState message="正在读取反馈队列…" hint="GET /feedback?project_id=…" /></section>
+              <section className="rcw-card"><LoadingState message="正在读取反馈队列…" /></section>
             ) : listError ? (
               <section className="rcw-card">
                 <ErrorState
@@ -305,7 +296,7 @@ export default function FeedbackPage() {
                     <div>
                       <h3 className="text-sm font-semibold">分诊泳道</h3>
                       <p className="mt-0.5 text-[11px] rcw-faint">
-                        泳道按后端反馈状态分布；点击泳道标题可只看该状态，再次点击取消筛选。
+                        点击泳道标题可按状态筛选。
                       </p>
                     </div>
                     <div className="rcw-row" style={{ gap: 'var(--rc-space-2)' }}>

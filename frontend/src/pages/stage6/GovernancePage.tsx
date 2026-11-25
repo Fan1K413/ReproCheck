@@ -237,7 +237,7 @@ export default function GovernancePage() {
               })}
             </div>
             <p className="mt-3 text-[11px] leading-relaxed rcw-faint">
-              层级条宽度按目录顺序递减；点击任一层级查看该级的处理要求与示例。
+              点击任一层级查看处理要求与示例。
             </p>
           </section>
 
@@ -360,8 +360,7 @@ export default function GovernancePage() {
                   <StatusBadge tone={requireOn ? 'warning' : 'neutral'}>{requireOn ? '开' : '关'}</StatusBadge>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed rcw-muted">
-                  开启后，无有效授权时后端拒绝一切外部 LLM 调用（AI_CONSENT_REQUIRED，HTTP 403），绝不静默发送；
-                  关闭时兼容演示模式直接放行。当前网关状态：{requireOn ? '开' : '关'}。
+                  开启后须明确授权才允许调用外部 LLM；关闭时直接放行。当前网关状态：{requireOn ? '开' : '关'}。
                 </p>
               </section>
             </div>
@@ -540,7 +539,7 @@ export default function GovernancePage() {
     if (!policy) return <EmptyState title="暂无保留策略" />
     return (
       <div className="rcw-stack">
-        <div className="rcw-grid rcw-grid-2">
+        <div className="rcw-grid rcw-grid-2 rc-stagger">
           <StatCard icon={Clock} value={`${policy.default_days} 天`} label="默认保留期限（审计轨迹）" />
           <StatCard icon={ListChecks} value={`${policy.rules.length} 条`} label="分类保留规则" />
         </div>
@@ -574,7 +573,7 @@ export default function GovernancePage() {
       <div className="rcw-stack">
         <PageHeader
           title="安全与数据治理"
-          description="数据分级 · AI 授权 · 本人数据导出 · 保留策略"
+          description="数据分级、授权与保留"
         />
         <Tabs
           tabs={[

@@ -246,11 +246,9 @@ export default function ProjectNewPage() {
     <div className="rc2-page">
       <header className="rc2-hero">
         <div className="min-w-0">
-          <p className="rcw-overline">新建项目</p>
+          <p className="rcw-overline">Projects</p>
           <h2 className="rc2-hero__title mt-2">新建项目</h2>
-          <p className="rc2-hero__desc">
-            填写项目档案信息，提交后写入后端项目库。输入内容会以 300ms 防抖暂存在当前标签页会话中，刷新或误关页面不丢内容；密钥类字段永不落盘。
-          </p>
+          <p className="rc2-hero__desc">填写基础信息创建审计项目</p>
         </div>
         <Link to="/projects" className="btn-ghost">
           <Icon name="arrowLeft" size="sm" />

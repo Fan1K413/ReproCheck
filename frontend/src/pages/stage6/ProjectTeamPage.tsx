@@ -244,11 +244,11 @@ export default function ProjectTeamPage() {
       <div className="rcw-stack">
         <PageHeader
           title={project?.name ?? '项目协作'}
-          description={project?.description || (project ? '暂无描述' : '成员、评论、复核与审计轨迹的项目级协作台。')}
+          description={project?.description || (project ? '暂无描述' : '成员、评论、复核与审计轨迹')}
           actions={<span className="rcw-chip">{projectId}</span>}
         />
 
-        <div className="rcw-grid rcw-grid-4">
+        <div className="rcw-grid rcw-grid-4 rc-stagger">
           {kpis.map((kpi) => (
             <div key={kpi.label} className="rcw-kpi">
               <span className="rcw-kpi-icon"><Icon name={kpi.icon} size="sm" /></span>
@@ -278,7 +278,7 @@ export default function ProjectTeamPage() {
             {tab === 'members' && (
               <>
                 <div className="rcw-row-between">
-                  <p className="text-xs rcw-faint">项目角色决定材料、审计、评论与复核权限；成员管理需 project.manage 权限，由后端校验。</p>
+                  <p className="text-xs rcw-faint">成员管理需项目管理员权限。</p>
                   <button type="button" className="btn-primary" onClick={() => { setMemberForm({ user_id: '', role_key: 'researcher' }); setMemberError(null); setAddMemberOpen(true) }}>
                     <Icon as={UserPlus} size="xs" />添加成员
                   </button>
@@ -369,7 +369,7 @@ export default function ProjectTeamPage() {
                 </div>
 
                 <div className="rcw-row-between">
-                  <p className="text-xs rcw-faint">删除仅限本人评论；项目管理者的代删权限由后端另行校验。</p>
+                  <p className="text-xs rcw-faint">仅限删除本人发表的评论。</p>
                   <select className="field-input w-[160px] py-1.5 text-xs" value={commentFilter} aria-label="按目标类型筛选评论" onChange={(e) => setCommentFilter(e.target.value)}>
                     <option value="">全部目标</option>
                     {Object.entries(COMMENT_TARGETS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
@@ -418,7 +418,7 @@ export default function ProjectTeamPage() {
             {tab === 'reviews' && (
               <>
                 <div className="rcw-row-between">
-                  <p className="text-xs rcw-faint">仅指定审核人或具备 review.decide 权限者可裁定；裁定结论与意见全程留痕。</p>
+                  <p className="text-xs rcw-faint">仅指定审核人或授权成员可裁定，结论全程留痕。</p>
                   <button type="button" className="btn-primary" onClick={() => { setReviewForm({ target_type: 'finding', target_id: '', reviewer_user_id: '' }); setReviewError(null); setReviewOpen(true) }}>
                     <Icon name="plus" size="xs" />发起复核
                   </button>

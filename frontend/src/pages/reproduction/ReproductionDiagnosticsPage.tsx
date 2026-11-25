@@ -55,7 +55,7 @@ function MutationError({ error }: { error: unknown }) {
             AI 诊断不可用
           </p>
           <p style={{ marginTop: 4, fontSize: 'var(--rc-fs-caption)', color: 'var(--rc-text-muted)' }}>
-            后端未配置可用的模型密钥，未生成任何诊断结论。页面不会展示预设或伪造的诊断内容。
+            未配置可用的模型密钥，请先完成模型配置。
           </p>
           <p className="rc-wa-pick__id" style={{ marginTop: 4, color: 'var(--rc-warning)' }}>
             错误码：{code}
@@ -186,9 +186,7 @@ function Diagnostics({ pid }: { pid: string }) {
         <div className="rc-wa-head__text">
           <p className="rc-wa-eyebrow">AI 诊断</p>
           <h1 className="rc-wa-title">AI 诊断与人工审核</h1>
-          <p className="rc-wa-lede">
-            诊断由后端实时生成；无模型密钥时仅显示后端返回的不可用错误，不展示任何预设诊断。
-          </p>
+          <p className="rc-wa-lede">失败根因分析与修复审核</p>
         </div>
         <div className="rc-wa-head__actions">
           <Link to={`/projects/${pid}/reproduction`} className="btn-ghost">
@@ -210,7 +208,6 @@ function Diagnostics({ pid }: { pid: string }) {
             <Icon as={Bot} size="sm" tone="accent" />
             选择要诊断的运行
           </div>
-          <span className="rc-wa-source">来源：后端运行记录</span>
         </div>
         <div className="rc-wa-panel__body">
           {runsQuery.isPending ? (
@@ -408,7 +405,6 @@ function Diagnostics({ pid }: { pid: string }) {
                 <Icon as={ShieldCheck} size="sm" tone="accent" />
                 修复建议人工审核
               </div>
-              <span className="rc-wa-source">来源：后端复核接口</span>
             </div>
             <div className="rc-wa-panel__body" style={{ display: 'grid', gap: 'var(--rc-space-4)' }}>
               {proposals.length > 0 && (
@@ -447,11 +443,11 @@ function Diagnostics({ pid }: { pid: string }) {
               {activeProposal && (
                 <div className="rc-wa-diff">
                   <div className="rc-wa-diff__side" data-kind="before">
-                    <span className="rc-wa-dual__label">原始值 original_value</span>
+                    <span className="rc-wa-dual__label">原始值</span>
                     <span className="rc-wa-diff__value">{activeProposal.original_value || '—'}</span>
                   </div>
                   <div className="rc-wa-diff__side" data-kind="after">
-                    <span className="rc-wa-dual__label">建议值 proposed_value</span>
+                    <span className="rc-wa-dual__label">建议值</span>
                     <span className="rc-wa-diff__value">{activeProposal.proposed_value || '—'}</span>
                   </div>
                 </div>

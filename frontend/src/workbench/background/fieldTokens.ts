@@ -1,18 +1,19 @@
 /**
- * ReproCheck 一级工作台背景 · 配色与布局配置
+ * ReproCheck 一级工作台背景 · 双主题配色与光斑配置
  *
- * 颜色全部取自 src/styles/tokens.css 的品牌紫阶，不引入新主色。
- * 这里只做 hex → 0..1 RGB 的换算与光斑（lobe）布局参数，不写渲染逻辑。
+ * - dark（黑绿深色）：黑曜石黑底 + 深松林/翡翠绿光场褶皱
+ * - light（仿 Anthropic 类纸）：暖米色棉纸底 + 柔和沙暖/陶土淡纹
  */
+import type { ThemeMode } from '../../stores/uiStore'
 
 export const TOKEN_HEX = {
-  ink: '#08040f',
-  deep: '#1e0a35',
-  dark: '#3b1066',
-  purple: '#7c2fd0',
-  violet: '#a855f7',
-  magenta: '#c084fc',
-  lilac: '#e9d5ff',
+  ink: '#050806',
+  deep: '#0a1810',
+  dark: '#113020',
+  emerald: '#15803d',
+  bright: '#22c55e',
+  mint: '#4ade80',
+  soft: '#bbf7d0',
 } as const
 
 export type RGB01 = [number, number, number]
@@ -29,38 +30,31 @@ export function hexToRgb01(hex: string): RGB01 {
 }
 
 export interface FieldLobeConfig {
-  /** 锚点位置（UV 0..1，y 向下）。 */
   anchor: [number, number]
-  /** 光斑半径，以画面长边为单位。 */
   radius: number
-  /** 品牌紫阶颜色（hex）。 */
   color: string
-  /** 水平漂移幅度（UV）。 */
   driftX: number
-  /** 垂直漂移幅度（UV）。 */
   driftY: number
-  /** 相位偏移，避免所有光斑同步呼吸。 */
   phase: number
-  /** 漂移角速度（弧度/秒），数值越小越慢。 */
   speed: number
-  /** 半径呼吸幅度（0..1）。 */
   breath: number
-  /** 呼吸角速度（弧度/秒）。 */
   breathSpeed: number
-  /** 初始权重（相对叠加强度）。 */
   weight: number
 }
 
-/**
- * 五个环境光锚点，不再承担「上色」职责：
- * 着色器只读取它们的位置、半径与权重来决定丝绸褶皱的明暗，
- * 因此允许颜色更深、更收敛，不会在画面上形成一整片紫光。
- *
- * 布局意图：
- * - 右上与左下两条大范围的冷暖差，建立斜向的空间进深；
- * - 右下与左上各一枚小范围紫光，作为远景边缘的呼吸；
- * - 中心只保留极弱的一枚淡紫，避免盘面区域被光斑顶亮。
- */
+export interface FieldThemePalette {
+  background: RGB01
+  silkDeep: RGB01
+  silkLight: RGB01
+  ambientLow: RGB01
+  ambientHigh: RGB01
+  fiberColor: RGB01
+  ridgeColor: RGB01
+  vignetteColor: RGB01
+  isLight: number
+  lobeColors: RGB01[]
+}
+
 export const FIELD_LOBES: FieldLobeConfig[] = [
   {
     anchor: [0.7, 0.18],
@@ -89,14 +83,14 @@ export const FIELD_LOBES: FieldLobeConfig[] = [
   {
     anchor: [0.88, 0.8],
     radius: 0.28,
-    color: TOKEN_HEX.purple,
+    color: TOKEN_HEX.emerald,
     driftX: 0.04,
     driftY: 0.032,
     phase: 3.9,
     speed: 0.12,
     breath: 0.05,
     breathSpeed: 0.07,
-    weight: 0.18,
+    weight: 0.22,
   },
   {
     anchor: [0.3, 0.06],
@@ -108,30 +102,65 @@ export const FIELD_LOBES: FieldLobeConfig[] = [
     speed: 0.09,
     breath: 0.04,
     breathSpeed: 0.05,
-    weight: 0.24,
+    weight: 0.26,
   },
   {
     anchor: [0.56, 0.5],
     radius: 0.26,
-    color: TOKEN_HEX.lilac,
+    color: TOKEN_HEX.soft,
     driftX: 0.025,
     driftY: 0.02,
     phase: 1.3,
     speed: 0.07,
     breath: 0.03,
     breathSpeed: 0.04,
-    weight: 0.025,
+    weight: 0.035,
   },
 ]
 
+export const FIELD_THEMES: Record<ThemeMode, FieldThemePalette> = {
+  dark: {
+    background: hexToRgb01('#050806'),
+    silkDeep: hexToRgb01('#092014'),
+    silkLight: hexToRgb01('#1ea856'),
+    ambientLow: hexToRgb01('#030604'),
+    ambientHigh: hexToRgb01('#0d2417'),
+    fiberColor: hexToRgb01('#34d399'),
+    ridgeColor: hexToRgb01('#4ade80'),
+    vignetteColor: hexToRgb01('#020403'),
+    isLight: 0.0,
+    lobeColors: [
+      hexToRgb01('#113522'),
+      hexToRgb01('#0a1e13'),
+      hexToRgb01('#15803d'),
+      hexToRgb01('#143a24'),
+      hexToRgb01('#86efac'),
+    ],
+  },
+  light: {
+    background: hexToRgb01('#f4f1ea'),
+    silkDeep: hexToRgb01('#e4dccd'),
+    silkLight: hexToRgb01('#d8a98d'),
+    ambientLow: hexToRgb01('#ede7db'),
+    ambientHigh: hexToRgb01('#fbf9f4'),
+    fiberColor: hexToRgb01('#c97754'),
+    ridgeColor: hexToRgb01('#ffffff'),
+    vignetteColor: hexToRgb01('#e7dfd1'),
+    isLight: 1.0,
+    lobeColors: [
+      hexToRgb01('#e3d9c8'),
+      hexToRgb01('#ebe4d6'),
+      hexToRgb01('#d7997a'),
+      hexToRgb01('#e8dfd0'),
+      hexToRgb01('#f9f7f2'),
+    ],
+  },
+}
+
 /** 渲染与性能预算。 */
 export const FIELD_PERF = {
-  /** 动画帧率上限：背景是慢节奏光影，30fps 足够且省一半能耗。 */
   fps: 30,
-  /** 离屏渲染最长边像素上限：光斑本身是模糊的，放大由浏览器完成。 */
   maxPixelSide: 384,
-  /** 设备像素比上限，避免高分屏过度渲染。 */
   maxDpr: 1.5,
-  /** 单帧时间步长上限（秒）：后台标签页恢复时不把整段空闲时间积分进相位。 */
   maxFrameDelta: 0.05,
 } as const

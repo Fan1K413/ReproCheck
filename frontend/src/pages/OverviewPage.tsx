@@ -195,11 +195,9 @@ export default function OverviewPage() {
     <div className="mb-page">
       <header className="mb-head">
         <div className="min-w-0">
-          <p className="mb-head__eyebrow">解析概览 · 精密线框</p>
+          <p className="mb-head__eyebrow">解析概览</p>
           <h1 className="mb-head__title">解析概览</h1>
-          <p className="mb-head__desc">
-            所有统计均来自后端数据库聚合，无前端推算；仪表弧段长度严格等于各状态的真实占比。
-          </p>
+          <p className="mb-head__desc">材料、任务与事实分布</p>
         </div>
         <nav className="mb-head__actions">
           <Link to={`${base}/workbench`} className="btn-primary">
@@ -252,7 +250,6 @@ export default function OverviewPage() {
                 <Icon as={Activity} size="sm" tone="accent" />
                 材料状态仪表
               </h3>
-              <span className="mb-panel__hint">弧长比例等于真实计数占比</span>
             </div>
             <div className="mb-panel__body">
               <div className="ov-stage">
@@ -380,7 +377,6 @@ export default function OverviewPage() {
                 <Icon name="grid" size="sm" tone="accent" />
                 材料类型分布
               </h3>
-              <span className="mb-panel__hint">长度比例等于真实计数</span>
             </div>
             <div className="mb-panel__body">
               {typeEntries.length === 0 ? (
@@ -433,27 +429,20 @@ export default function OverviewPage() {
             </div>
           </section>
 
-          <section className="mb-panel" aria-label="证据链说明">
+          <section className="mb-panel" aria-label="证据链索引">
             <div className="mb-panel__head">
               <h3 className="mb-panel__title">
                 <Icon as={ShieldCheck} size="sm" tone="accent" />
-                证据链说明
+                证据链索引
               </h3>
             </div>
             <div className="mb-panel__body flex flex-col gap-3">
-              <p className="text-sm" style={{ color: 'var(--rc-text-muted)' }}>
-                当前登记 <strong className="mb-mono">{formatCount(facts?.total)}</strong> 条科研事实，
-                覆盖 <strong className="mb-mono">{formatCount(materialTotal)}</strong> 份材料，
-                其中 <strong className="mb-mono">{formatCount(facts?.with_evidence)}</strong> 条已绑定可核验原文。
-              </p>
               <dl className="mb-dl">
                 <div className="mb-dl__row">
-                  <dt className="mb-dl__key">待复核事实</dt>
-                  <dd className="mb-dl__val">{formatCount(facts?.needs_review)}</dd>
-                </div>
-                <div className="mb-dl__row">
-                  <dt className="mb-dl__key">人工修订</dt>
-                  <dd className="mb-dl__val">{formatCount(facts?.human_revised)}</dd>
+                  <dt className="mb-dl__key">证据覆盖</dt>
+                  <dd className="mb-dl__val">
+                    {formatCount(facts?.with_evidence)} / {formatCount(facts?.total)}
+                  </dd>
                 </div>
                 <div className="mb-dl__row">
                   <dt className="mb-dl__key">项目 ID</dt>

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Icon } from '../components/Icon'
+import { ThemeToggle } from '../components/ThemeToggle'
+import PageHelpButton from '../ux/PageHelpDrawer'
 import {
   ArrowRight,
   ChevronLeft,
@@ -281,6 +283,8 @@ export function EvidenceLoom({ data }: { data: WorkbenchUnitData }) {
             <strong>{overall == null ? '—' : overall.toFixed(3)}</strong>
             <small>{weave.edges.length} 条真实关联</small>
           </div>
+          <ThemeToggle compact />
+          <PageHelpButton compact />
         </header>
 
         <div className="loom-body">

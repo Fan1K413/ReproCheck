@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 /* ------------------------------------------------------------------
- * 全局设计变量已迁移至 ./tokens.css（全站唯一色源，main.tsx 中最先引入）。
- * 本文件只保留基础层与组件层样式；所有颜色/间距/圆角/阴影均引用 --rc-* token。
- * 旧 --accent / --surface / --navy-* 等在 tokens.css §1.10 中作为兼容别名存在。
+ * ReproCheck 全局基础层与核心组件样式
+ * 深色：黑曜石精密仪表（黑 + 绿） | 浅色：仿 Anthropic 暖色类纸编排
+ * 所有色值统一消费 ./tokens.css 定义的 --rc-* 变量。
  * ------------------------------------------------------------------ */
 
 @layer base {
@@ -15,6 +15,7 @@
 
   html {
     scroll-behavior: smooth;
+    background-color: var(--rc-bg);
   }
 
   body {
@@ -25,8 +26,22 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-size: var(--rc-fs-body, 14px);
-    line-height: var(--rc-lh-body, 1.6);
+    line-height: var(--rc-lh-body, 1.62);
     font-feature-settings: "calt";
+    transition: background-color 220ms var(--rc-ease-out), color 220ms var(--rc-ease-out);
+  }
+
+  /* 浅色类纸模式：叠加一层极轻的纸纤维颗粒，不拦截任何交互 */
+  [data-rc-skin='light'] body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: var(--rc-paper-grain-opacity, 0.032);
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 180px 180px;
   }
 
   h1,
@@ -36,11 +51,27 @@
     font-weight: var(--rc-fw-sb, 600);
   }
 
+  [data-rc-skin='light'] h1,
+  [data-rc-skin='light'] h2 {
+    font-family: var(--rc-font-display);
+    font-weight: 500;
+  }
+
   button,
   input,
   textarea,
   select {
     font: inherit;
+  }
+
+  select option,
+  select optgroup {
+    background-color: var(--rc-surface);
+    color: var(--rc-text);
+  }
+
+  select.field-input {
+    background-color: var(--rc-surface-2);
   }
 
   :focus-visible {
@@ -53,12 +84,12 @@
   .panel {
     position: relative;
     overflow: hidden;
-    background:
-      linear-gradient(145deg, rgba(246, 240, 252, 0.085), rgba(246, 240, 252, 0.035)),
-      var(--rc-surface);
+    background: var(--rc-panel-bg);
     border: var(--rc-stroke);
     border-radius: var(--rc-radius-lg);
     box-shadow: var(--rc-shadow-panel);
+    transition: border-color var(--rc-dur-base) var(--rc-ease-hover),
+      box-shadow var(--rc-dur-base) var(--rc-ease-hover);
   }
 
   .panel::before {
@@ -67,7 +98,7 @@
     inset: 0 0 auto;
     height: 1px;
     pointer-events: none;
-    background: linear-gradient(90deg, transparent, rgba(233, 213, 255, 0.34), transparent);
+    background: var(--rc-panel-top-edge);
   }
 
   .panel-header {
@@ -75,7 +106,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--rc-space-3);
-    padding: var(--rc-space-5) var(--rc-space-6);
+    padding: var(--rc-space-4) var(--rc-space-6);
     border-bottom: var(--rc-stroke-hair);
   }
 
@@ -93,10 +124,10 @@
     height: 42px;
     border: var(--rc-stroke);
     border-radius: var(--rc-radius-sm);
-    background: linear-gradient(145deg, rgba(8, 4, 15, 0.30), rgba(8, 4, 15, 0.18)), var(--rc-surface);
+    background: var(--rc-input-bg);
     color: var(--rc-text);
     padding: 9px 12px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    box-shadow: var(--rc-shadow-inset-lo);
     transition: border-color var(--rc-dur-base) var(--rc-ease-hover),
       box-shadow var(--rc-dur-base) var(--rc-ease-hover),
       background-color var(--rc-dur-base) var(--rc-ease-hover);
@@ -108,7 +139,8 @@
 
   .field-input:focus {
     outline: none;
-    border-color: var(--rc-accent);
+    background: var(--rc-input-bg-focus);
+    border-color: var(--rc-accent-bright);
     box-shadow: 0 0 0 3px var(--rc-accent-wash);
   }
 
@@ -118,14 +150,17 @@
     align-items: center;
     justify-content: center;
     gap: var(--rc-icon-gap);
-    min-height: 40px;
-    border-radius: var(--rc-radius-pill);
-    padding: 8px 18px;
+    min-height: 38px;
+    border-radius: var(--rc-radius-sm);
+    padding: 8px 16px;
+    font-size: 13.5px;
     font-weight: var(--rc-fw-sb);
+    letter-spacing: 0.01em;
     cursor: pointer;
-    transition: transform var(--rc-dur-base) var(--rc-ease-hover),
+    transition: transform var(--rc-dur-fast) var(--rc-ease-hover),
       background-color var(--rc-dur-base) var(--rc-ease-hover),
       border-color var(--rc-dur-base) var(--rc-ease-hover),
+      color var(--rc-dur-base) var(--rc-ease-hover),
       box-shadow var(--rc-dur-base) var(--rc-ease-hover);
   }
 
@@ -136,12 +171,14 @@
   }
 
   .btn-primary:hover:not(:disabled) {
-    background-color: var(--rc-violet);
+    background-color: var(--rc-accent-hover);
+    border-color: var(--rc-accent-bright);
     box-shadow: var(--rc-glow-violet);
+    transform: translateY(-1px);
   }
 
   .btn-ghost {
-    background-color: var(--rc-accent-wash);
+    background-color: var(--rc-surface-2);
     color: var(--rc-text);
     border: var(--rc-stroke);
   }
@@ -149,26 +186,23 @@
   .btn-ghost:hover:not(:disabled) {
     background-color: var(--rc-accent-wash);
     border-color: var(--rc-border-strong);
-    box-shadow: var(--rc-glow-magenta);
-  }
-
-  .btn-primary:hover:not(:disabled),
-  .btn-ghost:hover:not(:disabled) {
-    transform: scale(1.04);
+    color: var(--rc-text);
+    transform: translateY(-1px);
   }
 
   .btn-primary:active:not(:disabled),
   .btn-ghost:active:not(:disabled) {
-    transform: scale(0.96);
+    transform: translateY(0) scale(0.985);
     transition-duration: var(--rc-dur-instant);
   }
 
   .btn-primary:disabled,
   .btn-ghost:disabled {
-    opacity: 0.4;
+    opacity: 0.42;
     cursor: not-allowed;
     color: var(--rc-text-subtle);
     box-shadow: none;
+    transform: none;
   }
 
   .data-table {
@@ -210,7 +244,7 @@
   }
 
   .data-table tbody tr:hover td {
-    background-color: rgba(124, 47, 207, .08);
+    background-color: var(--rc-row-hover);
   }
 
   .mono {
@@ -218,12 +252,62 @@
     font-variant-ligatures: none;
     font-variant-numeric: tabular-nums;
   }
+
+  /* 全局深浅主题切换控件 */
+  .rc-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 11px;
+    border-radius: var(--rc-radius-pill);
+    border: var(--rc-stroke);
+    background: var(--rc-surface-glass);
+    color: var(--rc-text-muted);
+    font-family: var(--rc-font-body);
+    font-size: 12px;
+    font-weight: var(--rc-fw-sb);
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color var(--rc-dur-base) var(--rc-ease-hover),
+      border-color var(--rc-dur-base) var(--rc-ease-hover),
+      color var(--rc-dur-base) var(--rc-ease-hover),
+      box-shadow var(--rc-dur-base) var(--rc-ease-hover),
+      transform var(--rc-dur-fast) var(--rc-ease-hover);
+  }
+
+  .rc-theme-toggle:hover {
+    color: var(--rc-text);
+    border-color: var(--rc-border-strong);
+    background: var(--rc-accent-wash);
+    box-shadow: var(--rc-glow-magenta);
+    transform: translateY(-1px);
+  }
+
+  .rc-theme-toggle:active {
+    transform: translateY(0) scale(0.97);
+  }
+
+  .rc-theme-toggle__swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--rc-accent-bright);
+    box-shadow: 0 0 0 2px var(--rc-accent-wash-strong);
+    flex-shrink: 0;
+  }
+
+  .rc-theme-toggle--compact {
+    padding: 0 9px;
+  }
 }
 
-/* 细滚动条，避免抢占内容空间（Phase 1 §1.11 迁移表） */
+/* 细滚动条 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(233, 213, 255, .28) transparent;
+  scrollbar-color: var(--rc-scrollbar-thumb) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -232,15 +316,19 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: rgba(233, 213, 255, .28);
+  background-color: var(--rc-scrollbar-thumb);
   border-radius: var(--rc-radius-pill);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--rc-scrollbar-thumb-hover);
 }
 
 *::-webkit-scrollbar-track {
   background-color: transparent;
 }
 
-/* prefers-reduced-motion：保留 120ms 淡入淡出，取消位移/缩放/无限循环（交互规范 §3.5） */
+/* prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

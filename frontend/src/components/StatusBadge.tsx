@@ -9,7 +9,7 @@ const toneStyle: Record<Tone, CSSProperties> = {
   danger: { color: 'var(--rc-danger)', backgroundColor: 'var(--rc-danger-wash)' },
   warning: { color: 'var(--rc-warning)', backgroundColor: 'var(--rc-warning-wash)' },
   neutral: { color: 'var(--rc-neutral)', backgroundColor: 'var(--rc-neutral-wash)' },
-  navy: { color: 'var(--rc-lilac)', backgroundColor: 'var(--rc-surface-3)' },
+  navy: { color: 'var(--rc-text)', backgroundColor: 'var(--rc-surface-3)' },
 }
 
 type StatusBadgeProps = {
@@ -22,7 +22,10 @@ type StatusBadgeProps = {
 export function StatusBadge({ tone = 'neutral', children, dot = true, className = '' }: StatusBadgeProps) {
   return (
     <span
-      style={toneStyle[tone]}
+      style={{
+        border: '1px solid color-mix(in srgb, currentColor 22%, transparent)',
+        ...toneStyle[tone],
+      }}
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium leading-5 ${
         dot ? 'gap-1' : ''
       } ${className}`}

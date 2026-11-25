@@ -80,10 +80,7 @@ export default function LlmSettingsPage() {
         <div className="rc-we-head__text">
           <p className="rc-we-eyebrow">系统级状态 · 排错用</p>
           <h1 className="rc-we-title">系统 AI 状态</h1>
-          <p className="rc-we-lead">
-            这里显示 ReproCheck 的系统默认 AI 服务，不是你个人的配置。要连接自己的 AI 助手，请用五步向导；
-            本页只用于查看状态和排查系统级故障。
-          </p>
+          <p className="rc-we-lead">系统默认 AI 服务状态</p>
         </div>
         <div className="rc-we-actions">
           <Link to="/settings/models?tab=setup" className="btn-primary">
@@ -112,25 +109,16 @@ export default function LlmSettingsPage() {
       </header>
 
       <section className="rc-we-note" aria-label="密钥安全说明">
-        <Icon as={ShieldCheck} size="lg" className="rc-we-note__icon" />
-        <div>
-          <p className="rc-we-note__title">密钥安全说明</p>
-          <ul className="rc-we-note__list">
-            <li>API 密钥仅在后端服务中读取与保存；前端不会接收、存储或展示明文密钥。</li>
-            <li>此处仅显示「已配置 / 未配置」状态，无法反查密钥内容。</li>
-            <li>
-              浏览器草稿（sessionStorage）仅保存供应商、名称等非敏感字段，密钥字段永不落盘。
-              <span className="ml-1 inline-flex align-middle">
-                {secretDraftHits.length === 0 ? (
-                  <StatusBadge tone="success">草稿自检通过</StatusBadge>
-                ) : (
-                  <StatusBadge tone="danger">
-                    发现 {secretDraftHits.length} 处疑似密钥字段
-                  </StatusBadge>
-                )}
-              </span>
-            </li>
-          </ul>
+        <Icon as={ShieldCheck} size="md" className="rc-we-note__icon" />
+        <div className="rc-we-row-between" style={{ flex: 1 }}>
+          <span>密钥加密保存在后端，前端不存储明文。</span>
+          {secretDraftHits.length === 0 ? (
+            <StatusBadge tone="success">草稿自检通过</StatusBadge>
+          ) : (
+            <StatusBadge tone="danger">
+              发现 {secretDraftHits.length} 处疑似密钥字段
+            </StatusBadge>
+          )}
         </div>
       </section>
 

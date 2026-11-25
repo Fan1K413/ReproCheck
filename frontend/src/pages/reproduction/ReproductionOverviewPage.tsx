@@ -274,10 +274,7 @@ export default function ReproductionOverviewPage() {
         <div className="rc-wa-head__text">
           <p className="rc-wa-eyebrow">Reproduction Overview</p>
           <h1 className="rc-wa-title">复现总览</h1>
-          <p className="rc-wa-lede">
-            所有统计来自后端规划、运行与规划详情，无前端伪造数据。
-            切换规划或运行时，透视卡片沿透视轴 400ms 滑入滑出。
-          </p>
+          <p className="rc-wa-lede">规划、运行与可行性总览</p>
         </div>
         <div className="rc-wa-head__actions">{quickNav}</div>
       </header>
@@ -300,36 +297,22 @@ export default function ReproductionOverviewPage() {
                 当前环境不支持安全代码执行，未运行任何代码
               </p>
               <p className="rc-wa-lede" style={{ marginTop: 'var(--rc-space-2)', fontSize: 'var(--rc-fs-caption)' }}>
-                后端已在 {formatCount(blockedRuns.length)} 个运行上禁用执行（execution_enabled=false 或
-                status=blocked_no_sandbox）。所有状态均来自后端，不显示伪造的成功结果。
+                已有 {formatCount(blockedRuns.length)} 个运行处于执行禁用或阻塞状态。
               </p>
             </div>
           </div>
         </section>
       ) : (
-        <section className="rc-wa-panel">
-          <div
-            className="rc-wa-panel__body"
-            style={{ backgroundColor: 'var(--rc-accent-wash)', display: 'flex', gap: 'var(--rc-space-3)' }}
-          >
-            <Icon as={AlertTriangle} size="md" tone="accent" />
-            <div style={{ minWidth: 0 }}>
-              <p className="rc-wa-sub" style={{ color: 'var(--rc-violet)' }}>
-                代码执行能力说明
-              </p>
-              <p className="rc-wa-lede" style={{ marginTop: 'var(--rc-space-2)', fontSize: 'var(--rc-fs-caption)' }}>
-                当前无运行记录。后端在无安全沙箱时会禁用执行并阻塞运行，不会伪造任何执行进度或成功结果。
-              </p>
-            </div>
-          </div>
-        </section>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--rc-space-2)' }}>
+          <StatusBadge tone="neutral">沙箱策略：未配置沙箱时自动阻塞执行</StatusBadge>
+        </div>
       )}
 
       <section className="rc-wa-kpis">
-        <Kpi label="复现规划数" value={formatCount(plans.length)} hint="后端真实计数" tone="accent" icon={Network} />
-        <Kpi label="复现运行数" value={formatCount(runs.length)} hint="后端真实计数" tone="info" icon={Play} />
-        <Kpi label="任务总数" value={formatCount(tasks.length)} hint={`来自 ${planDetails.length} 份规划详情`} tone="success" icon={ClipboardList} />
-        <Kpi label="待人工确认" value={formatCount(humanPending)} hint="needs_human_confirm=true" tone="warning" icon={Sparkles} />
+        <Kpi label="复现规划数" value={formatCount(plans.length)} hint="项目累计规划" tone="accent" icon={Network} />
+        <Kpi label="复现运行数" value={formatCount(runs.length)} hint="项目累计运行" tone="info" icon={Play} />
+        <Kpi label="任务总数" value={formatCount(tasks.length)} hint={`来自 ${planDetails.length} 份规划`} tone="success" icon={ClipboardList} />
+        <Kpi label="待人工确认" value={formatCount(humanPending)} hint="需复核确认" tone="warning" icon={Sparkles} />
       </section>
 
       {detailErrors > 0 && (
@@ -460,77 +443,79 @@ export default function ReproductionOverviewPage() {
         </div>
       </section>
 
-      <div className="rc-wa-panel">
-        <div className="rc-wa-panel__head">
-          <div className="rc-wa-panel__title">
-            <Icon as={ClipboardList} size="sm" tone="accent" />
-            任务状态分布
+      <div className="grid gap-5 lg:grid-cols-2">
+        <section className="rc-wa-panel">
+          <div className="rc-wa-panel__head">
+            <div className="rc-wa-panel__title">
+              <Icon as={ClipboardList} size="sm" tone="accent" />
+              任务状态分布
+            </div>
+            <span className="rc-wa-source">共 {formatCount(tasks.length)} 项</span>
           </div>
-          <span className="rc-wa-source">来源：后端规划任务的真实状态</span>
-        </div>
-        <div className="rc-wa-panel__body">
-          {tasks.length === 0 ? (
-            <EmptyState
-              compact
-              title="暂无任务数据"
-              description="创建复现规划后，后端返回的任务状态会汇总显示在这里。"
-            />
-          ) : (
-            <div className="rc-wa-bars">
-              {DISTRIBUTION_KEYS.map((key) => {
-                const count = statusCounts[key] ?? 0
-                return (
-                  <div className="rc-wa-bar" key={key}>
-                    <span className="rc-wa-bar__label">{taskStatusLabel(key)}</span>
-                    <div className="rc-wa-bar__track">
-                      <div
-                        className="rc-wa-bar__fill"
-                        data-tone={taskStatusTone(key)}
-                        style={{ transform: `scaleX(${count / maxStatus})` }}
-                      />
+          <div className="rc-wa-panel__body">
+            {tasks.length === 0 ? (
+              <EmptyState
+                compact
+                title="暂无任务数据"
+                description="创建复现规划后显示任务状态分布。"
+              />
+            ) : (
+              <div className="rc-wa-bars">
+                {DISTRIBUTION_KEYS.map((key) => {
+                  const count = statusCounts[key] ?? 0
+                  return (
+                    <div className="rc-wa-bar" key={key}>
+                      <span className="rc-wa-bar__label">{taskStatusLabel(key)}</span>
+                      <div className="rc-wa-bar__track">
+                        <div
+                          className="rc-wa-bar__fill"
+                          data-tone={taskStatusTone(key)}
+                          style={{ transform: `scaleX(${count / maxStatus})` }}
+                        />
+                      </div>
+                      <span className="rc-wa-bar__count">{count}</span>
                     </div>
-                    <span className="rc-wa-bar__count">{count}</span>
+                  )
+                })}
+                <div className="rc-wa-bar">
+                  <span className="rc-wa-bar__label">待人工</span>
+                  <div className="rc-wa-bar__track">
+                    <div
+                      className="rc-wa-bar__fill"
+                      data-tone="warning"
+                      style={{ transform: `scaleX(${humanPending / maxStatus})` }}
+                    />
                   </div>
-                )
-              })}
-              <div className="rc-wa-bar">
-                <span className="rc-wa-bar__label">待人工</span>
-                <div className="rc-wa-bar__track">
-                  <div
-                    className="rc-wa-bar__fill"
-                    data-tone="warning"
-                    style={{ transform: `scaleX(${humanPending / maxStatus})` }}
-                  />
+                  <span className="rc-wa-bar__count">{humanPending}</span>
                 </div>
-                <span className="rc-wa-bar__count">{humanPending}</span>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <section className="rc-wa-panel">
-        <div className="rc-wa-panel__head">
-          <div className="rc-wa-panel__title">
-            <Icon as={Network} size="sm" tone="accent" />
-            规划可行性汇总
+            )}
           </div>
-          <span className="rc-wa-source">来源：plans[].feasibility_summary</span>
-        </div>
-        <div className="rc-wa-panel__body">
-          {feasibilityEntries.length === 0 ? (
-            <EmptyState compact title="暂无可行性汇总" description="规划列表返回 feasibility_summary 后会在此展示。" />
-          ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--rc-space-2)' }}>
-              {feasibilityEntries.map(([key, count]) => (
-                <StatusBadge key={key} tone={feasibilityTone(key)}>
-                  {feasZh(key)} · {formatCount(count)}
-                </StatusBadge>
-              ))}
+        </section>
+
+        <section className="rc-wa-panel">
+          <div className="rc-wa-panel__head">
+            <div className="rc-wa-panel__title">
+              <Icon as={Network} size="sm" tone="accent" />
+              规划可行性汇总
             </div>
-          )}
-        </div>
-      </section>
+            <span className="rc-wa-source">{feasibilityEntries.length} 类</span>
+          </div>
+          <div className="rc-wa-panel__body">
+            {feasibilityEntries.length === 0 ? (
+              <EmptyState compact title="暂无可行性汇总" description="规划生成后显示可行性分布。" />
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--rc-space-2)' }}>
+                {feasibilityEntries.map(([key, count]) => (
+                  <StatusBadge key={key} tone={feasibilityTone(key)}>
+                    {feasZh(key)} · {formatCount(count)}
+                  </StatusBadge>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
 
       <section className="rc-wa-panel">
         <div className="rc-wa-panel__head">
@@ -538,7 +523,7 @@ export default function ReproductionOverviewPage() {
             <Icon as={Network} size="sm" tone="accent" />
             复现规划
           </div>
-          <span className="rc-wa-source">来源：后端规划聚合</span>
+          <span className="rc-wa-source">{plans.length} 份</span>
         </div>
         <div className="rc-wa-panel__body rc-wa-panel__body--flush rc-wa-tablehost">
           <DataTable<PlanView>
@@ -590,7 +575,7 @@ export default function ReproductionOverviewPage() {
             rowKey={(plan) => plan.plan_id}
             empty={
               <div style={{ padding: 'var(--rc-space-5)' }}>
-                <EmptyState compact title="尚无复现规划" description="点击右上角「手动新建规划」创建第一份空规划，再逐条新增真实任务；不会伪造 AI 结果。" />
+                <EmptyState compact title="尚无复现规划" description="点击右上角「手动新建规划」创建第一份规划。" />
               </div>
             }
           />
@@ -603,7 +588,7 @@ export default function ReproductionOverviewPage() {
             <Icon as={SquareTerminal} size="sm" tone="accent" />
             复现运行
           </div>
-          <span className="rc-wa-source">来源：后端运行聚合</span>
+          <span className="rc-wa-source">{runs.length} 次</span>
         </div>
         <div className="rc-wa-panel__body rc-wa-panel__body--flush rc-wa-tablehost">
           <DataTable<ReproRunView>
@@ -745,7 +730,7 @@ function PlanCard({
               />
             </div>
             <p className="rc-wa-kpi__hint" style={{ marginTop: 'var(--rc-space-2)' }}>
-              完成度来自该规划 tasks[].status 的真实计数（{completed}/{total}）
+              已完成 {completed} / {total}
             </p>
           </div>
         )}

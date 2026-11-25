@@ -280,10 +280,12 @@ export default function ReproductionReportsPage() {
       frame = window.requestAnimationFrame(compute)
     }
     compute()
-    window.addEventListener('scroll', onScroll, { passive: true })
+    const scroller = document.querySelector<HTMLElement>('.rc-spa-scroll')
+    const target = scroller ?? window
+    target.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onScroll)
     return () => {
-      window.removeEventListener('scroll', onScroll)
+      target.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onScroll)
       if (frame) window.cancelAnimationFrame(frame)
     }
@@ -341,9 +343,7 @@ export default function ReproductionReportsPage() {
         <div className="rc-we-head__text">
           <p className="rc-we-eyebrow">复现报告 · 审计报告</p>
           <h1 className="rc-we-title">审计报告</h1>
-          <p className="rc-we-lead">
-            章节与证据引用均来自后端报告详情；HTML 用新窗口打开，PDF 不可用时明确提示后端错误码。
-          </p>
+          <p className="rc-we-lead">报告生成、阅读与导出</p>
         </div>
         <div className="rc-we-actions">
           <Link to={`/projects/${pid}/reproduction`} className="btn-ghost">
@@ -359,7 +359,6 @@ export default function ReproductionReportsPage() {
             <Icon as={FileBarChart} size="md" tone="accent" />
             生成报告
           </h2>
-          <StatusBadge tone="neutral" dot={false}>由后端实时生成</StatusBadge>
         </div>
         <div className="rc-we-card__body">
           <div className="rc-we-grid rc-we-grid--2">
@@ -543,13 +542,13 @@ export default function ReproductionReportsPage() {
                   <div className="rc-we-row" style={{ gap: 'var(--rc-space-2)' }}>
                     <StatusBadge tone="neutral">{report.status}</StatusBadge>
                     <StatusBadge tone="accent">版本 {report.version}</StatusBadge>
-                    <StatusBadge tone="neutral">按后端返回 {sections.length} 章渲染</StatusBadge>
+                    <StatusBadge tone="neutral">{sections.length} 章</StatusBadge>
                   </div>
                 </div>
 
-                <div className="rc-we-report__scope">
-                  {report.scope_note || '后端未提供报告范围说明。'}
-                </div>
+                {report.scope_note && (
+                  <div className="rc-we-report__scope">{report.scope_note}</div>
+                )}
                 {report.pdf_error && (
                   <div className="rc-we-note rc-we-note--warn" style={{ marginTop: 'var(--rc-space-3)' }}>
                     <Icon name="triangleAlert" size="md" className="rc-we-note__icon" />

@@ -112,7 +112,7 @@ function RelationPanel({ projectId, onTone }: { projectId: string; onTone?: (ton
           ))}
         </div>
       )}
-      <p className="rcw-overline mt-4">节点读数来自真实后端聚合；无数据的单元不画连线。</p>
+      <p className="rc2-rel__empty">选择左侧项目展开关联单元</p>
     </section>
   )
 }
@@ -157,9 +157,7 @@ export default function ProjectsPage() {
         <div className="min-w-0">
           <p className="rcw-overline">项目档案 · 全量清单</p>
           <h1 className="rc2-hero__title mt-2">项目档案</h1>
-          <p className="rc2-hero__desc">
-            每个项目是一份可展开的审计档案：选中后浮出关联的论文、数据、代码与任务单元。全部读数来自后端项目库与 Bloom 真实聚合，无数据不虚构。
-          </p>
+          <p className="rc2-hero__desc">科研复现项目与关联单元</p>
         </div>
         <Link to="/projects/new" className="btn-primary">
           <Icon name="plus" size="sm" />
@@ -167,21 +165,19 @@ export default function ProjectsPage() {
         </Link>
       </header>
 
-      <section className="rc2-kpis" aria-label="项目概览指标">
+      <section className="rc2-kpis rc-stagger" aria-label="项目概览指标">
         {[
-          { label: '项目总数', value: String(kpis.total), foot: '后端项目库计数' },
-          { label: '研究领域', value: String(kpis.domains), foot: '已登记领域去重' },
-          { label: '关联论文', value: String(kpis.papers), foot: '已关联论文去重' },
+          { label: '项目总数', value: String(kpis.total) },
+          { label: '研究领域', value: String(kpis.domains) },
+          { label: '关联论文', value: String(kpis.papers) },
           {
             label: '最近更新',
             value: kpis.latest ? formatDateTime(kpis.latest).slice(0, 10) : '—',
-            foot: '最近创建项目时间',
           },
-        ].map((kpi, index) => (
-          <div key={kpi.label} className="rc2-kpi rcw-rise" style={{ '--rcw-i': index } as CSSProperties}>
+        ].map((kpi) => (
+          <div key={kpi.label} className="rc2-kpi">
             <p className="rc2-kpi__label">{kpi.label}</p>
             <p className="rc2-kpi__value">{kpi.value}</p>
-            <p className="rc2-kpi__foot">{kpi.foot}</p>
           </div>
         ))}
       </section>
@@ -295,12 +291,7 @@ export default function ProjectsPage() {
                   <h3 className="rc2-rel__title">关联关系</h3>
                   <Icon name="network" size="sm" tone="subtle" />
                 </div>
-                <p className="rc2-rel__empty">
-                  选择左侧任意项目卡片，这里会展开该项目与论文 / 数据 / 代码 / 任务之间的真实关联节点。
-                </p>
-                <p className="rcw-overline mt-4">
-                  阶段条：紫=读取中 · 亮紫=进行中 · 薄荷青=已完成 · 中性=未聚焦
-                </p>
+                <p className="rc2-rel__empty">选择左侧项目展开关联单元</p>
               </section>
             )}
           </aside>

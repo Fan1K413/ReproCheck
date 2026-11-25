@@ -229,7 +229,7 @@ function StructureRibbon({
           <span>
             {totalBytes > 0
               ? `总大小 ${formatBytes(totalBytes)}`
-              : '后端未提供 size_bytes，不绘制占比条'}
+              : '缺少文件大小数据'}
           </span>
         </p>
         {materials.length === 0 ? (
@@ -308,8 +308,8 @@ function StructureRibbon({
           <span>字段明细</span>
           <span>
             {facts.some((item) => item.rowCount !== null)
-              ? '含 row_count，字段占比可计算'
-              : '后端未提供 row_count，仅显示名称与真实取值'}
+              ? '含行数统计'
+              : `共 ${facts.length} 个字段`}
           </span>
         </p>
         {facts.length === 0 ? (
@@ -469,7 +469,7 @@ function RuleResultsTable({ ruleResults }: { ruleResults: Record<string, string>
       </div>
       <div className="rc4-panel__body">
         <p className="rc4-list__meta mb-3">
-          「未评估」表示当前数据/代码条件下该规则无法得出结论，不代表通过。
+          「未评估」表示当前条件下无法判定，不代表通过。
         </p>
         {entries.length === 0 ? (
           <p className="rc4-list__meta">后端未返回规则执行结果。</p>
@@ -581,7 +581,7 @@ function DataAudit({ projectId }: { projectId: string }) {
     <div className="rc4-page">
       <PageHeader
         title="数据质量审计"
-        description="检查数据集完整性、数据泄漏、分布统计与预处理一致性——只读执行，全部发现附带证据"
+        description="数据集完整性与泄漏扫描"
       />
 
       <section className="rc4-panel">
@@ -591,11 +591,9 @@ function DataAudit({ projectId }: { projectId: string }) {
               <Icon name="file" size="sm" tone="accent" />
               执行审计
             </h3>
-            <p className="rc4-panel__hint">
-              {IS_SITE_API
-                ? '所选 CSV 会发送给站点配置的计算服务，只保存审计报告。'
-                : '对项目已上传的数据材料做本地只读扫描，不修改原文件。'}
-            </p>
+            {IS_SITE_API && (
+              <p className="rc4-panel__hint">仅上传所选 CSV 进行计算，只保存审计报告。</p>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {IS_SITE_API ? (

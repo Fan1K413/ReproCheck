@@ -282,8 +282,9 @@ export default function ProjectVerificationPage() {
   return (
     <div className="rc4-page">
       <PageHeader
+        eyebrow="Verification"
         title="项目验证"
-        description="集中查看可信结论、图表反向验证与确定性验证引擎；所有数据均来自真实后端调用。"
+        description="可信结论、图表核验与确定性引擎"
         actions={
           <nav className="flex flex-wrap items-center gap-2">
             <Link to={`${base}/tasks`} className="btn-ghost">
@@ -326,7 +327,6 @@ export default function ProjectVerificationPage() {
         <Rc4Panel
           title="统一可信结论"
           icon={<Icon name="shield" size="sm" tone="accent" />}
-          hint="GET /projects/{id}/verdict-summary"
         >
           {verdictQuery.isPending ? (
             <LoadingState compact message="正在读取可信结论…" />
@@ -505,7 +505,6 @@ export default function ProjectVerificationPage() {
         <Rc4Panel
           title="图表反向验证"
           icon={<Icon name="file" size="sm" tone="accent" />}
-          hint="POST /projects/{id}/chart-verification"
         >
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -525,9 +524,6 @@ export default function ProjectVerificationPage() {
               )}
               {chartMutation.isPending ? '正在验证…' : '运行图表反向验证'}
             </button>
-            <span className="text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
-              结果由后端程序化提取，不做图像级重绘。
-            </span>
           </div>
 
           {chartMutation.isError && (
@@ -549,7 +545,6 @@ export default function ProjectVerificationPage() {
               <EmptyState
                 compact
                 title="尚未运行图表验证"
-                description="点击上方按钮，对当前项目的真实材料执行反向验证。"
               />
             </div>
           )}
@@ -631,7 +626,7 @@ export default function ProjectVerificationPage() {
 
       {activeTab === 'engine' && (
         <div className="flex flex-col gap-4">
-          <Rc4Panel title="验证分层" hint="GET /verification/layers">
+          <Rc4Panel title="验证分层">
             {layersQuery.isPending ? (
               <LoadingState compact message="正在读取验证分层…" />
             ) : layersQuery.isError ? (
@@ -676,7 +671,7 @@ export default function ProjectVerificationPage() {
             )}
           </Rc4Panel>
 
-          <Rc4Panel title="第 2 层 · 静态代码分析" hint="POST /verification/static-analysis">
+          <Rc4Panel title="第 2 层 · 静态代码分析">
             <label className="field-label" htmlFor="source-code">
               Python 源码（以 main.py 提交）
             </label>
@@ -715,11 +710,6 @@ export default function ProjectVerificationPage() {
                   onRetry={() => staticMutation.mutate(codeInput)}
                 />
               </div>
-            )}
-            {!staticMutation.isPending && !staticMutation.isError && !staticResult && (
-              <p className="mt-4 text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
-                输入源码并运行后，这里展示导入、模型类、随机种子与优化器等可复核观察。
-              </p>
             )}
             {staticResult && (
               <div className="mt-4 flex flex-col gap-3">
@@ -775,7 +765,7 @@ export default function ProjectVerificationPage() {
             )}
           </Rc4Panel>
 
-          <Rc4Panel title="第 4 层 · 数值重算" hint="POST /verification/recompute">
+          <Rc4Panel title="第 4 层 · 数值重算">
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="field-label" htmlFor="metric-name">
                 指标名
@@ -836,11 +826,6 @@ export default function ProjectVerificationPage() {
                 />
               </div>
             )}
-            {!recomputeMutation.isPending && !recomputeMutation.isError && !recomputeResult && (
-              <p className="mt-4 text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
-                输入真实计数与报告值后，这里展示重算结果和一致性判定。
-              </p>
-            )}
             {recomputeResult && <RecomputeView result={recomputeResult} />}
           </Rc4Panel>
         </div>
@@ -848,7 +833,7 @@ export default function ProjectVerificationPage() {
 
       {activeTab === 'ops' && (
         <div className="flex flex-col gap-4">
-          <Rc4Panel title="生产配置自检" hint="GET /diagnosis/production-check">
+          <Rc4Panel title="生产配置自检">
             {productionQuery.isPending ? (
               <LoadingState compact message="正在读取生产自检结果…" />
             ) : productionQuery.isError ? (
@@ -882,7 +867,7 @@ export default function ProjectVerificationPage() {
             )}
           </Rc4Panel>
 
-          <Rc4Panel title="超时任务恢复" hint="POST /parse-tasks/recover-stale">
+          <Rc4Panel title="超时任务恢复">
             <button
               type="button"
               className="btn-ghost"
@@ -912,7 +897,7 @@ export default function ProjectVerificationPage() {
             )}
           </Rc4Panel>
 
-          <Rc4Panel title="基准指标计算" hint="POST /benchmark/metrics/compute">
+          <Rc4Panel title="基准指标计算">
             <div className="grid gap-3 lg:grid-cols-2">
               <label className="field-label" htmlFor="truth-json">
                 真值 JSON 数组
@@ -965,11 +950,6 @@ export default function ProjectVerificationPage() {
                   onRetry={submitBenchmark}
                 />
               </div>
-            )}
-            {!benchmarkMutation.isPending && !benchmarkMutation.isError && !benchmarkResult && (
-              <p className="mt-4 text-xs" style={{ color: 'var(--rc-text-subtle)' }}>
-                输入框仅作数据提交用途；未运行计算时不展示任何指标。
-              </p>
             )}
             {benchmarkResult && (
               <div className="mt-4 flex flex-col gap-3">
@@ -1040,7 +1020,7 @@ function RecomputeView({ result }: { result: RecomputeResult }) {
           className="rounded px-3 py-2 text-xs"
           style={{ backgroundColor: 'var(--rc-warning-wash)', color: 'var(--rc-warning)' }}
         >
-          分母为零或计数无效，后端已明确标记证据不足，未伪造一致性结论。
+          分母为零或计数无效，证据不足。
         </p>
       )}
       <JsonBlock value={result} maxHeight="max-h-48" />

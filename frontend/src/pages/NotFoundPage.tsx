@@ -26,7 +26,7 @@ export default function NotFoundPage() {
             fontSize: 'clamp(54px, 11vw, 128px)',
             lineHeight: 1,
             fontWeight: 700,
-            color: 'rgba(216, 180, 254, 0.10)',
+            color: 'var(--rc-watermark)',
             letterSpacing: '-0.06em',
             pointerEvents: 'none',
           }}

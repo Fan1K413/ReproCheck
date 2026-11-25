@@ -261,7 +261,7 @@ export default function IntegrationsPage() {
     if (cells.length === 0) return <EmptyState compact title="该 Notebook 暂无细胞" />
     return (
       <div className="rcw-stack-tight">
-        <div className="rcw-grid rcw-grid-4">
+        <div className="rcw-grid rcw-grid-4 rc-stagger">
           {[
             { label: '细胞总数', value: notebookQuery.data?.cell_count ?? cells.length },
             { label: '代码细胞', value: codeCount },
@@ -288,7 +288,7 @@ export default function IntegrationsPage() {
       <div className="rcw-stack">
         <PageHeader
           title="外部集成"
-          description="仓库连接器卡墙 · 快照同步 · Notebook 结构视图（凭据仅后端加密存储）"
+          description="仓库连接器与快照同步"
           actions={
             <button type="button" className="btn-primary" onClick={() => setConnectOpen(true)}>
               <Icon name="plus" size="xs" />连接仓库
